@@ -66,7 +66,8 @@ final class DrillFormViewModel: ObservableObject {
                     fieldSetup: fieldSetup,
                     coachingPoints: points,
                     progressions: progressions,
-                    regressions: regressions
+                    regressions: regressions,
+                    isArchived: drill.isArchived
                 )
             )
         } else {

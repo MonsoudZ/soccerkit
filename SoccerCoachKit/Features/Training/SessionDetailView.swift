@@ -99,6 +99,49 @@ struct SessionDetailView: View {
                                         }
                                     }
                                     .padding(.vertical, 4)
+                                } else {
+                                    // Drill no longer resolves (e.g. removed with
+                                    // its team). Keep the section's own content
+                                    // instead of dropping it silently.
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        HStack {
+                                            Label("\(block.minutes) min", systemImage: "timer")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                            Label("\(block.intensity) / 5", systemImage: "flame")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                            Spacer()
+                                            Text("Unavailable Drill")
+                                                .font(.caption2.weight(.semibold))
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Color.orange.opacity(0.15))
+                                                .foregroundStyle(.orange)
+                                                .clipShape(Capsule())
+                                        }
+
+                                        Text(block.topic.isEmpty ? "Training Section" : block.topic)
+                                            .font(.headline)
+
+                                        if !block.pitchArea.isEmpty {
+                                            Label(block.pitchArea, systemImage: "rectangle.dashed")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        if !block.focus.isEmpty {
+                                            Text(block.focus)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        if !block.details.isEmpty {
+                                            Text(block.details)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
                                 }
                             }
                         }
