@@ -31,6 +31,19 @@ The first build focuses on the coach's weekly loop:
 
 Open `SoccerCoachKit.xcodeproj` in Xcode and run the `SoccerCoachKit` scheme on an iPhone or iPad simulator.
 
+## Project Structure
+
+The app follows an MVVM + services layout, grouped by feature:
+
+- `App/` — the `@main` entry point.
+- `Models/` — one Codable domain type per file (`Team`, `Player`, `Drill`, `TrainingSession`, `GameEvent`, `TeamEvent`, `TacticsDiagram`, and shared enums).
+- `Services/` — a `PersistenceService` protocol with a `UserDefaults` implementation, the Codable `AppSnapshot`, and `SampleData` seed content.
+- `Store/` — `AppStore`, the app-wide `ObservableObject` source of truth. It exposes published collections and intents, and delegates durability to the persistence service.
+- `Features/<Feature>/` — each screen paired with its `ObservableObject` view model (`Dashboard`, `Calendar`, `Roster`, `Games`, `Training`, `GameDay`, `Field`, `Drills`, `Teams`). Views observe the store for reactive data and own a view model for local state and intents.
+- `Components/` — reusable views shared across features (rows, cards, badges).
+- `Navigation/` — `ContentView` and the `AppSection` sidebar model.
+- `Extensions/` — small shared helpers.
+
 ## Good Next Features
 
 - SwiftData or CloudKit migration for richer sync and sharing.

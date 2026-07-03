@@ -1,0 +1,273 @@
+import Foundation
+
+/// Owns the ephemeral game-day state: the clock, lineup, substitutions, and
+/// per-player status. It is seeded from the store's roster/age-group settings
+/// via `reset(with:)` on appear and whenever the selected team changes.
+@MainActor
+final class GameDayViewModel: ObservableObject {
+    // Configuration snapshot sourced from the store.
+    @Published private(set) var roster: [Player] = []
+    @Published private(set) var playersOnField = 0
+    @Published private(set) var defaultGameMinutes = 0
+    private var teamID: UUID?
+
+    // Game state.
+    @Published var starterIDs: Set<UUID> = []
+    @Published var playingSeconds: [UUID: Int] = [:]
+    @Published var elapsedSeconds = 0
+    @Published var periodStartSeconds = 0
+    @Published var currentPeriod = 1
+    @Published var isRunning = false
+    @Published var reminders: [SubReminder] = []
+    @Published var subLog: [SubLogEntry] = []
+    @Published var playerStatuses: [UUID: GamePlayerStatus] = [:]
+    @Published var newReminderMinute = 15
+    @Published var selectedOutPlayerID: UUID?
+    @Published var selectedInPlayerID: UUID?
+    @Published var activeReminder: SubReminder?
+    @Published var showReminder = false
+    @Published var formation: LineupFormation = .balanced
+
+    // MARK: - Configuration
+
+    /// Refresh the roster/age-group snapshot from the store and reset the game.
+    func reset(with store: AppStore) {
+        let team = store.selectedTeam
+        teamID = team.id
+        roster = store.roster
+        playersOnField = team.ageGroup.playersOnField
+        defaultGameMinutes = team.ageGroup.defaultGameMinutes
+        resetLineup()
+    }
+
+    // MARK: - Derived state
+
+    var starterPlayers: [Player] {
+        roster.filter { starterIDs.contains($0.id) }
+    }
+
+    var availableStarterPlayers: [Player] {
+        starterPlayers.filter { status(for: $0) == .available }
+    }
+
+    var benchPlayers: [Player] {
+        roster.filter { !starterIDs.contains($0.id) }
+    }
+
+    var availableBenchPlayers: [Player] {
+        benchPlayers.filter { status(for: $0) == .available }
+    }
+
+    var periodSeconds: Int {
+        max(0, elapsedSeconds - periodStartSeconds)
+    }
+
+    var activeReminderText: String {
+        guard let reminder = activeReminder else { return "" }
+        let outName = playerName(reminder.outPlayerID)
+        let inName = playerName(reminder.inPlayerID)
+        return "\(formatClock(reminder.minute * 60)): put \(inName) in for \(outName)."
+    }
+
+    var canUndoLastSub: Bool {
+        guard let last = subLog.first else { return false }
+        return starterIDs.contains(last.inPlayerID) && !starterIDs.contains(last.outPlayerID)
+    }
+
+    func status(for player: Player) -> GamePlayerStatus {
+        playerStatuses[player.id, default: .available]
+    }
+
+    func playerName(_ id: UUID) -> String {
+        roster.first { $0.id == id }?.name ?? "Player"
+    }
+
+    // MARK: - Clock
+
+    func tick() {
+        guard isRunning else { return }
+
+        elapsedSeconds += 1
+        for playerID in starterIDs where playerStatuses[playerID, default: .available] == .available {
+            playingSeconds[playerID, default: 0] += 1
+        }
+
+        if let index = reminders.firstIndex(where: { !$0.triggered && elapsedSeconds >= $0.minute * 60 }) {
+            reminders[index].triggered = true
+            activeReminder = reminders[index]
+            showReminder = true
+        }
+    }
+
+    func start() { isRunning = true }
+    func pause() { isRunning = false }
+
+    private func resetLineup() {
+        isRunning = false
+        elapsedSeconds = 0
+        reminders.removeAll()
+        subLog.removeAll()
+        playerStatuses = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, GamePlayerStatus.available) })
+        playingSeconds = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, 0) })
+        starterIDs = Set(roster.prefix(playersOnField).map(\.id))
+        periodStartSeconds = 0
+        currentPeriod = 1
+        normalizeSelections()
+    }
+
+    func resetGameClock() {
+        isRunning = false
+        elapsedSeconds = 0
+        periodStartSeconds = 0
+        currentPeriod = 1
+        playingSeconds = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, 0) })
+        reminders = reminders.map { reminder in
+            var updated = reminder
+            updated.triggered = false
+            return updated
+        }
+        subLog.removeAll()
+    }
+
+    func advancePeriod() {
+        isRunning = false
+        currentPeriod += 1
+        periodStartSeconds = elapsedSeconds
+    }
+
+    func resetPeriodClock() {
+        isRunning = false
+        elapsedSeconds = periodStartSeconds
+        reminders = reminders.map { reminder in
+            var updated = reminder
+            updated.triggered = elapsedSeconds >= reminder.minute * 60
+            return updated
+        }
+    }
+
+    // MARK: - Lineup
+
+    func moveToBench(_ player: Player) {
+        starterIDs.remove(player.id)
+        normalizeSelections()
+    }
+
+    func moveToStarter(_ player: Player) {
+        guard starterIDs.count < playersOnField else { return }
+        guard status(for: player) == .available else { return }
+        starterIDs.insert(player.id)
+        normalizeSelections()
+    }
+
+    func setPlayerStatus(_ player: Player, _ status: GamePlayerStatus) {
+        playerStatuses[player.id] = status
+
+        if status != .available {
+            starterIDs.remove(player.id)
+        } else if starterIDs.count < playersOnField && starterIDs.isEmpty {
+            starterIDs.insert(player.id)
+        }
+
+        normalizeSelections()
+    }
+
+    // MARK: - Substitutions
+
+    func addReminder() {
+        guard let outID = selectedOutPlayerID, let inID = selectedInPlayerID else { return }
+        reminders.append(SubReminder(id: UUID(), minute: newReminderMinute, outPlayerID: outID, inPlayerID: inID, triggered: false))
+    }
+
+    func applySubstitution(_ reminder: SubReminder) {
+        substitute(outID: reminder.outPlayerID, inID: reminder.inPlayerID, note: "Reminder")
+        reminders.removeAll { $0.id == reminder.id }
+    }
+
+    func recordSelectedSub() {
+        guard let outID = selectedOutPlayerID, let inID = selectedInPlayerID else { return }
+        substitute(outID: outID, inID: inID, note: "Manual sub")
+    }
+
+    func undoLastSub() {
+        guard canUndoLastSub, let last = subLog.first else { return }
+        starterIDs.remove(last.inPlayerID)
+        starterIDs.insert(last.outPlayerID)
+        subLog.removeFirst()
+        normalizeSelections()
+    }
+
+    func deleteReminder(_ reminder: SubReminder) {
+        reminders.removeAll { $0.id == reminder.id }
+    }
+
+    private func substitute(outID: UUID, inID: UUID, note: String) {
+        guard starterIDs.contains(outID), !starterIDs.contains(inID) else { return }
+        guard playerStatuses[outID, default: .available] == .available, playerStatuses[inID, default: .available] == .available else { return }
+        starterIDs.remove(outID)
+        starterIDs.insert(inID)
+        subLog.insert(
+            SubLogEntry(id: UUID(), time: elapsedSeconds, outPlayerID: outID, inPlayerID: inID, outName: playerName(outID), inName: playerName(inID), note: note),
+            at: 0
+        )
+        normalizeSelections()
+    }
+
+    // MARK: - Drag and drop
+
+    func handlePlayerDrop(_ providers: [NSItemProvider], target: LineupDropTarget) -> Bool {
+        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else { return false }
+
+        provider.loadObject(ofClass: NSString.self) { [weak self] object, _ in
+            guard let value = object as? NSString, let playerID = UUID(uuidString: value as String) else { return }
+
+            DispatchQueue.main.async {
+                self?.moveDroppedPlayer(playerID, target: target)
+            }
+        }
+
+        return true
+    }
+
+    private func moveDroppedPlayer(_ playerID: UUID, target: LineupDropTarget) {
+        guard let player = roster.first(where: { $0.id == playerID }) else { return }
+
+        switch target {
+        case .bench:
+            moveToBench(player)
+        case .starters:
+            guard status(for: player) == .available else { return }
+
+            if starterIDs.contains(player.id) {
+                return
+            }
+
+            if starterIDs.count < playersOnField {
+                moveToStarter(player)
+            } else if let outPlayer = availableStarterPlayers.first {
+                substitute(outID: outPlayer.id, inID: player.id, note: "Drag swap")
+            }
+        case .starterSlot(let outPlayerID):
+            guard player.id != outPlayerID, status(for: player) == .available else { return }
+
+            if starterIDs.contains(player.id), starterIDs.contains(outPlayerID) {
+                return
+            } else if starterIDs.contains(outPlayerID) {
+                substitute(outID: outPlayerID, inID: player.id, note: "Drag swap")
+            } else if starterIDs.count < playersOnField {
+                moveToStarter(player)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func normalizeSelections() {
+        if selectedOutPlayerID == nil || !availableStarterPlayers.contains(where: { $0.id == selectedOutPlayerID }) {
+            selectedOutPlayerID = availableStarterPlayers.first?.id
+        }
+
+        if selectedInPlayerID == nil || !availableBenchPlayers.contains(where: { $0.id == selectedInPlayerID }) {
+            selectedInPlayerID = availableBenchPlayers.first?.id
+        }
+    }
+}

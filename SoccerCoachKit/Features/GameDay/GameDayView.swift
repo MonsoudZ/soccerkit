@@ -1,0 +1,297 @@
+import SwiftUI
+
+struct GameDayView: View {
+    @EnvironmentObject private var store: AppStore
+    @StateObject private var viewModel = GameDayViewModel()
+
+    private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                GameClockPanel(
+                    elapsedSeconds: viewModel.elapsedSeconds,
+                    periodSeconds: viewModel.periodSeconds,
+                    currentPeriod: viewModel.currentPeriod,
+                    targetMinutes: viewModel.defaultGameMinutes,
+                    isRunning: viewModel.isRunning,
+                    starters: viewModel.availableStarterPlayers.count,
+                    playersOnField: viewModel.playersOnField,
+                    startAction: { viewModel.start() },
+                    pauseAction: { viewModel.pause() },
+                    resetAction: { viewModel.resetGameClock() },
+                    nextPeriodAction: { viewModel.advancePeriod() },
+                    resetPeriodAction: { viewModel.resetPeriodClock() }
+                )
+
+                quickSubSection
+                lineupSection
+                reminderSection
+                playingTimeSection
+
+                if !viewModel.subLog.isEmpty {
+                    subLogSection
+                }
+            }
+            .padding()
+        }
+        .background(Color(.systemGroupedBackground))
+        .onAppear { viewModel.reset(with: store) }
+        .onChange(of: store.selectedTeamID) { _ in
+            viewModel.reset(with: store)
+        }
+        .onReceive(ticker) { _ in
+            viewModel.tick()
+        }
+        .alert("Substitution Reminder", isPresented: $viewModel.showReminder) {
+            Button("Record Sub") {
+                if let activeReminder = viewModel.activeReminder {
+                    viewModel.applySubstitution(activeReminder)
+                }
+                viewModel.activeReminder = nil
+            }
+            Button("Keep Lineup", role: .cancel) {
+                viewModel.activeReminder = nil
+            }
+        } message: {
+            Text(viewModel.activeReminderText)
+        }
+    }
+
+    private var lineupSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader("Lineup")
+
+            HStack {
+                Label("\(store.selectedTeam.ageGroup.rawValue): \(viewModel.playersOnField)v\(viewModel.playersOnField)", systemImage: "shield")
+                Spacer()
+                Text("\(viewModel.availableStarterPlayers.count) / \(viewModel.playersOnField) available starters")
+                    .foregroundStyle(viewModel.availableStarterPlayers.count == viewModel.playersOnField ? Color.secondary : Color.orange)
+            }
+            .font(.subheadline)
+
+            Picker("Formation", selection: $viewModel.formation) {
+                ForEach(LineupFormation.allCases) { formation in
+                    Text(formation.rawValue).tag(formation)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            LineupPitchView(
+                players: viewModel.starterPlayers,
+                formation: viewModel.formation,
+                playersOnField: viewModel.playersOnField,
+                playingSeconds: viewModel.playingSeconds,
+                statuses: viewModel.playerStatuses,
+                dropAction: { providers in
+                    viewModel.handlePlayerDrop(providers, target: .starters)
+                },
+                slotDropAction: { playerID, providers in
+                    viewModel.handlePlayerDrop(providers, target: .starterSlot(playerID))
+                }
+            )
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
+                LineupColumn(
+                    title: "Starting Team",
+                    symbol: "figure.soccer",
+                    players: viewModel.starterPlayers,
+                    playingSeconds: viewModel.playingSeconds,
+                    statuses: viewModel.playerStatuses,
+                    actionTitle: "Bench",
+                    actionSymbol: "arrow.down.circle",
+                    action: viewModel.moveToBench,
+                    statusAction: viewModel.setPlayerStatus,
+                    dropAction: { providers in
+                        viewModel.handlePlayerDrop(providers, target: .starters)
+                    },
+                    playerDropAction: { player, providers in
+                        viewModel.handlePlayerDrop(providers, target: .starterSlot(player.id))
+                    }
+                )
+
+                LineupColumn(
+                    title: "Bench",
+                    symbol: "person.2",
+                    players: viewModel.benchPlayers,
+                    playingSeconds: viewModel.playingSeconds,
+                    statuses: viewModel.playerStatuses,
+                    actionTitle: "Start",
+                    actionSymbol: "arrow.up.circle",
+                    action: viewModel.moveToStarter,
+                    statusAction: viewModel.setPlayerStatus,
+                    dropAction: { providers in
+                        viewModel.handlePlayerDrop(providers, target: .bench)
+                    },
+                    playerDropAction: { _, providers in
+                        viewModel.handlePlayerDrop(providers, target: .bench)
+                    }
+                )
+            }
+        }
+    }
+
+    private var quickSubSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader("Quick Sub")
+
+            VStack(alignment: .leading, spacing: 12) {
+                Picker("Sub Out", selection: $viewModel.selectedOutPlayerID) {
+                    Text("Choose starter").tag(UUID?.none)
+                    ForEach(viewModel.availableStarterPlayers) { player in
+                        Text(player.name).tag(Optional(player.id))
+                    }
+                }
+
+                Picker("Sub In", selection: $viewModel.selectedInPlayerID) {
+                    Text("Choose bench").tag(UUID?.none)
+                    ForEach(viewModel.availableBenchPlayers) { player in
+                        Text(player.name).tag(Optional(player.id))
+                    }
+                }
+
+                HStack {
+                    Button {
+                        viewModel.recordSelectedSub()
+                    } label: {
+                        Label("Record Sub", systemImage: "arrow.left.arrow.right")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.selectedOutPlayerID == nil || viewModel.selectedInPlayerID == nil)
+
+                    Button {
+                        viewModel.undoLastSub()
+                    } label: {
+                        Label("Undo", systemImage: "arrow.uturn.backward")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!viewModel.canUndoLastSub)
+                }
+            }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+    }
+
+    private var reminderSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader("Sub Reminders")
+
+            VStack(alignment: .leading, spacing: 12) {
+                Stepper("Minute \(viewModel.newReminderMinute)", value: $viewModel.newReminderMinute, in: 1...max(viewModel.defaultGameMinutes, 1))
+
+                Picker("Sub Out", selection: $viewModel.selectedOutPlayerID) {
+                    Text("Choose player").tag(UUID?.none)
+                    ForEach(viewModel.availableStarterPlayers) { player in
+                        Text(player.name).tag(Optional(player.id))
+                    }
+                }
+
+                Picker("Sub In", selection: $viewModel.selectedInPlayerID) {
+                    Text("Choose player").tag(UUID?.none)
+                    ForEach(viewModel.availableBenchPlayers) { player in
+                        Text(player.name).tag(Optional(player.id))
+                    }
+                }
+
+                Button {
+                    viewModel.addReminder()
+                } label: {
+                    Label("Add Reminder", systemImage: "bell.badge")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.selectedOutPlayerID == nil || viewModel.selectedInPlayerID == nil)
+            }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            if viewModel.reminders.isEmpty {
+                Text("No reminders set.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(viewModel.reminders.sorted { $0.minute < $1.minute }) { reminder in
+                        ReminderRow(reminder: reminder, outName: viewModel.playerName(reminder.outPlayerID), inName: viewModel.playerName(reminder.inPlayerID)) {
+                            viewModel.applySubstitution(reminder)
+                        } deleteAction: {
+                            viewModel.deleteReminder(reminder)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var playingTimeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader("Playing Time")
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 10)], spacing: 10) {
+                ForEach(viewModel.roster) { player in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("#\(player.number)")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            StatusBadge(status: viewModel.status(for: player), isStarter: viewModel.starterIDs.contains(player.id))
+                        }
+                        Text(player.name)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                        Text(formatClock(viewModel.playingSeconds[player.id, default: 0]))
+                            .font(.title3.monospacedDigit().weight(.bold))
+                        Menu {
+                            ForEach(GamePlayerStatus.allCases) { status in
+                                Button(status.rawValue) {
+                                    viewModel.setPlayerStatus(player, status)
+                                }
+                            }
+                        } label: {
+                            Label(viewModel.status(for: player).rawValue, systemImage: "person.crop.circle.badge.questionmark")
+                                .font(.caption)
+                                .foregroundStyle(viewModel.status(for: player).color)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+            }
+        }
+    }
+
+    private var subLogSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader("Sub Log")
+
+            ForEach(viewModel.subLog) { entry in
+                HStack {
+                    Text(formatClock(entry.time))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 52, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(entry.inName) in for \(entry.outName)")
+                        if !entry.note.isEmpty {
+                            Text(entry.note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                }
+                .font(.subheadline)
+                .padding()
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
+    }
+}
