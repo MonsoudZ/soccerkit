@@ -14,6 +14,11 @@ struct PlayerFormView: View {
             Section("Player") {
                 TextField("Name", text: $viewModel.name)
                 Stepper("Number \(viewModel.number)", value: $viewModel.number, in: 0...99)
+                if viewModel.hasDuplicateNumber(in: store) {
+                    Label("Another player already wears #\(viewModel.number).", systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
                 Picker("Position", selection: $viewModel.position) {
                     ForEach(PlayerPosition.allCases) { position in
                         Text(position.rawValue).tag(position)
@@ -81,7 +86,7 @@ struct PlayerFormView: View {
                     viewModel.save(into: store)
                     dismiss()
                 }
-                .disabled(!viewModel.isValid)
+                .disabled(!viewModel.canSave(in: store))
             }
         }
     }

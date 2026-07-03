@@ -183,7 +183,7 @@ struct DrillCard: View {
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(drill.coachingPoints, id: \.self) { point in
+                ForEach(Array(drill.coachingPoints.enumerated()), id: \.offset) { _, point in
                     Label(point, systemImage: "checkmark.circle")
                         .font(.caption)
                 }

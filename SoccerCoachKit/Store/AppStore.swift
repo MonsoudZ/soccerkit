@@ -253,18 +253,8 @@ final class AppStore: ObservableObject {
 
     // MARK: - Players
 
-    func addPlayer(name: String, number: Int, position: PlayerPosition, guardian: String, notes: String) {
-        players.append(
-            Player(
-                id: UUID(),
-                teamID: selectedTeamID,
-                name: name,
-                number: number,
-                position: position,
-                guardian: guardian,
-                notes: notes
-            )
-        )
+    func addPlayer(_ player: Player) {
+        players.append(player)
     }
 
     func updatePlayer(_ player: Player) {
@@ -389,7 +379,22 @@ final class AppStore: ObservableObject {
     /// area, intensity, diagram, notes) and still resolve for display.
     func deleteDrill(_ drill: Drill) {
         guard let index = drills.firstIndex(where: { $0.id == drill.id }) else { return }
-        drills[index].isArchived = true
+        // If no session block still references this drill, remove it outright so
+        // archived drills don't accumulate; otherwise archive it so those blocks
+        // keep their planned content.
+        let isReferenced = sessions.contains { $0.blocks.contains { $0.drillID == drill.id } }
+        if isReferenced {
+            drills[index].isArchived = true
+        } else {
+            batch {
+                drills.remove(at: index)
+                diagrams = diagrams.map { diagram in
+                    var updated = diagram
+                    if updated.drillID == drill.id { updated.drillID = nil }
+                    return updated
+                }
+            }
+        }
     }
 
     // MARK: - Sessions
@@ -638,11 +643,14 @@ final class AppStore: ObservableObject {
     private func batch(_ work: () -> Void) {
         let wasBatching = isBatchingPersist
         isBatchingPersist = true
-        work()
-        if !wasBatching {
-            isBatchingPersist = false
-            persist()
+        // defer guarantees the flag is restored and the batched write happens
+        // even if `work` ever starts throwing — never leaving persistence
+        // permanently suppressed.
+        defer {
+            isBatchingPersist = wasBatching
+            if !wasBatching { persist() }
         }
+        work()
     }
 
     private func persist() {

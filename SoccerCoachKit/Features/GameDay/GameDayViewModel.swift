@@ -96,6 +96,7 @@ final class GameDayViewModel: ObservableObject {
         // Seed state for newly added players.
         for player in updated {
             if playingSeconds[player.id] == nil { playingSeconds[player.id] = 0 }
+            if playingSecondsAtPeriodStart[player.id] == nil { playingSecondsAtPeriodStart[player.id] = playingSeconds[player.id] ?? 0 }
             if playerStatuses[player.id] == nil { playerStatuses[player.id] = .available }
         }
 
@@ -333,6 +334,9 @@ final class GameDayViewModel: ObservableObject {
         currentPeriod = 1
         playingSeconds = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, 0) })
         playingSecondsAtPeriodStart = playingSeconds
+        // Restore the starting lineup so it matches the now-empty sub log.
+        playerStatuses = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, GamePlayerStatus.available) })
+        starterIDs = Set(roster.prefix(playersOnField).map(\.id))
         reminders = reminders.map { reminder in
             var updated = reminder
             updated.triggered = false
@@ -340,6 +344,7 @@ final class GameDayViewModel: ObservableObject {
             return updated
         }
         subLog.removeAll()
+        normalizeSelections()
     }
 
     func advancePeriod() {

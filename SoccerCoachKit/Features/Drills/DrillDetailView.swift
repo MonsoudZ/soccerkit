@@ -55,7 +55,7 @@ struct DrillDetailView: View {
                     DrillDetailListSection(title: "Equipment Needed", items: drill.equipment, symbol: "cone")
 
                     Section("Coaching Points") {
-                        ForEach(drill.coachingPoints, id: \.self) { point in
+                        ForEach(Array(drill.coachingPoints.enumerated()), id: \.offset) { _, point in
                             Label(point, systemImage: "checkmark.circle")
                         }
                     }
@@ -102,7 +102,7 @@ struct DrillDetailListSection: View {
     var body: some View {
         if !items.isEmpty {
             Section(title) {
-                ForEach(items, id: \.self) { item in
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     Label(item, systemImage: symbol)
                 }
             }

@@ -46,6 +46,15 @@ final class PlayerFormViewModel: ObservableObject {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// Another player on the team already wears this number.
+    func hasDuplicateNumber(in store: AppStore) -> Bool {
+        store.roster.contains { $0.number == number && $0.id != player?.id }
+    }
+
+    func canSave(in store: AppStore) -> Bool {
+        isValid && !hasDuplicateNumber(in: store)
+    }
+
     func save(into store: AppStore) {
         let updated = Player(
             id: player?.id ?? UUID(),
@@ -68,7 +77,7 @@ final class PlayerFormViewModel: ObservableObject {
         )
 
         if player == nil {
-            store.players.append(updated)
+            store.addPlayer(updated)
         } else {
             store.updatePlayer(updated)
         }
