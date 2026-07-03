@@ -140,8 +140,16 @@ final class AppStore: ObservableObject {
     }
 
     func attendanceSummary(for session: TrainingSession) -> (present: Int, total: Int) {
+        attendanceSummary(session.attendance)
+    }
+
+    func attendanceSummary(for game: GameEvent) -> (present: Int, total: Int) {
+        attendanceSummary(game.attendance)
+    }
+
+    func attendanceSummary(_ attendance: [UUID: AttendanceStatus]) -> (present: Int, total: Int) {
         let ids = Set(roster.map(\.id))
-        let present = session.attendance
+        let present = attendance
             .filter { ids.contains($0.key) }
             .filter { $0.value == .present || $0.value == .late }
             .count
@@ -163,6 +171,11 @@ final class AppStore: ObservableObject {
     func setAttendance(_ status: AttendanceStatus, for player: Player, in session: TrainingSession) {
         guard let index = sessions.firstIndex(where: { $0.id == session.id }) else { return }
         sessions[index].attendance[player.id] = status
+    }
+
+    func setAttendance(_ status: AttendanceStatus, for player: Player, in game: GameEvent) {
+        guard let index = games.firstIndex(where: { $0.id == game.id }) else { return }
+        games[index].attendance[player.id] = status
     }
 
     func setRSVP(_ status: RSVPStatus, for player: Player, in session: TrainingSession) {
@@ -240,6 +253,8 @@ final class AppStore: ObservableObject {
         games = games.map { game in
             var updated = game
             updated.rsvps.removeValue(forKey: player.id)
+            updated.attendance.removeValue(forKey: player.id)
+            updated.playerReports.removeValue(forKey: player.id)
             return updated
         }
         events = events.map { event in

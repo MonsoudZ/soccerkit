@@ -129,10 +129,17 @@ struct SessionDetailView: View {
                         Text("\(summary.going) going · \(summary.maybe) maybe · \(summary.notGoing) not going · \(summary.total - summary.going - summary.maybe - summary.notGoing) no response")
                     }
 
-                    Section("Attendance") {
+                    Section {
                         ForEach(store.roster) { player in
-                            AttendanceRow(player: player, session: session)
+                            AttendanceRow(player: player, status: session.attendance[player.id] ?? .absent) { status in
+                                store.setAttendance(status, for: player, in: session)
+                            }
                         }
+                    } header: {
+                        Text("Attendance")
+                    } footer: {
+                        let summary = store.attendanceSummary(for: session)
+                        Text("\(summary.present) of \(summary.total) present")
                     }
                 }
             } else {

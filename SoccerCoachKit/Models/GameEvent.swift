@@ -9,13 +9,15 @@ struct GameEvent: Identifiable, Hashable, Codable {
     var isHome: Bool
     var notes: String
     var rsvps: [UUID: RSVPStatus]
+    /// Actual attendance recorded on game day, keyed by player id.
+    var attendance: [UUID: AttendanceStatus]
     /// Final score once the game is played; `nil` until recorded.
     var teamScore: Int?
     var opponentScore: Int?
     /// Per-player post-game reports, keyed by player id.
     var playerReports: [UUID: GamePlayerReport]
 
-    init(id: UUID, teamID: UUID, opponent: String, date: Date, location: String = "", isHome: Bool = true, notes: String = "", rsvps: [UUID: RSVPStatus] = [:], teamScore: Int? = nil, opponentScore: Int? = nil, playerReports: [UUID: GamePlayerReport] = [:]) {
+    init(id: UUID, teamID: UUID, opponent: String, date: Date, location: String = "", isHome: Bool = true, notes: String = "", rsvps: [UUID: RSVPStatus] = [:], attendance: [UUID: AttendanceStatus] = [:], teamScore: Int? = nil, opponentScore: Int? = nil, playerReports: [UUID: GamePlayerReport] = [:]) {
         self.id = id
         self.teamID = teamID
         self.opponent = opponent
@@ -24,6 +26,7 @@ struct GameEvent: Identifiable, Hashable, Codable {
         self.isHome = isHome
         self.notes = notes
         self.rsvps = rsvps
+        self.attendance = attendance
         self.teamScore = teamScore
         self.opponentScore = opponentScore
         self.playerReports = playerReports
@@ -38,6 +41,7 @@ struct GameEvent: Identifiable, Hashable, Codable {
         case isHome
         case notes
         case rsvps
+        case attendance
         case teamScore
         case opponentScore
         case playerReports
@@ -53,6 +57,7 @@ struct GameEvent: Identifiable, Hashable, Codable {
         isHome = try container.decodeIfPresent(Bool.self, forKey: .isHome) ?? true
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         rsvps = try container.decodeIfPresent([UUID: RSVPStatus].self, forKey: .rsvps) ?? [:]
+        attendance = try container.decodeIfPresent([UUID: AttendanceStatus].self, forKey: .attendance) ?? [:]
         teamScore = try container.decodeIfPresent(Int.self, forKey: .teamScore)
         opponentScore = try container.decodeIfPresent(Int.self, forKey: .opponentScore)
         playerReports = try container.decodeIfPresent([UUID: GamePlayerReport].self, forKey: .playerReports) ?? [:]

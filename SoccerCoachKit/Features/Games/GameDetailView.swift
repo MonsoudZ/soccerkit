@@ -65,6 +65,19 @@ struct GameDetailView: View {
                         let summary = store.rsvpSummary(game.rsvps)
                         Text("\(summary.going) going · \(summary.maybe) maybe · \(summary.notGoing) not going · \(summary.total - summary.going - summary.maybe - summary.notGoing) no response")
                     }
+
+                    Section {
+                        ForEach(store.roster) { player in
+                            AttendanceRow(player: player, status: game.attendance[player.id] ?? .absent) { status in
+                                store.setAttendance(status, for: player, in: game)
+                            }
+                        }
+                    } header: {
+                        Text("Attendance")
+                    } footer: {
+                        let summary = store.attendanceSummary(for: game)
+                        Text("\(summary.present) of \(summary.total) present")
+                    }
                 }
             } else {
                 EmptyStateView(title: "Game Removed", systemImage: "calendar.badge.exclamationmark")

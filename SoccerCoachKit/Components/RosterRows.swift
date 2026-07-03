@@ -84,13 +84,9 @@ extension RSVPStatus {
 }
 
 struct AttendanceRow: View {
-    @EnvironmentObject private var store: AppStore
     let player: Player
-    let session: TrainingSession
-
-    var status: AttendanceStatus {
-        session.attendance[player.id] ?? .absent
-    }
+    let status: AttendanceStatus
+    let onSelect: (AttendanceStatus) -> Void
 
     var body: some View {
         HStack {
@@ -109,7 +105,7 @@ struct AttendanceRow: View {
             Menu {
                 ForEach(AttendanceStatus.allCases) { option in
                     Button(option.rawValue) {
-                        store.setAttendance(option, for: player, in: session)
+                        onSelect(option)
                     }
                 }
             } label: {
