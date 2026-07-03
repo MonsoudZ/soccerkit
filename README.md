@@ -12,7 +12,9 @@ The first build focuses on the coach's weekly loop:
 - Store parent/guardian contact details, a secondary contact, and an emergency contact with tap-to-call and tap-to-email links.
 - Record player allergies and medical notes for quick reference on game day.
 - Schedule games with opponent, date, venue, and location.
-- Collect RSVPs (going/maybe/not going) from the roster for both games and training sessions.
+- Add tournaments, scrimmages, socials, and meetings as team events, including multi-day tournaments with a start and end date.
+- See practices, games, and events together on a color-coded month calendar, tap any day for its agenda, and add new items straight to the selected date.
+- Collect RSVPs (going/maybe/not going) from the roster for games, training sessions, and team events.
 - Manage game-day starters and bench players.
 - Start a game clock that tracks each player's playing time.
 - Preset substitution reminders, then record the sub when the reminder fires.
@@ -32,7 +34,6 @@ Open `SoccerCoachKit.xcodeproj` in Xcode and run the `SoccerCoachKit` scheme on 
 ## Good Next Features
 
 - SwiftData or CloudKit migration for richer sync and sharing.
-- Season calendar combining matches and training in one timeline.
 - Push/local reminders for upcoming games and RSVP deadlines.
 - Exportable full session plans for assistant coaches.
 - Player development notes and skill ratings.

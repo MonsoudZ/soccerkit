@@ -20,19 +20,23 @@ final class AppStore: ObservableObject {
     @Published var games: [GameEvent] {
         didSet { save() }
     }
+    @Published var events: [TeamEvent] {
+        didSet { save() }
+    }
     @Published var selectedTeamID: UUID {
         didSet { save() }
     }
 
     private static let storageKey = "SoccerCoachKit.AppSnapshot.v1"
 
-    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram] = [], games: [GameEvent] = [], selectedTeamID: UUID) {
+    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram] = [], games: [GameEvent] = [], events: [TeamEvent] = [], selectedTeamID: UUID) {
         self.teams = teams
         self.players = players
         self.drills = drills
         self.sessions = sessions
         self.diagrams = diagrams
         self.games = games
+        self.events = events
         self.selectedTeamID = selectedTeamID
     }
 
@@ -64,6 +68,12 @@ final class AppStore: ObservableObject {
 
     var nextGame: GameEvent? {
         teamGames.first { $0.date >= Calendar.current.startOfDay(for: Date()) } ?? teamGames.last
+    }
+
+    var teamEvents: [TeamEvent] {
+        events
+            .filter { $0.teamID == selectedTeamID }
+            .sorted { $0.date < $1.date }
     }
 
     var teamDiagrams: [TacticsDiagram] {
@@ -125,6 +135,11 @@ final class AppStore: ObservableObject {
         games[index].rsvps[player.id] = status
     }
 
+    func setRSVP(_ status: RSVPStatus, for player: Player, in event: TeamEvent) {
+        guard let index = events.firstIndex(where: { $0.id == event.id }) else { return }
+        events[index].rsvps[player.id] = status
+    }
+
     func rsvpSummary(_ rsvps: [UUID: RSVPStatus]) -> (going: Int, maybe: Int, notGoing: Int, total: Int) {
         let ids = Set(roster.map(\.id))
         let scoped = rsvps.filter { ids.contains($0.key) }
@@ -182,6 +197,11 @@ final class AppStore: ObservableObject {
             updated.rsvps.removeValue(forKey: player.id)
             return updated
         }
+        events = events.map { event in
+            var updated = event
+            updated.rsvps.removeValue(forKey: player.id)
+            return updated
+        }
     }
 
     func addGame(opponent: String, date: Date, location: String, isHome: Bool, notes: String) {
@@ -205,6 +225,30 @@ final class AppStore: ObservableObject {
 
     func deleteGame(_ game: GameEvent) {
         games.removeAll { $0.id == game.id }
+    }
+
+    func addEvent(title: String, kind: TeamEventKind, date: Date, endDate: Date?, location: String, notes: String) {
+        events.append(
+            TeamEvent(
+                id: UUID(),
+                teamID: selectedTeamID,
+                title: title,
+                kind: kind,
+                date: date,
+                endDate: endDate,
+                location: location,
+                notes: notes
+            )
+        )
+    }
+
+    func updateEvent(_ event: TeamEvent) {
+        guard let index = events.firstIndex(where: { $0.id == event.id }) else { return }
+        events[index] = event
+    }
+
+    func deleteEvent(_ event: TeamEvent) {
+        events.removeAll { $0.id == event.id }
     }
 
     func addDrill(title: String, teamID: UUID?, category: DrillCategory, tags: [String], durationMinutes: Int, equipment: [String], fieldSize: String, fieldSetup: String, coachingPoints: [String], progressions: [String], regressions: [String]) {
@@ -436,6 +480,7 @@ final class AppStore: ObservableObject {
         sessions = sample.sessions
         diagrams = sample.diagrams
         games = sample.games
+        events = sample.events
         selectedTeamID = sample.selectedTeamID
     }
 
@@ -477,6 +522,7 @@ final class AppStore: ObservableObject {
             sessions: sessions,
             diagrams: diagrams,
             games: games,
+            events: events,
             selectedTeamID: selectedTeamID
         )
 
@@ -500,6 +546,7 @@ final class AppStore: ObservableObject {
             sessions: snapshot.sessions,
             diagrams: snapshot.diagrams,
             games: snapshot.games,
+            events: snapshot.events,
             selectedTeamID: snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : snapshot.teams[0].id
         )
     }
@@ -512,15 +559,17 @@ private struct AppSnapshot: Codable {
     var sessions: [TrainingSession]
     var diagrams: [TacticsDiagram]
     var games: [GameEvent]
+    var events: [TeamEvent]
     var selectedTeamID: UUID
 
-    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], selectedTeamID: UUID) {
+    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID) {
         self.teams = teams
         self.players = players
         self.drills = drills
         self.sessions = sessions
         self.diagrams = diagrams
         self.games = games
+        self.events = events
         self.selectedTeamID = selectedTeamID
     }
 
@@ -532,6 +581,7 @@ private struct AppSnapshot: Codable {
         sessions = try container.decode([TrainingSession].self, forKey: .sessions)
         diagrams = try container.decodeIfPresent([TacticsDiagram].self, forKey: .diagrams) ?? []
         games = try container.decodeIfPresent([GameEvent].self, forKey: .games) ?? []
+        events = try container.decodeIfPresent([TeamEvent].self, forKey: .events) ?? []
         selectedTeamID = try container.decode(UUID.self, forKey: .selectedTeamID)
     }
 }
@@ -697,12 +747,40 @@ extension AppStore {
             rsvps: [:]
         )
 
+        let tournament = TeamEvent(
+            id: UUID(uuidString: "D53A9C11-77E4-4B2A-9F0E-2C4A6B8D0001")!,
+            teamID: u12.id,
+            title: "Fall Classic Cup",
+            kind: .tournament,
+            date: Calendar.current.date(byAdding: .day, value: 18, to: Date()) ?? Date(),
+            endDate: Calendar.current.date(byAdding: .day, value: 19, to: Date()) ?? Date(),
+            location: "Riverside Tournament Grounds",
+            notes: "Three group games Saturday, knockout rounds Sunday. Bring both kits.",
+            rsvps: [
+                players[0].id: .going,
+                players[1].id: .going,
+                players[2].id: .going,
+                players[3].id: .maybe
+            ]
+        )
+
+        let teamSocial = TeamEvent(
+            id: UUID(uuidString: "D53A9C11-77E4-4B2A-9F0E-2C4A6B8D0002")!,
+            teamID: u12.id,
+            title: "End of Season Pizza Night",
+            kind: .social,
+            date: Calendar.current.date(byAdding: .day, value: 25, to: Date()) ?? Date(),
+            location: "Mario's Pizzeria",
+            notes: "Awards and team photo. Families welcome."
+        )
+
         return AppStore(
             teams: [u12, u10],
             players: players,
             drills: [rondo, finishing, pressureCover, game],
             sessions: [session, secondSession],
             games: [leagueGame, awayGame],
+            events: [tournament, teamSocial],
             selectedTeamID: u12.id
         )
     }

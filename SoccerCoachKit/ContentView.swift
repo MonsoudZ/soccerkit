@@ -2,6 +2,7 @@ import SwiftUI
 
 enum AppSection: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
+    case calendar = "Calendar"
     case roster = "Roster"
     case game = "Game Day"
     case games = "Games"
@@ -14,6 +15,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .dashboard: return "rectangle.grid.2x2"
+        case .calendar: return "calendar"
         case .roster: return "person.3"
         case .game: return "stopwatch"
         case .games: return "soccerball"
@@ -48,6 +50,8 @@ struct ContentView: View {
                 switch selection ?? .dashboard {
                 case .dashboard:
                     DashboardView()
+                case .calendar:
+                    CalendarView()
                 case .roster:
                     RosterView()
                 case .game:

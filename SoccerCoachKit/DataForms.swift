@@ -246,10 +246,10 @@ struct GameFormView: View {
     @State private var isHome: Bool
     @State private var notes: String
 
-    init(game: GameEvent? = nil) {
+    init(game: GameEvent? = nil, initialDate: Date? = nil) {
         self.game = game
         _opponent = State(initialValue: game?.opponent ?? "")
-        _date = State(initialValue: game?.date ?? Date())
+        _date = State(initialValue: game?.date ?? initialDate ?? Date())
         _location = State(initialValue: game?.location ?? "")
         _isHome = State(initialValue: game?.isHome ?? true)
         _notes = State(initialValue: game?.notes ?? "")
@@ -494,10 +494,10 @@ struct SessionFormView: View {
     @State private var newBlockIntensity: Int
     @State private var selectedPositions: Set<PlayerPosition>
 
-    init(session: TrainingSession? = nil) {
+    init(session: TrainingSession? = nil, initialDate: Date? = nil) {
         self.session = session
         _title = State(initialValue: session?.title ?? "")
-        _date = State(initialValue: session?.date ?? Date())
+        _date = State(initialValue: session?.date ?? initialDate ?? Date())
         _objective = State(initialValue: session?.objective ?? "")
         _weather = State(initialValue: session?.weather ?? "Clear")
         _blocks = State(initialValue: session?.blocks ?? [])
