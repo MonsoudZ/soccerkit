@@ -4,6 +4,7 @@ import Foundation
 final class GameDetailViewModel: ObservableObject {
     let gameID: UUID
     @Published var showingEditGame = false
+    @Published var showingReport = false
 
     init(gameID: UUID) {
         self.gameID = gameID
