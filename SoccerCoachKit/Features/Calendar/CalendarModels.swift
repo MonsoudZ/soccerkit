@@ -3,7 +3,7 @@ import SwiftUI
 /// A single kind of thing that can appear on the coach's calendar. This unifies
 /// training sessions, games, and general team events (tournaments, socials, ...)
 /// into one colour-coded vocabulary for the calendar UI.
-enum CalendarEventKind: Hashable {
+enum CalendarEventKind: Hashable, CaseIterable {
     case practice
     case game
     case tournament

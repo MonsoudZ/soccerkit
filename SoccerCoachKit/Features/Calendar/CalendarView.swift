@@ -10,9 +10,9 @@ struct CalendarView: View {
                 monthHeader
                 weekdayHeader
                 monthGrid
+                filterChips
                 Divider()
                 agenda
-                legend
             }
             .padding()
         }
@@ -130,9 +130,11 @@ struct CalendarView: View {
             let items = viewModel.itemsForSelectedDay(in: store)
             if items.isEmpty {
                 HStack(spacing: 10) {
-                    Image(systemName: "calendar.badge.plus")
+                    Image(systemName: viewModel.isFiltering ? "line.3.horizontal.decrease.circle" : "calendar.badge.plus")
                         .foregroundStyle(.secondary)
-                    Text("Nothing scheduled. Use + to add practice, a game, or a tournament.")
+                    Text(viewModel.isFiltering
+                        ? "Nothing matches the current filter on this day."
+                        : "Nothing scheduled. Use + to add practice, a game, or a tournament.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -154,23 +156,42 @@ struct CalendarView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var legend: some View {
+    private var filterChips: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Legend")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            let kinds: [CalendarEventKind] = [.practice, .game, .tournament, .scrimmage, .social, .meeting]
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)], alignment: .leading, spacing: 6) {
-                ForEach(kinds, id: \.self) { kind in
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(kind.color)
-                            .frame(width: 8, height: 8)
-                        Text(kind.label)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+            HStack {
+                Text("Filter by type")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if viewModel.isFiltering {
+                    Button("Show All") {
+                        viewModel.enableAllKinds()
                     }
+                    .font(.caption)
+                }
+            }
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)], alignment: .leading, spacing: 8) {
+                ForEach(viewModel.filterableKinds, id: \.self) { kind in
+                    Button {
+                        viewModel.toggle(kind)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(kind.color)
+                                .frame(width: 8, height: 8)
+                            Text(kind.label)
+                                .font(.caption)
+                            Spacer(minLength: 0)
+                            Image(systemName: viewModel.isEnabled(kind) ? "checkmark" : "circle")
+                                .font(.caption2)
+                                .foregroundStyle(viewModel.isEnabled(kind) ? Color.accentColor : Color.secondary)
+                        }
+                        .opacity(viewModel.isEnabled(kind) ? 1 : 0.45)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.primary)
                 }
             }
         }

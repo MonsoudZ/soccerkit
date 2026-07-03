@@ -32,26 +32,60 @@ struct RosterView: View {
             }
 
             Section {
-                ForEach(store.roster) { player in
-                    NavigationLink {
-                        PlayerDetailView(playerID: player.id)
-                    } label: {
-                        PlayerRow(player: player)
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            viewModel.delete(player, from: store)
+                let players = viewModel.filteredRoster(in: store)
+                if players.isEmpty {
+                    InlineEmptyView(
+                        title: viewModel.isFiltering ? "No Matches" : "No Players Yet",
+                        systemImage: viewModel.isFiltering ? "magnifyingglass" : "person.3",
+                        message: viewModel.isFiltering ? "No players match your search or filter." : "Add players to build out this team's roster."
+                    )
+                } else {
+                    ForEach(players) { player in
+                        NavigationLink {
+                            PlayerDetailView(playerID: player.id)
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            PlayerRow(player: player)
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                viewModel.delete(player, from: store)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
                 }
             } header: {
-                Text("\(store.selectedTeam.ageGroup.rawValue) Roster")
+                HStack {
+                    Text("\(store.selectedTeam.ageGroup.rawValue) Roster")
+                    if viewModel.isFiltering {
+                        Spacer()
+                        Text("\(viewModel.filteredRoster(in: store).count) of \(store.roster.count)")
+                            .textCase(nil)
+                    }
+                }
             }
         }
         .listStyle(.insetGrouped)
+        .searchable(text: $viewModel.searchText, prompt: "Search name, number, or position")
         .toolbar {
+            Menu {
+                Picker("Position", selection: $viewModel.positionFilter) {
+                    Text("All Positions").tag(PlayerPosition?.none)
+                    ForEach(PlayerPosition.allCases) { position in
+                        Text(position.rawValue).tag(Optional(position))
+                    }
+                }
+                if viewModel.isFiltering {
+                    Divider()
+                    Button("Clear Filters", role: .destructive) {
+                        viewModel.clearFilters()
+                    }
+                }
+            } label: {
+                Label("Filter", systemImage: viewModel.positionFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+            }
+
             Menu {
                 Button {
                     viewModel.exportCSV(from: store)

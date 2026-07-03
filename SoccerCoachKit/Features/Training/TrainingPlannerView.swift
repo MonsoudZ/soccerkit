@@ -5,24 +5,37 @@ struct TrainingPlannerView: View {
     @StateObject private var viewModel = TrainingPlannerViewModel()
 
     var body: some View {
-        List {
-            ForEach(store.teamSessions) { session in
-                NavigationLink {
-                    SessionDetailView(sessionID: session.id)
-                } label: {
-                    SessionSummaryCard(session: session)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+        Group {
+            if store.teamSessions.isEmpty {
+                EmptyStateView(
+                    title: "No Sessions Planned",
+                    systemImage: "calendar.badge.clock",
+                    message: "Plan a training session with an objective, timed blocks, and linked drills.",
+                    actionTitle: "New Session"
+                ) {
+                    viewModel.showingNewSession = true
                 }
-                .swipeActions {
-                    Button(role: .destructive) {
-                        viewModel.delete(session, from: store)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+            } else {
+                List {
+                    ForEach(store.teamSessions) { session in
+                        NavigationLink {
+                            SessionDetailView(sessionID: session.id)
+                        } label: {
+                            SessionSummaryCard(session: session)
+                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                viewModel.delete(session, from: store)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
+                .listStyle(.plain)
             }
         }
-        .listStyle(.plain)
         .background(Color(.systemGroupedBackground))
         .toolbar {
             Button {
