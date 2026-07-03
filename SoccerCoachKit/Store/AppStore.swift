@@ -197,7 +197,12 @@ final class AppStore: ObservableObject {
 
     func setAgeGroup(_ ageGroup: AgeGroup, for team: Team) {
         guard let index = teams.firstIndex(where: { $0.id == team.id }) else { return }
-        teams[index].ageGroup = ageGroup
+        batch {
+            teams[index].ageGroup = ageGroup
+            // Keep the minimum-minutes goal within the new game length, so a
+            // shorter format doesn't leave every player flagged "at risk".
+            teams[index].defaultMinimumMinutes = min(teams[index].defaultMinimumMinutes, ageGroup.defaultGameMinutes)
+        }
     }
 
     func setPeriodFormat(_ format: PeriodFormat, for team: Team) {
@@ -286,6 +291,17 @@ final class AppStore: ObservableObject {
             events = events.map { event in
                 var updated = event
                 updated.rsvps.removeValue(forKey: player.id)
+                return updated
+            }
+            // Detach any board markers linked to this player so diagrams don't
+            // keep a dangling reference (the marker itself stays in place).
+            diagrams = diagrams.map { diagram in
+                var updated = diagram
+                updated.players = updated.players.map { boardPlayer in
+                    var marker = boardPlayer
+                    if marker.playerID == player.id { marker.playerID = nil }
+                    return marker
+                }
                 return updated
             }
         }

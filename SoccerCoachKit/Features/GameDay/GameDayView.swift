@@ -43,6 +43,9 @@ struct GameDayView: View {
         .onChange(of: store.selectedTeamID) { _ in
             viewModel.reset(with: store)
         }
+        .onChange(of: store.roster) { _ in
+            viewModel.syncRoster(with: store)
+        }
         .onReceive(ticker) { _ in
             viewModel.tick()
         }

@@ -51,6 +51,32 @@ final class GameDayViewModel: ObservableObject {
         resetLineup()
     }
 
+    /// Reconciles an in-progress game with the store's roster after a mid-game
+    /// add/edit/delete, without disturbing the clock, minutes, or lineup of
+    /// players who are still on the team.
+    func syncRoster(with store: AppStore) {
+        let updated = store.roster
+        guard updated != roster else { return }
+
+        let validIDs = Set(updated.map(\.id))
+        roster = updated
+
+        // Drop state for players no longer on the roster.
+        starterIDs = starterIDs.intersection(validIDs)
+        playingSeconds = playingSeconds.filter { validIDs.contains($0.key) }
+        playingSecondsAtPeriodStart = playingSecondsAtPeriodStart.filter { validIDs.contains($0.key) }
+        playerStatuses = playerStatuses.filter { validIDs.contains($0.key) }
+        reminders.removeAll { !validIDs.contains($0.outPlayerID) || !validIDs.contains($0.inPlayerID) }
+
+        // Seed state for newly added players.
+        for player in updated {
+            if playingSeconds[player.id] == nil { playingSeconds[player.id] = 0 }
+            if playerStatuses[player.id] == nil { playerStatuses[player.id] = .available }
+        }
+
+        normalizeSelections()
+    }
+
     // MARK: - Derived state
 
     var starterPlayers: [Player] {
