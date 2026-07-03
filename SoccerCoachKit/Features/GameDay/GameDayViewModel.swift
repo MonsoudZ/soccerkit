@@ -144,7 +144,9 @@ final class GameDayViewModel: ObservableObject {
         let deficit = minimumSeconds(for: player) - playingSeconds[player.id, default: 0]
         guard deficit > 0 else { return false }
         let remaining = max(0, totalGameSeconds - elapsedSeconds)
-        return deficit >= remaining
+        // Strictly greater: a player who could reach the goal by playing exactly
+        // all remaining time is not yet at risk.
+        return deficit > remaining
     }
 
     // MARK: - Balanced-sub suggestion
@@ -259,11 +261,14 @@ final class GameDayViewModel: ObservableObject {
         for id in playingSeconds.keys {
             playingSeconds[id] = playingSecondsAtPeriodStart[id] ?? 0
         }
-        let leadSeconds = max(0, subAlertLeadMinutes) * 60
         reminders = reminders.map { reminder in
             var updated = reminder
-            updated.triggered = elapsedSeconds >= reminder.minute * 60
-            updated.preAlertTriggered = elapsedSeconds >= reminder.minute * 60 - leadSeconds
+            let due = elapsedSeconds >= reminder.minute * 60
+            updated.triggered = due
+            // Only suppress the heads-up once the exact minute has passed; a
+            // reminder still ahead of us gets a fresh chance at its pre-alert,
+            // even if we reset into its lead window.
+            updated.preAlertTriggered = due
             return updated
         }
     }
@@ -287,7 +292,7 @@ final class GameDayViewModel: ObservableObject {
 
         if status != .available {
             starterIDs.remove(player.id)
-        } else if starterIDs.count < playersOnField && starterIDs.isEmpty {
+        } else if starterIDs.isEmpty {
             starterIDs.insert(player.id)
         }
 

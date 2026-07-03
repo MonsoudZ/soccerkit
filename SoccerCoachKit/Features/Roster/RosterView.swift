@@ -79,7 +79,7 @@ struct RosterView: View {
                 PlayerFormView()
             }
         }
-        .sheet(item: $viewModel.exportFile) { file in
+        .sheet(item: $viewModel.exportFile, onDismiss: { viewModel.cleanupExport() }) { file in
             RosterShareSheet(url: file.url)
         }
     }

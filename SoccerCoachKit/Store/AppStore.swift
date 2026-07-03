@@ -231,16 +231,18 @@ final class AppStore: ObservableObject {
     func deleteTeam(_ team: Team) {
         guard canDeleteTeam, teams.contains(where: { $0.id == team.id }) else { return }
 
-        players.removeAll { $0.teamID == team.id }
-        sessions.removeAll { $0.teamID == team.id }
-        games.removeAll { $0.teamID == team.id }
-        events.removeAll { $0.teamID == team.id }
-        diagrams.removeAll { $0.teamID == team.id }
-        drills.removeAll { $0.teamID == team.id }
-        teams.removeAll { $0.id == team.id }
+        batch {
+            players.removeAll { $0.teamID == team.id }
+            sessions.removeAll { $0.teamID == team.id }
+            games.removeAll { $0.teamID == team.id }
+            events.removeAll { $0.teamID == team.id }
+            diagrams.removeAll { $0.teamID == team.id }
+            drills.removeAll { $0.teamID == team.id }
+            teams.removeAll { $0.id == team.id }
 
-        if selectedTeamID == team.id {
-            selectedTeamID = teams.first?.id ?? selectedTeamID
+            if selectedTeamID == team.id {
+                selectedTeamID = teams.first?.id ?? selectedTeamID
+            }
         }
     }
 
@@ -266,24 +268,26 @@ final class AppStore: ObservableObject {
     }
 
     func deletePlayer(_ player: Player) {
-        players.removeAll { $0.id == player.id }
-        sessions = sessions.map { session in
-            var updated = session
-            updated.attendance.removeValue(forKey: player.id)
-            updated.rsvps.removeValue(forKey: player.id)
-            return updated
-        }
-        games = games.map { game in
-            var updated = game
-            updated.rsvps.removeValue(forKey: player.id)
-            updated.attendance.removeValue(forKey: player.id)
-            updated.playerReports.removeValue(forKey: player.id)
-            return updated
-        }
-        events = events.map { event in
-            var updated = event
-            updated.rsvps.removeValue(forKey: player.id)
-            return updated
+        batch {
+            players.removeAll { $0.id == player.id }
+            sessions = sessions.map { session in
+                var updated = session
+                updated.attendance.removeValue(forKey: player.id)
+                updated.rsvps.removeValue(forKey: player.id)
+                return updated
+            }
+            games = games.map { game in
+                var updated = game
+                updated.rsvps.removeValue(forKey: player.id)
+                updated.attendance.removeValue(forKey: player.id)
+                updated.playerReports.removeValue(forKey: player.id)
+                return updated
+            }
+            events = events.map { event in
+                var updated = event
+                updated.rsvps.removeValue(forKey: player.id)
+                return updated
+            }
         }
     }
 
@@ -523,8 +527,10 @@ final class AppStore: ObservableObject {
             teamID: diagram.teamID,
             title: "\(diagram.title) Copy",
             notes: diagram.notes,
-            sessionID: diagram.sessionID,
-            drillID: diagram.drillID,
+            // A duplicate starts detached, so it doesn't double-attach to the
+            // original's session/drill.
+            sessionID: nil,
+            drillID: nil,
             players: diagram.players,
             zones: diagram.zones,
             lines: diagram.lines,
@@ -569,14 +575,16 @@ final class AppStore: ObservableObject {
 
     func resetToSampleData() {
         let sample = SampleData.snapshot
-        teams = sample.teams
-        players = sample.players
-        drills = sample.drills
-        sessions = sample.sessions
-        diagrams = sample.diagrams
-        games = sample.games
-        events = sample.events
-        selectedTeamID = sample.selectedTeamID
+        batch {
+            teams = sample.teams
+            players = sample.players
+            drills = sample.drills
+            sessions = sample.sessions
+            diagrams = sample.diagrams
+            games = sample.games
+            events = sample.events
+            selectedTeamID = sample.selectedTeamID
+        }
     }
 
     // MARK: - Board layout helpers
@@ -613,7 +621,24 @@ final class AppStore: ObservableObject {
 
     // MARK: - Persistence
 
+    /// When true, `persist()` is deferred so a multi-collection mutation writes
+    /// a single, consistent snapshot instead of several half-updated ones.
+    private var isBatchingPersist = false
+
+    /// Groups several mutations into one persisted snapshot. Nested calls are
+    /// safe; only the outermost `batch` triggers the final write.
+    private func batch(_ work: () -> Void) {
+        let wasBatching = isBatchingPersist
+        isBatchingPersist = true
+        work()
+        if !wasBatching {
+            isBatchingPersist = false
+            persist()
+        }
+    }
+
     private func persist() {
+        guard !isBatchingPersist else { return }
         persistence.save(
             AppSnapshot(
                 teams: teams,

@@ -58,42 +58,63 @@ enum RosterExporter {
         let pageSize = CGSize(width: 612, height: 792) // US Letter, 72 dpi
         let margin: CGFloat = 44
         let contentWidth = pageSize.width - margin * 2
+        let pageBottom = pageSize.height - margin
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize))
+
+        var lines = headerLines(team: team, playerCount: players.count)
+        for player in players.sorted(by: { $0.number < $1.number }) {
+            lines.append(contentsOf: playerLines(for: player))
+        }
 
         return renderer.pdfData { ctx in
             ctx.beginPage()
-            var y = drawHeader(team: team, playerCount: players.count, x: margin, y: margin, width: contentWidth)
+            var y = margin
 
-            for player in players.sorted(by: { $0.number < $1.number }) {
-                let height = renderPlayer(player, x: margin, y: 0, width: contentWidth, draw: false)
-                if y + height > pageSize.height - margin {
+            for line in lines {
+                if line.startsBlock {
+                    // Gap before each player, and don't orphan the header line
+                    // at the very bottom of a page.
+                    if y > margin { y += 12 }
+                    if pageBottom - y < 64 {
+                        ctx.beginPage()
+                        y = margin
+                    }
+                }
+
+                let height = drawText(line.text, font: line.font, color: line.color, x: margin, y: y, width: contentWidth, draw: false)
+                if y + height > pageBottom {
                     ctx.beginPage()
                     y = margin
                 }
-                y += renderPlayer(player, x: margin, y: y, width: contentWidth, draw: true)
-                y += 14
+                _ = drawText(line.text, font: line.font, color: line.color, x: margin, y: y, width: contentWidth, draw: true)
+                y += height + line.spacingAfter
             }
         }
     }
 
-    private static func drawHeader(team: Team, playerCount: Int, x: CGFloat, y: CGFloat, width: CGFloat) -> CGFloat {
-        var cursor = y
-        cursor += drawText(team.name, font: .boldSystemFont(ofSize: 22), color: .label, x: x, y: cursor, width: width, draw: true)
-        cursor += 2
-        let subtitle = "\(team.ageGroup.rawValue) · \(team.season) · \(playerCount) player\(playerCount == 1 ? "" : "s")"
-        cursor += drawText(subtitle, font: .systemFont(ofSize: 12), color: .secondaryLabel, x: x, y: cursor, width: width, draw: true)
-        return cursor + 18
+    private struct PDFLine {
+        let text: String
+        let font: UIFont
+        let color: UIColor
+        let spacingAfter: CGFloat
+        let startsBlock: Bool
     }
 
-    /// Lays out a single player block. When `draw` is false it only measures,
-    /// so pagination and drawing use the exact same layout.
-    @discardableResult
-    private static func renderPlayer(_ player: Player, x: CGFloat, y: CGFloat, width: CGFloat, draw: Bool) -> CGFloat {
-        var cursor = y
-        cursor += drawText("#\(player.number)  \(player.name)", font: .boldSystemFont(ofSize: 14), color: .label, x: x, y: cursor, width: width, draw: draw)
-        cursor += 1
-        cursor += drawText(positionName(player.position), font: .systemFont(ofSize: 11), color: .secondaryLabel, x: x, y: cursor, width: width, draw: draw)
-        cursor += 4
+    private static func headerLines(team: Team, playerCount: Int) -> [PDFLine] {
+        let subtitle = "\(team.ageGroup.rawValue) · \(team.season) · \(playerCount) player\(playerCount == 1 ? "" : "s")"
+        return [
+            PDFLine(text: team.name, font: .boldSystemFont(ofSize: 22), color: .label, spacingAfter: 2, startsBlock: false),
+            PDFLine(text: subtitle, font: .systemFont(ofSize: 12), color: .secondaryLabel, spacingAfter: 18, startsBlock: false)
+        ]
+    }
+
+    /// One `PDFLine` per field, so a long roster (or a player with lengthy
+    /// notes) paginates line-by-line instead of clipping an oversized block.
+    private static func playerLines(for player: Player) -> [PDFLine] {
+        var lines = [
+            PDFLine(text: "#\(player.number)  \(player.name)", font: .boldSystemFont(ofSize: 14), color: .label, spacingAfter: 1, startsBlock: true),
+            PDFLine(text: positionName(player.position), font: .systemFont(ofSize: 11), color: .secondaryLabel, spacingAfter: 4, startsBlock: false)
+        ]
 
         let details: [(String, String)] = [
             ("Guardian", join(player.guardian, player.guardianPhone, player.guardianEmail)),
@@ -104,10 +125,9 @@ enum RosterExporter {
             ("Notes", player.notes)
         ]
         for (label, value) in details where !value.isEmpty {
-            cursor += drawText("\(label): \(value)", font: .systemFont(ofSize: 11), color: .label, x: x, y: cursor, width: width, draw: draw)
-            cursor += 2
+            lines.append(PDFLine(text: "\(label): \(value)", font: .systemFont(ofSize: 11), color: .label, spacingAfter: 2, startsBlock: false))
         }
-        return cursor - y
+        return lines
     }
 
     @discardableResult

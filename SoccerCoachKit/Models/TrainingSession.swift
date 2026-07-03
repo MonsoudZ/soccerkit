@@ -97,7 +97,7 @@ struct TrainingSession: Identifiable, Hashable, Codable {
         objective = try container.decode(String.self, forKey: .objective)
         weather = try container.decodeIfPresent(String.self, forKey: .weather) ?? "Clear"
         blocks = try container.decode([TrainingBlock].self, forKey: .blocks)
-        attendance = try container.decode([UUID: AttendanceStatus].self, forKey: .attendance)
+        attendance = try container.decodeIfPresent([UUID: AttendanceStatus].self, forKey: .attendance) ?? [:]
         rsvps = try container.decodeIfPresent([UUID: RSVPStatus].self, forKey: .rsvps) ?? [:]
     }
 }
