@@ -2,7 +2,9 @@ import SwiftUI
 
 struct GameDayView: View {
     @EnvironmentObject private var store: AppStore
-    @StateObject private var viewModel = GameDayViewModel()
+    // Owned by ContentView so the live match survives leaving and returning to
+    // this screen; only reset on first setup or a team change.
+    @ObservedObject var viewModel: GameDayViewModel
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -39,7 +41,7 @@ struct GameDayView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
-        .onAppear { viewModel.reset(with: store) }
+        .onAppear { viewModel.prepareIfNeeded(with: store) }
         .onChange(of: store.selectedTeamID) { _ in
             viewModel.reset(with: store)
         }

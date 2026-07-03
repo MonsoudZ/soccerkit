@@ -51,6 +51,18 @@ final class GameDayViewModel: ObservableObject {
         resetLineup()
     }
 
+    /// Called when the Game Day view appears. Only sets up a fresh game the
+    /// first time, or when the selected team changed; otherwise it keeps the
+    /// in-progress game intact (just reconciling the roster) so switching tabs
+    /// mid-match doesn't wipe the clock, minutes, or lineup.
+    func prepareIfNeeded(with store: AppStore) {
+        if teamID != store.selectedTeamID {
+            reset(with: store)
+        } else {
+            syncRoster(with: store)
+        }
+    }
+
     /// Reconciles an in-progress game with the store's roster after a mid-game
     /// add/edit/delete, without disturbing the clock, minutes, or lineup of
     /// players who are still on the team.

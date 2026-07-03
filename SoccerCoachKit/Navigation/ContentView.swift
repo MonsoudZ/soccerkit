@@ -3,6 +3,9 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var store: AppStore
     @State private var selection: AppSection? = .dashboard
+    // Held here (not inside GameDayView) so an in-progress match survives
+    // navigating away from and back to the Game Day screen.
+    @StateObject private var gameDay = GameDayViewModel()
 
     var body: some View {
         NavigationSplitView {
@@ -29,7 +32,7 @@ struct ContentView: View {
                 case .roster:
                     RosterView()
                 case .game:
-                    GameDayView()
+                    GameDayView(viewModel: gameDay)
                 case .games:
                     GamesView()
                 case .field:
