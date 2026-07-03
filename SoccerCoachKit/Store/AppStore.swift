@@ -221,6 +221,29 @@ final class AppStore: ObservableObject {
         teams[index] = team
     }
 
+    /// Whether a team can be deleted. The last team can't be removed, since the
+    /// app always needs a selected team to display.
+    var canDeleteTeam: Bool { teams.count > 1 }
+
+    /// Deletes a team and everything it owns (players, sessions, games, events,
+    /// diagrams, and team-specific drills), then reselects another team.
+    /// Shared drills (`teamID == nil`) are preserved. No-op on the last team.
+    func deleteTeam(_ team: Team) {
+        guard canDeleteTeam, teams.contains(where: { $0.id == team.id }) else { return }
+
+        players.removeAll { $0.teamID == team.id }
+        sessions.removeAll { $0.teamID == team.id }
+        games.removeAll { $0.teamID == team.id }
+        events.removeAll { $0.teamID == team.id }
+        diagrams.removeAll { $0.teamID == team.id }
+        drills.removeAll { $0.teamID == team.id }
+        teams.removeAll { $0.id == team.id }
+
+        if selectedTeamID == team.id {
+            selectedTeamID = teams.first?.id ?? selectedTeamID
+        }
+    }
+
     // MARK: - Players
 
     func addPlayer(name: String, number: Int, position: PlayerPosition, guardian: String, notes: String) {

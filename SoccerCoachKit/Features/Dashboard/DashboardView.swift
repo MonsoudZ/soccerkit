@@ -37,16 +37,29 @@ struct DashboardView: View {
         }
         .background(Color(.systemGroupedBackground))
         .toolbar {
-            Button {
-                viewModel.showingEditTeam = true
-            } label: {
-                Label("Edit Team", systemImage: "slider.horizontal.3")
-            }
+            Menu {
+                Button {
+                    viewModel.showingEditTeam = true
+                } label: {
+                    Label("Edit Team", systemImage: "slider.horizontal.3")
+                }
 
-            Button {
-                viewModel.showingNewTeam = true
+                Button {
+                    viewModel.showingNewTeam = true
+                } label: {
+                    Label("New Team", systemImage: "plus")
+                }
+
+                if store.canDeleteTeam {
+                    Divider()
+                    Button(role: .destructive) {
+                        viewModel.showingDeleteTeam = true
+                    } label: {
+                        Label("Delete Team", systemImage: "trash")
+                    }
+                }
             } label: {
-                Label("New Team", systemImage: "plus")
+                Label("Team Options", systemImage: "ellipsis.circle")
             }
         }
         .sheet(isPresented: $viewModel.showingNewTeam) {
@@ -58,6 +71,18 @@ struct DashboardView: View {
             NavigationStack {
                 TeamFormView(team: store.selectedTeam)
             }
+        }
+        .confirmationDialog(
+            "Delete \(store.selectedTeam.name)?",
+            isPresented: $viewModel.showingDeleteTeam,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Team", role: .destructive) {
+                store.deleteTeam(store.selectedTeam)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes the team and its players, games, sessions, events, and diagrams. Shared drills are kept.")
         }
     }
 }
