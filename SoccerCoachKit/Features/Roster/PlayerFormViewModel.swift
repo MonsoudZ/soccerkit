@@ -17,6 +17,8 @@ final class PlayerFormViewModel: ObservableObject {
     @Published var emergencyContactRelation: String
     @Published var allergies: String
     @Published var medicalNotes: String
+    @Published var overrideMinMinutes: Bool
+    @Published var minMinutes: Int
 
     init(player: Player?) {
         self.player = player
@@ -34,6 +36,8 @@ final class PlayerFormViewModel: ObservableObject {
         emergencyContactRelation = player?.emergencyContactRelation ?? ""
         allergies = player?.allergies ?? ""
         medicalNotes = player?.medicalNotes ?? ""
+        overrideMinMinutes = player?.minMinutesOverride != nil
+        minMinutes = player?.minMinutesOverride ?? 0
     }
 
     var isEditing: Bool { player != nil }
@@ -59,7 +63,8 @@ final class PlayerFormViewModel: ObservableObject {
             emergencyContactPhone: trimmed(emergencyContactPhone),
             emergencyContactRelation: trimmed(emergencyContactRelation),
             allergies: trimmed(allergies),
-            medicalNotes: medicalNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+            medicalNotes: medicalNotes.trimmingCharacters(in: .whitespacesAndNewlines),
+            minMinutesOverride: overrideMinMinutes ? max(0, minMinutes) : nil
         )
 
         if player == nil {

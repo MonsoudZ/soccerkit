@@ -4,7 +4,10 @@ import UniformTypeIdentifiers
 struct GameClockPanel: View {
     let elapsedSeconds: Int
     let periodSeconds: Int
-    let currentPeriod: Int
+    let periodLabel: String
+    let periodCount: Int
+    let advanceLabel: String
+    let canAdvancePeriod: Bool
     let targetMinutes: Int
     let isRunning: Bool
     let starters: Int
@@ -21,7 +24,7 @@ struct GameClockPanel: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(formatClock(elapsedSeconds))
                         .font(.system(size: 46, weight: .bold, design: .rounded).monospacedDigit())
-                    Text("Period \(currentPeriod) - \(formatClock(periodSeconds)) this period")
+                    Text("\(periodLabel) of \(periodCount) · \(formatClock(periodSeconds)) this period")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -64,10 +67,11 @@ struct GameClockPanel: View {
                 Button {
                     nextPeriodAction()
                 } label: {
-                    Label(currentPeriod == 1 ? "Halftime" : "Next Period", systemImage: "forward.end.fill")
+                    Label(advanceLabel, systemImage: "forward.end.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .disabled(!canAdvancePeriod)
 
                 Button {
                     resetAction()

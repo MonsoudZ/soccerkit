@@ -79,6 +79,34 @@ enum AgeGroup: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum PeriodFormat: String, CaseIterable, Identifiable, Codable {
+    case halves = "Halves"
+    case quarters = "Quarters"
+
+    var id: String { rawValue }
+
+    var periodCount: Int {
+        switch self {
+        case .halves: return 2
+        case .quarters: return 4
+        }
+    }
+
+    /// Common youth convention, used as the initial value when a team is created.
+    static func `default`(for ageGroup: AgeGroup) -> PeriodFormat {
+        switch ageGroup {
+        case .u6, .u8, .u10: return .quarters
+        default: return .halves
+        }
+    }
+
+    /// Short label for a 1-based period index (e.g. H1/H2 or Q1–Q4, OT beyond).
+    func label(forPeriod period: Int) -> String {
+        let prefix = self == .halves ? "H" : "Q"
+        return period <= periodCount ? "\(prefix)\(period)" : "OT\(period - periodCount)"
+    }
+}
+
 enum TeamEventKind: String, CaseIterable, Identifiable, Codable {
     case tournament = "Tournament"
     case scrimmage = "Scrimmage"

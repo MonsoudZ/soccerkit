@@ -7,6 +7,9 @@ struct SubReminder: Identifiable, Hashable {
     var outPlayerID: UUID
     var inPlayerID: UUID
     var triggered: Bool
+    /// Whether the early "heads-up" alert (fired `lead` seconds before `minute`)
+    /// has already been shown.
+    var preAlertTriggered: Bool = false
 }
 
 struct SubLogEntry: Identifiable, Hashable {

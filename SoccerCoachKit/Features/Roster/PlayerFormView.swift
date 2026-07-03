@@ -54,6 +54,17 @@ struct PlayerFormView: View {
                 Text("Note allergies, conditions, medications, or anything staff should know in an emergency.")
             }
 
+            Section {
+                Toggle("Custom minimum minutes", isOn: $viewModel.overrideMinMinutes)
+                if viewModel.overrideMinMinutes {
+                    Stepper("Minimum \(viewModel.minMinutes) min", value: $viewModel.minMinutes, in: 0...120)
+                }
+            } header: {
+                Text("Playing Time")
+            } footer: {
+                Text("Overrides the team's default minimum minutes for this player (e.g. easing back from injury).")
+            }
+
             Section("Coach Notes") {
                 TextEditor(text: $viewModel.notes)
                     .frame(minHeight: 100)

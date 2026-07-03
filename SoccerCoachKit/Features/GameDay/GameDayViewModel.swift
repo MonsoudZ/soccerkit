@@ -9,7 +9,12 @@ final class GameDayViewModel: ObservableObject {
     @Published private(set) var roster: [Player] = []
     @Published private(set) var playersOnField = 0
     @Published private(set) var defaultGameMinutes = 0
+    @Published private(set) var defaultMinimumMinutes = 0
+    @Published private(set) var periodFormat: PeriodFormat = .halves
     private var teamID: UUID?
+    /// Each player's accumulated minutes at the moment the current period began,
+    /// so resetting the period rewinds minutes as well as the clock.
+    private var playingSecondsAtPeriodStart: [UUID: Int] = [:]
 
     // Game state.
     @Published var starterIDs: Set<UUID> = []
@@ -26,6 +31,10 @@ final class GameDayViewModel: ObservableObject {
     @Published var selectedInPlayerID: UUID?
     @Published var activeReminder: SubReminder?
     @Published var showReminder = false
+    @Published var activePreAlert: SubReminder?
+    @Published var showPreAlert = false
+    /// How many minutes before a reminder's minute the early heads-up fires.
+    @Published var subAlertLeadMinutes = 1
     @Published var formation: LineupFormation = .balanced
 
     // MARK: - Configuration
@@ -37,6 +46,8 @@ final class GameDayViewModel: ObservableObject {
         roster = store.roster
         playersOnField = team.ageGroup.playersOnField
         defaultGameMinutes = team.ageGroup.defaultGameMinutes
+        defaultMinimumMinutes = team.defaultMinimumMinutes
+        periodFormat = team.periodFormat
         resetLineup()
     }
 
@@ -69,6 +80,14 @@ final class GameDayViewModel: ObservableObject {
         return "\(formatClock(reminder.minute * 60)): put \(inName) in for \(outName)."
     }
 
+    var activePreAlertText: String {
+        guard let reminder = activePreAlert else { return "" }
+        let outName = playerName(reminder.outPlayerID)
+        let inName = playerName(reminder.inPlayerID)
+        let lead = max(0, reminder.minute * 60 - elapsedSeconds)
+        return "In \(formatClock(lead)) at \(reminder.minute)': \(inName) in for \(outName). Get them ready."
+    }
+
     var canUndoLastSub: Bool {
         guard let last = subLog.first else { return false }
         return starterIDs.contains(last.inPlayerID) && !starterIDs.contains(last.outPlayerID)
@@ -82,6 +101,85 @@ final class GameDayViewModel: ObservableObject {
         roster.first { $0.id == id }?.name ?? "Player"
     }
 
+    // MARK: - Periods
+
+    var periodCount: Int { periodFormat.periodCount }
+
+    var isLastPeriod: Bool { currentPeriod >= periodCount }
+
+    var currentPeriodLabel: String { periodFormat.label(forPeriod: currentPeriod) }
+
+    /// Label for the button that ends the current period.
+    var advancePeriodLabel: String {
+        guard !isLastPeriod else { return "Final \(periodFormat == .halves ? "Half" : "Quarter")" }
+        if periodFormat == .halves && currentPeriod == 1 { return "Halftime" }
+        return "End \(currentPeriodLabel)"
+    }
+
+    // MARK: - Playing-time goals
+
+    private var totalGameSeconds: Int { max(defaultGameMinutes * 60, 1) }
+
+    /// The minimum-minutes goal for a player, in seconds. A per-player override
+    /// wins over the team default; zero means no goal.
+    func minimumSeconds(for player: Player) -> Int {
+        max(0, (player.minMinutesOverride ?? defaultMinimumMinutes)) * 60
+    }
+
+    /// Progress toward the player's minimum-minutes goal, 0...1 (1 when no goal).
+    func goalProgress(for player: Player) -> Double {
+        let goal = minimumSeconds(for: player)
+        guard goal > 0 else { return 1 }
+        return min(1, Double(playingSeconds[player.id, default: 0]) / Double(goal))
+    }
+
+    func hasReachedGoal(_ player: Player) -> Bool {
+        playingSeconds[player.id, default: 0] >= minimumSeconds(for: player)
+    }
+
+    /// A player is at risk when the minutes they still owe can only be met by
+    /// keeping them on the field for essentially all of the remaining game.
+    func isAtRiskOfMissingGoal(_ player: Player) -> Bool {
+        guard status(for: player) == .available else { return false }
+        let deficit = minimumSeconds(for: player) - playingSeconds[player.id, default: 0]
+        guard deficit > 0 else { return false }
+        let remaining = max(0, totalGameSeconds - elapsedSeconds)
+        return deficit >= remaining
+    }
+
+    // MARK: - Balanced-sub suggestion
+
+    /// How far a player is above (positive) or below (negative) their goal.
+    private func balanceScore(_ player: Player) -> Int {
+        playingSeconds[player.id, default: 0] - minimumSeconds(for: player)
+    }
+
+    /// Suggests swapping the most over-served available starter for the most
+    /// under-served available bench player, to even out minutes toward goals.
+    var suggestedSub: (out: Player, inPlayer: Player)? {
+        guard
+            let out = availableStarterPlayers.max(by: { balanceScore($0) < balanceScore($1) }),
+            let inPlayer = availableBenchPlayers.min(by: { balanceScore($0) < balanceScore($1) })
+        else { return nil }
+
+        // Only suggest when the swap actually reduces the imbalance.
+        guard balanceScore(inPlayer) < balanceScore(out) else { return nil }
+        return (out, inPlayer)
+    }
+
+    var suggestedSubText: String {
+        guard let suggestion = suggestedSub else { return "Minutes look balanced." }
+        return "\(suggestion.inPlayer.name) in for \(suggestion.out.name)"
+    }
+
+    /// Loads the balanced-sub suggestion into the Quick Sub selections so the
+    /// coach can review it before recording.
+    func selectSuggestedSub() {
+        guard let suggestion = suggestedSub else { return }
+        selectedOutPlayerID = suggestion.out.id
+        selectedInPlayerID = suggestion.inPlayer.id
+    }
+
     // MARK: - Clock
 
     func tick() {
@@ -92,6 +190,20 @@ final class GameDayViewModel: ObservableObject {
             playingSeconds[playerID, default: 0] += 1
         }
 
+        let leadSeconds = max(0, subAlertLeadMinutes) * 60
+
+        // Early heads-up: fire once when we enter the lead window before the sub.
+        if let index = reminders.firstIndex(where: {
+            !$0.preAlertTriggered && !$0.triggered
+                && elapsedSeconds >= $0.minute * 60 - leadSeconds
+                && elapsedSeconds < $0.minute * 60
+        }) {
+            reminders[index].preAlertTriggered = true
+            activePreAlert = reminders[index]
+            showPreAlert = true
+        }
+
+        // Exact-minute alert.
         if let index = reminders.firstIndex(where: { !$0.triggered && elapsedSeconds >= $0.minute * 60 }) {
             reminders[index].triggered = true
             activeReminder = reminders[index]
@@ -109,6 +221,7 @@ final class GameDayViewModel: ObservableObject {
         subLog.removeAll()
         playerStatuses = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, GamePlayerStatus.available) })
         playingSeconds = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, 0) })
+        playingSecondsAtPeriodStart = playingSeconds
         starterIDs = Set(roster.prefix(playersOnField).map(\.id))
         periodStartSeconds = 0
         currentPeriod = 1
@@ -121,26 +234,36 @@ final class GameDayViewModel: ObservableObject {
         periodStartSeconds = 0
         currentPeriod = 1
         playingSeconds = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, 0) })
+        playingSecondsAtPeriodStart = playingSeconds
         reminders = reminders.map { reminder in
             var updated = reminder
             updated.triggered = false
+            updated.preAlertTriggered = false
             return updated
         }
         subLog.removeAll()
     }
 
     func advancePeriod() {
+        guard !isLastPeriod else { return }
         isRunning = false
         currentPeriod += 1
         periodStartSeconds = elapsedSeconds
+        playingSecondsAtPeriodStart = playingSeconds
     }
 
     func resetPeriodClock() {
         isRunning = false
         elapsedSeconds = periodStartSeconds
+        // Rewind minutes accrued during the aborted portion of this period.
+        for id in playingSeconds.keys {
+            playingSeconds[id] = playingSecondsAtPeriodStart[id] ?? 0
+        }
+        let leadSeconds = max(0, subAlertLeadMinutes) * 60
         reminders = reminders.map { reminder in
             var updated = reminder
             updated.triggered = elapsedSeconds >= reminder.minute * 60
+            updated.preAlertTriggered = elapsedSeconds >= reminder.minute * 60 - leadSeconds
             return updated
         }
     }

@@ -187,6 +187,16 @@ final class AppStore: ObservableObject {
         teams[index].ageGroup = ageGroup
     }
 
+    func setPeriodFormat(_ format: PeriodFormat, for team: Team) {
+        guard let index = teams.firstIndex(where: { $0.id == team.id }) else { return }
+        teams[index].periodFormat = format
+    }
+
+    func setDefaultMinimumMinutes(_ minutes: Int, for team: Team) {
+        guard let index = teams.firstIndex(where: { $0.id == team.id }) else { return }
+        teams[index].defaultMinimumMinutes = max(0, minutes)
+    }
+
     func addTeam(name: String, ageGroup: AgeGroup, season: String) {
         let team = Team(id: UUID(), name: name, ageGroup: ageGroup, season: season, accentName: "Teal", trainingDefaults: .standard)
         teams.append(team)

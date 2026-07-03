@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0349B5617CA143859E4D521C /* RosterExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54B3941DE26E0A0721407095 /* RosterExport.swift */; };
 		046043C46451E25208AB2053 /* GameDayComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C82BEA5599335EA01AA0841 /* GameDayComponents.swift */; };
 		0A53323AC0A109BC07A068E0 /* GameDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7641468E1B20424471A5157D /* GameDetailViewModel.swift */; };
 		114D664C004BA7780F189A47 /* SessionFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AF516B7AF47BA0D3165FE2 /* SessionFormViewModel.swift */; };
@@ -97,6 +98,7 @@
 		4B98B5C63167D143E36F1C34 /* SoccerCoachKit.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SoccerCoachKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4BC1D4DC7679170888120A7D /* CalendarModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarModels.swift; sourceTree = "<group>"; };
 		5327669D3423586D136AE8FA /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
+		54B3941DE26E0A0721407095 /* RosterExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosterExport.swift; sourceTree = "<group>"; };
 		5A15A2C685C9E2F86B9E2823 /* BoardGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardGeometry.swift; sourceTree = "<group>"; };
 		6074F1AD6AB71F6939C334D1 /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
 		62A674357C54F77B997AD8F7 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
@@ -268,6 +270,7 @@
 				824CF72713484936181838CE /* PlayerDetailViewModel.swift */,
 				132367BBDD7B55DDC6A587CC /* PlayerFormView.swift */,
 				7B20BFCE54634FF5F874FAB3 /* PlayerFormViewModel.swift */,
+				54B3941DE26E0A0721407095 /* RosterExport.swift */,
 				D04C63F223A421F20DDEECB2 /* RosterView.swift */,
 				30EE3139A3757916FA1E1272 /* RosterViewModel.swift */,
 			);
@@ -509,6 +512,7 @@
 				A8E41398A766C2861576575A /* PlayerFormView.swift in Sources */,
 				F3BC950940AE72C7361DA3A2 /* PlayerFormViewModel.swift in Sources */,
 				85B117359077EA9DB026DC83 /* PlayerViews.swift in Sources */,
+				0349B5617CA143859E4D521C /* RosterExport.swift in Sources */,
 				3EF18F3C87F6E97FC48772FB /* RosterRows.swift in Sources */,
 				AAC948AEDF2C1C3A494B62E3 /* RosterView.swift in Sources */,
 				E20F893D7072B91C665A2DE5 /* RosterViewModel.swift in Sources */,

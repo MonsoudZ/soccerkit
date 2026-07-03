@@ -12,7 +12,10 @@ struct GameDayView: View {
                 GameClockPanel(
                     elapsedSeconds: viewModel.elapsedSeconds,
                     periodSeconds: viewModel.periodSeconds,
-                    currentPeriod: viewModel.currentPeriod,
+                    periodLabel: viewModel.currentPeriodLabel,
+                    periodCount: viewModel.periodCount,
+                    advanceLabel: viewModel.advancePeriodLabel,
+                    canAdvancePeriod: !viewModel.isLastPeriod,
                     targetMinutes: viewModel.defaultGameMinutes,
                     isRunning: viewModel.isRunning,
                     starters: viewModel.availableStarterPlayers.count,
@@ -55,6 +58,13 @@ struct GameDayView: View {
             }
         } message: {
             Text(viewModel.activeReminderText)
+        }
+        .alert("Sub Coming Up", isPresented: $viewModel.showPreAlert) {
+            Button("Got It", role: .cancel) {
+                viewModel.activePreAlert = nil
+            }
+        } message: {
+            Text(viewModel.activePreAlertText)
         }
     }
 
@@ -136,6 +146,25 @@ struct GameDayView: View {
             SectionHeader("Quick Sub")
 
             VStack(alignment: .leading, spacing: 12) {
+                Button {
+                    viewModel.selectSuggestedSub()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wand.and.stars")
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Suggest balanced sub")
+                                .font(.subheadline.weight(.semibold))
+                            Text(viewModel.suggestedSubText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.suggestedSub == nil)
+
                 Picker("Sub Out", selection: $viewModel.selectedOutPlayerID) {
                     Text("Choose starter").tag(UUID?.none)
                     ForEach(viewModel.availableStarterPlayers) { player in
@@ -182,6 +211,8 @@ struct GameDayView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Stepper("Minute \(viewModel.newReminderMinute)", value: $viewModel.newReminderMinute, in: 1...max(viewModel.defaultGameMinutes, 1))
+
+                Stepper("Alert \(viewModel.subAlertLeadMinutes) min early", value: $viewModel.subAlertLeadMinutes, in: 0...10)
 
                 Picker("Sub Out", selection: $viewModel.selectedOutPlayerID) {
                     Text("Choose player").tag(UUID?.none)
@@ -247,6 +278,22 @@ struct GameDayView: View {
                             .lineLimit(1)
                         Text(formatClock(viewModel.playingSeconds[player.id, default: 0]))
                             .font(.title3.monospacedDigit().weight(.bold))
+
+                        if viewModel.minimumSeconds(for: player) > 0 {
+                            ProgressView(value: viewModel.goalProgress(for: player))
+                                .tint(viewModel.isAtRiskOfMissingGoal(player) ? .orange : (viewModel.hasReachedGoal(player) ? .green : .accentColor))
+                            if viewModel.isAtRiskOfMissingGoal(player) {
+                                Label("Behind minutes goal", systemImage: "exclamationmark.triangle.fill")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.orange)
+                                    .lineLimit(1)
+                            } else {
+                                Text("Goal \(viewModel.minimumSeconds(for: player) / 60)m")
+                                    .font(.caption2)
+                                    .foregroundStyle(viewModel.hasReachedGoal(player) ? .green : .secondary)
+                            }
+                        }
+
                         Menu {
                             ForEach(GamePlayerStatus.allCases) { status in
                                 Button(status.rawValue) {
