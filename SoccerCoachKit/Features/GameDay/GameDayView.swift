@@ -48,20 +48,17 @@ struct GameDayView: View {
         }
         .alert("Substitution Reminder", isPresented: $viewModel.showReminder) {
             Button("Record Sub") {
-                if let activeReminder = viewModel.activeReminder {
-                    viewModel.applySubstitution(activeReminder)
-                }
-                viewModel.activeReminder = nil
+                viewModel.acknowledgeReminder(record: true)
             }
             Button("Keep Lineup", role: .cancel) {
-                viewModel.activeReminder = nil
+                viewModel.acknowledgeReminder(record: false)
             }
         } message: {
             Text(viewModel.activeReminderText)
         }
         .alert("Sub Coming Up", isPresented: $viewModel.showPreAlert) {
             Button("Got It", role: .cancel) {
-                viewModel.activePreAlert = nil
+                viewModel.dismissPreAlert()
             }
         } message: {
             Text(viewModel.activePreAlertText)

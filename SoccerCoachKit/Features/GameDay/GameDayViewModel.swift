@@ -192,10 +192,28 @@ final class GameDayViewModel: ObservableObject {
             playingSeconds[playerID, default: 0] += 1
         }
 
-        let leadSeconds = max(0, subAlertLeadMinutes) * 60
+        processReminderAlerts()
+    }
 
-        // Early heads-up: fire once when we enter the lead window before the sub.
-        if let index = reminders.firstIndex(where: {
+    private var isShowingAlert: Bool { showReminder || showPreAlert }
+
+    /// Surfaces at most one reminder alert at a time. A reminder that comes due
+    /// while another alert is still on screen keeps its flags untouched and
+    /// stays pending, so nothing is overwritten and silently lost; the next one
+    /// is presented when the current alert is dismissed.
+    private func processReminderAlerts() {
+        guard !isShowingAlert else { return }
+
+        // Exact-minute alerts take priority over heads-ups.
+        if let index = earliestReminderIndex(where: { !$0.triggered && elapsedSeconds >= $0.minute * 60 }) {
+            reminders[index].triggered = true
+            activeReminder = reminders[index]
+            showReminder = true
+            return
+        }
+
+        let leadSeconds = max(0, subAlertLeadMinutes) * 60
+        if let index = earliestReminderIndex(where: {
             !$0.preAlertTriggered && !$0.triggered
                 && elapsedSeconds >= $0.minute * 60 - leadSeconds
                 && elapsedSeconds < $0.minute * 60
@@ -204,12 +222,39 @@ final class GameDayViewModel: ObservableObject {
             activePreAlert = reminders[index]
             showPreAlert = true
         }
+    }
 
-        // Exact-minute alert.
-        if let index = reminders.firstIndex(where: { !$0.triggered && elapsedSeconds >= $0.minute * 60 }) {
-            reminders[index].triggered = true
-            activeReminder = reminders[index]
-            showReminder = true
+    /// Index of the earliest-scheduled reminder matching `predicate`, so stacked
+    /// reminders surface in chronological order.
+    private func earliestReminderIndex(where predicate: (SubReminder) -> Bool) -> Int? {
+        reminders.enumerated()
+            .filter { predicate($0.element) }
+            .min(by: { $0.element.minute < $1.element.minute })?
+            .offset
+    }
+
+    /// Records the sub for the active reminder (or keeps the lineup), then shows
+    /// the next pending alert if one queued up behind it.
+    func acknowledgeReminder(record: Bool) {
+        if record, let reminder = activeReminder {
+            applySubstitution(reminder)
+        }
+        activeReminder = nil
+        showReminder = false
+        presentNextPendingAlert()
+    }
+
+    func dismissPreAlert() {
+        activePreAlert = nil
+        showPreAlert = false
+        presentNextPendingAlert()
+    }
+
+    private func presentNextPendingAlert() {
+        // Defer so the current alert finishes dismissing before the next one
+        // (which may reuse the same isPresented binding) is presented.
+        DispatchQueue.main.async { [weak self] in
+            self?.processReminderAlerts()
         }
     }
 
