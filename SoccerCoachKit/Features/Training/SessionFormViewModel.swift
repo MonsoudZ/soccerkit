@@ -62,6 +62,11 @@ final class SessionFormViewModel: ObservableObject {
     }
 
     func prepareDefaultDrillSelection(in store: AppStore) {
+        // Drop a seeded selection that is no longer pickable (archived or gone)
+        // so a new section can't be built from a hidden drill.
+        if let id = selectedDrillID, !store.teamDrills.contains(where: { $0.id == id }) {
+            selectedDrillID = nil
+        }
         guard selectedDrillID == nil, let drill = store.teamDrills.first else { return }
         selectedDrillID = drill.id
         applyDrillDefaults(drill, in: store)
@@ -75,14 +80,16 @@ final class SessionFormViewModel: ObservableObject {
     }
 
     func addSelectedDrillBlock(in store: AppStore) {
-        guard let drillID = selectedDrillID else { return }
+        // Never build a new block from an archived or unresolvable drill.
+        guard let drillID = selectedDrillID,
+              let drill = store.drill(for: drillID), !drill.isArchived else { return }
         guard blocks.count < 6 else { return }
         let cleanFocus = newBlockFocus.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanTopic = newBlockTopic.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanPitchArea = newBlockPitchArea.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanDetails = newBlockDetails.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fallbackFocus = store.drill(for: drillID)?.coachingPoints.first ?? "Run the drill with game speed."
-        let fallbackTopic = store.drill(for: drillID)?.title ?? "Training Section"
+        let fallbackFocus = drill.coachingPoints.first ?? "Run the drill with game speed."
+        let fallbackTopic = drill.title
         let positions = PlayerPosition.allCases.filter { selectedPositions.contains($0) }
 
         blocks.append(
@@ -100,10 +107,8 @@ final class SessionFormViewModel: ObservableObject {
             )
         )
 
-        if let drill = store.drill(for: drillID) {
-            clearSectionDraft()
-            applyDrillDefaults(drill, in: store)
-        }
+        clearSectionDraft()
+        applyDrillDefaults(drill, in: store)
     }
 
     func clearSectionDraft() {

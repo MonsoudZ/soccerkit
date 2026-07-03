@@ -41,14 +41,23 @@ final class GameDayViewModel: ObservableObject {
 
     /// Refresh the roster/age-group snapshot from the store and reset the game.
     func reset(with store: AppStore) {
-        let team = store.selectedTeam
-        teamID = team.id
+        loadConfiguration(from: store)
         roster = store.roster
+        resetLineup()
+    }
+
+    /// Loads the team's game rules (field size, game length, minimum minutes,
+    /// period format) from the store. Kept separate from `reset` so an
+    /// in-progress game can pick up mid-match settings changes without being
+    /// wiped. `teamID` is tracked as `selectedTeamID` — the same value
+    /// `prepareIfNeeded` compares against — to avoid drift.
+    private func loadConfiguration(from store: AppStore) {
+        let team = store.selectedTeam
+        teamID = store.selectedTeamID
         playersOnField = team.ageGroup.playersOnField
         defaultGameMinutes = team.ageGroup.defaultGameMinutes
         defaultMinimumMinutes = team.defaultMinimumMinutes
         periodFormat = team.periodFormat
-        resetLineup()
     }
 
     /// Called when the Game Day view appears. Only sets up a fresh game the
@@ -67,6 +76,10 @@ final class GameDayViewModel: ObservableObject {
     /// add/edit/delete, without disturbing the clock, minutes, or lineup of
     /// players who are still on the team.
     func syncRoster(with store: AppStore) {
+        // Pick up mid-match rule changes (age group, period format, minimum
+        // minutes) even when the roster itself is unchanged.
+        loadConfiguration(from: store)
+
         let updated = store.roster
         guard updated != roster else { return }
 
