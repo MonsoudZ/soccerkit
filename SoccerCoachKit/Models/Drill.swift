@@ -13,8 +13,11 @@ struct Drill: Identifiable, Hashable, Codable {
     var coachingPoints: [String]
     var progressions: [String]
     var regressions: [String]
+    /// Soft-delete flag. An archived drill is hidden from the library but still
+    /// resolvable, so session blocks that reference it keep their full content.
+    var isArchived: Bool
 
-    init(id: UUID, teamID: UUID? = nil, title: String, category: DrillCategory, tags: [String] = [], durationMinutes: Int, equipment: [String] = [], fieldSize: String = "", fieldSetup: String, coachingPoints: [String], progressions: [String] = [], regressions: [String] = []) {
+    init(id: UUID, teamID: UUID? = nil, title: String, category: DrillCategory, tags: [String] = [], durationMinutes: Int, equipment: [String] = [], fieldSize: String = "", fieldSetup: String, coachingPoints: [String], progressions: [String] = [], regressions: [String] = [], isArchived: Bool = false) {
         self.id = id
         self.teamID = teamID
         self.title = title
@@ -27,6 +30,7 @@ struct Drill: Identifiable, Hashable, Codable {
         self.coachingPoints = coachingPoints
         self.progressions = progressions
         self.regressions = regressions
+        self.isArchived = isArchived
     }
 
     enum CodingKeys: String, CodingKey {
@@ -42,6 +46,7 @@ struct Drill: Identifiable, Hashable, Codable {
         case coachingPoints
         case progressions
         case regressions
+        case isArchived
     }
 
     init(from decoder: Decoder) throws {
@@ -58,5 +63,6 @@ struct Drill: Identifiable, Hashable, Codable {
         coachingPoints = try container.decode([String].self, forKey: .coachingPoints)
         progressions = try container.decodeIfPresent([String].self, forKey: .progressions) ?? []
         regressions = try container.decodeIfPresent([String].self, forKey: .regressions) ?? []
+        isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
     }
 }

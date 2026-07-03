@@ -53,9 +53,20 @@ struct SessionDetailView: View {
                                         Text(block.topic.isEmpty ? drill.title : block.topic)
                                             .font(.headline)
 
-                                        Text(drill.title)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                        HStack(spacing: 6) {
+                                            Text(drill.title)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                            if drill.isArchived {
+                                                Text("Deleted Drill")
+                                                    .font(.caption2.weight(.semibold))
+                                                    .padding(.horizontal, 6)
+                                                    .padding(.vertical, 2)
+                                                    .background(Color.orange.opacity(0.15))
+                                                    .foregroundStyle(.orange)
+                                                    .clipShape(Capsule())
+                                            }
+                                        }
 
                                         if !block.pitchArea.isEmpty {
                                             Label(block.pitchArea, systemImage: "rectangle.dashed")

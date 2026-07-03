@@ -113,7 +113,7 @@ final class AppStore: ObservableObject {
 
     var teamDrills: [Drill] {
         drills
-            .filter { $0.teamID == nil || $0.teamID == selectedTeamID }
+            .filter { !$0.isArchived && ($0.teamID == nil || $0.teamID == selectedTeamID) }
             .sorted { first, second in
                 if first.teamID == selectedTeamID && second.teamID == nil { return true }
                 if first.teamID == nil && second.teamID == selectedTeamID { return false }
@@ -384,20 +384,12 @@ final class AppStore: ObservableObject {
         drills[index] = drill
     }
 
+    /// Soft-deletes a drill: it's hidden from the library but kept in storage so
+    /// session blocks referencing it retain their planned content (topic, pitch
+    /// area, intensity, diagram, notes) and still resolve for display.
     func deleteDrill(_ drill: Drill) {
-        drills.removeAll { $0.id == drill.id }
-        sessions = sessions.map { session in
-            var updated = session
-            updated.blocks.removeAll { $0.drillID == drill.id }
-            return updated
-        }
-        diagrams = diagrams.map { diagram in
-            var updated = diagram
-            if updated.drillID == drill.id {
-                updated.drillID = nil
-            }
-            return updated
-        }
+        guard let index = drills.firstIndex(where: { $0.id == drill.id }) else { return }
+        drills[index].isArchived = true
     }
 
     // MARK: - Sessions

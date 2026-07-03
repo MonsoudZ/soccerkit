@@ -20,9 +20,9 @@ final class DrillLibraryViewModel: ObservableObject {
         case .team:
             return store.teamDrills
         case .shared:
-            return store.drills.filter { $0.teamID == nil }.sorted { $0.title < $1.title }
+            return store.drills.filter { !$0.isArchived && $0.teamID == nil }.sorted { $0.title < $1.title }
         case .all:
-            return store.drills.sorted { $0.title < $1.title }
+            return store.drills.filter { !$0.isArchived }.sorted { $0.title < $1.title }
         }
     }
 
