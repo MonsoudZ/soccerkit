@@ -4,6 +4,11 @@ import Foundation
 /// The `PersistenceService` reads and writes snapshots; `AppStore` projects
 /// them into its published collections.
 struct AppSnapshot: Codable {
+    /// Bump when the persisted shape changes in a way older code can't read, so
+    /// future loads can migrate an old blob instead of failing to decode it.
+    static let currentSchemaVersion = 1
+
+    var schemaVersion: Int
     var teams: [Team]
     var players: [Player]
     var drills: [Drill]
@@ -13,7 +18,8 @@ struct AppSnapshot: Codable {
     var events: [TeamEvent]
     var selectedTeamID: UUID
 
-    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID) {
+    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, schemaVersion: Int = AppSnapshot.currentSchemaVersion) {
+        self.schemaVersion = schemaVersion
         self.teams = teams
         self.players = players
         self.drills = drills
@@ -26,6 +32,8 @@ struct AppSnapshot: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Absent in pre-versioning blobs; those are schema v1 by definition.
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         teams = try container.decode([Team].self, forKey: .teams)
         players = try container.decode([Player].self, forKey: .players)
         drills = try container.decode([Drill].self, forKey: .drills)

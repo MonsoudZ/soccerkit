@@ -43,11 +43,28 @@ final class AppStore: ObservableObject {
         self.persistence = persistence
     }
 
-    /// The store used at launch: persisted snapshot if present, otherwise sample data.
+    /// The store used at launch: persisted snapshot if present and readable,
+    /// otherwise sample data. A snapshot that exists but can't be decoded is
+    /// backed up (never overwritten) before falling back, so real user data is
+    /// recoverable instead of being silently replaced.
     static var storedOrSample: AppStore {
         let persistence = UserDefaultsPersistenceService()
-        let loaded = persistence.load().flatMap { $0.teams.isEmpty ? nil : $0 }
-        return AppStore(snapshot: loaded ?? SampleData.snapshot, persistence: persistence)
+        let snapshot: AppSnapshot
+
+        switch persistence.load() {
+        case .success(let loaded) where !loaded.teams.isEmpty:
+            snapshot = loaded
+        case .success, .empty:
+            // Decoded-but-empty or fresh install: safe to seed with sample data.
+            snapshot = SampleData.snapshot
+        case .corrupt(let data, let error):
+            // Preserve the unreadable blob before any save can clobber it.
+            persistence.backupCorruptData(data)
+            assertionFailure("Could not decode persisted snapshot; backed up under the corrupt-backup key. \(error)")
+            snapshot = SampleData.snapshot
+        }
+
+        return AppStore(snapshot: snapshot, persistence: persistence)
     }
 
     // MARK: - Derived collections
