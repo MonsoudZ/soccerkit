@@ -12,7 +12,9 @@ concurrency:
 jobs:
   build-test:
     name: Build & Test
-    runs-on: macos-14
+    # macos-15 ships Xcode 16, which can read the objectVersion 77 project
+    # format that the current XcodeGen emits.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
@@ -27,5 +29,5 @@ jobs:
           xcodebuild test \
             -project SoccerCoachKit.xcodeproj \
             -scheme SoccerCoachKit \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
             CODE_SIGNING_ALLOWED=NO
