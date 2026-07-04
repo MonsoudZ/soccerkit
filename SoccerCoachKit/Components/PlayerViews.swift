@@ -14,6 +14,8 @@ struct PlayerRow: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(player.accessibilityLabel)
     }
 }
 
@@ -30,6 +32,8 @@ struct PlayerAvatar: View {
                 .foregroundStyle(color)
         }
         .frame(width: 44, height: 44)
+        // Decorative: every use is paired with the player's name/number in text.
+        .accessibilityHidden(true)
     }
 
     var color: Color {

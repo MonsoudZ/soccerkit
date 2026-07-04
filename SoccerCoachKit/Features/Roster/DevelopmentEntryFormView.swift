@@ -82,6 +82,8 @@ struct DevelopmentEntryRow: View {
                     .lineLimit(3)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.accessibilityLabel)
     }
 
     private func stars(_ rating: Int) -> String {

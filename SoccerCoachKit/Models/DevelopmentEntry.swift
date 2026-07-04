@@ -37,4 +37,12 @@ struct DevelopmentEntry: Identifiable, Hashable, Codable {
     var isEmpty: Bool {
         notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && ratings.values.allSatisfy { $0 == 0 }
     }
+
+    /// A spoken summary for VoiceOver on development rows.
+    var accessibilityLabel: String {
+        var parts = [date.formatted(date: .abbreviated, time: .omitted)]
+        parts.append(contentsOf: ratedSkills.map { "\($0.rawValue) \(rating(for: $0)) of 5" })
+        if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { parts.append(notes) }
+        return parts.joined(separator: ", ")
+    }
 }

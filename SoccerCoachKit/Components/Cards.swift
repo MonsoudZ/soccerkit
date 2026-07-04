@@ -47,6 +47,8 @@ struct MetricTile: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(value) \(title)")
     }
 }
 

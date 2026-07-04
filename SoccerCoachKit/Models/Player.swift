@@ -63,6 +63,13 @@ struct Player: Identifiable, Hashable, Codable {
         self.developmentLog = developmentLog
     }
 
+    /// A spoken summary for VoiceOver on roster rows.
+    var accessibilityLabel: String {
+        var parts = [name, "number \(number)", position.displayName]
+        if !guardian.isEmpty { parts.append("guardian \(guardian)") }
+        return parts.joined(separator: ", ")
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
         case teamID

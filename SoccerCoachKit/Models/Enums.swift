@@ -7,6 +7,16 @@ enum PlayerPosition: String, CaseIterable, Identifiable, Codable {
     case forward = "FWD"
 
     var id: String { rawValue }
+
+    /// Spelled-out name (used for accessibility, where "GK" reads poorly).
+    var displayName: String {
+        switch self {
+        case .goalkeeper: return "Goalkeeper"
+        case .defender: return "Defender"
+        case .midfielder: return "Midfielder"
+        case .forward: return "Forward"
+        }
+    }
 }
 
 enum AttendanceStatus: String, CaseIterable, Identifiable, Codable {

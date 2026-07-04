@@ -299,6 +299,8 @@ struct StatusBadge: View {
         .background((status == .available ? Color.green : status.color).opacity(0.12))
         .foregroundStyle(status == .available && !isStarter ? Color.secondary : status.color)
         .clipShape(Capsule())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(status == .available && isStarter ? "On the field" : status.rawValue)
     }
 }
 

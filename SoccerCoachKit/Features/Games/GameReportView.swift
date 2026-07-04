@@ -86,7 +86,15 @@ struct EffortStars: View {
             }
         }
         .accessibilityElement()
-        .accessibilityLabel("Effort rating")
+        .accessibilityLabel("Rating")
         .accessibilityValue(rating == 0 ? "Unrated" : "\(rating) of 5")
+        .accessibilityAdjustableAction { direction in
+            // Lets VoiceOver users swipe up/down to change the rating.
+            switch direction {
+            case .increment: rating = min(5, rating + 1)
+            case .decrement: rating = max(0, rating - 1)
+            @unknown default: break
+            }
+        }
     }
 }

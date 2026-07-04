@@ -25,6 +25,16 @@ struct PlayerSeasonStats: Identifiable {
     var id: UUID { player.id }
     /// Goal contributions (goals + assists), used for ranking.
     var contributions: Int { goals + assists }
+
+    /// A spoken summary for VoiceOver on the season stats rows.
+    var accessibilityLabel: String {
+        var parts = ["\(player.name), number \(player.number)"]
+        if goals > 0 { parts.append("\(goals) goal\(goals == 1 ? "" : "s")") }
+        if assists > 0 { parts.append("\(assists) assist\(assists == 1 ? "" : "s")") }
+        parts.append("\(gamesPlayed) game\(gamesPlayed == 1 ? "" : "s") played")
+        if averageEffort > 0 { parts.append(String(format: "average effort %.1f of 5", averageEffort)) }
+        return parts.joined(separator: ", ")
+    }
 }
 
 /// Pure aggregation over the team's games — kept free of the store/UI so it can

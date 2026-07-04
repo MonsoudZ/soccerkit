@@ -11,6 +11,7 @@ struct SectionHeader: View {
         Text(title)
             .font(.headline)
             .padding(.top, 4)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

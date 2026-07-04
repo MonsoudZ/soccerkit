@@ -74,5 +74,7 @@ private struct PlayerStatRow: View {
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(stat.accessibilityLabel)
     }
 }
