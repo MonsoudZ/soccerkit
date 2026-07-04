@@ -204,6 +204,12 @@ struct SessionDetailView: View {
         .toolbar {
             if let session = viewModel.session(in: store) {
                 Button {
+                    viewModel.exportPDF(in: store)
+                } label: {
+                    Label("Export Plan", systemImage: "square.and.arrow.up")
+                }
+
+                Button {
                     viewModel.showingEditSession = true
                 } label: {
                     Label("Edit Session", systemImage: "pencil")
@@ -223,6 +229,9 @@ struct SessionDetailView: View {
                     SessionFormView(session: session)
                 }
             }
+        }
+        .sheet(item: $viewModel.exportFile, onDismiss: { viewModel.cleanupExport() }) { file in
+            SessionShareSheet(url: file.url)
         }
     }
 }

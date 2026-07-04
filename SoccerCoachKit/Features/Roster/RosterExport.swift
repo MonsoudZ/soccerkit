@@ -54,6 +54,11 @@ enum RosterExporter {
 
     // MARK: - PDF
 
+    // Explicit colors — a PDF is always on white paper, so dynamic colors like
+    // `.label` (which resolve to white in dark mode) must not be used.
+    private static let primaryColor = UIColor.black
+    private static let secondaryColor = UIColor(white: 0.35, alpha: 1)
+
     static func pdfData(for players: [Player], team: Team) -> Data {
         let pageSize = CGSize(width: 612, height: 792) // US Letter, 72 dpi
         let margin: CGFloat = 44
@@ -103,8 +108,8 @@ enum RosterExporter {
     private static func headerLines(team: Team, playerCount: Int) -> [PDFLine] {
         let subtitle = "\(team.ageGroup.rawValue) · \(team.season) · \(playerCount) player\(playerCount == 1 ? "" : "s")"
         return [
-            PDFLine(text: team.name, font: .boldSystemFont(ofSize: 22), color: .label, spacingAfter: 2, startsBlock: false),
-            PDFLine(text: subtitle, font: .systemFont(ofSize: 12), color: .secondaryLabel, spacingAfter: 18, startsBlock: false)
+            PDFLine(text: team.name, font: .boldSystemFont(ofSize: 22), color: primaryColor, spacingAfter: 2, startsBlock: false),
+            PDFLine(text: subtitle, font: .systemFont(ofSize: 12), color: secondaryColor, spacingAfter: 18, startsBlock: false)
         ]
     }
 
@@ -112,8 +117,8 @@ enum RosterExporter {
     /// notes) paginates line-by-line instead of clipping an oversized block.
     private static func playerLines(for player: Player) -> [PDFLine] {
         var lines = [
-            PDFLine(text: "#\(player.number)  \(player.name)", font: .boldSystemFont(ofSize: 14), color: .label, spacingAfter: 1, startsBlock: true),
-            PDFLine(text: positionName(player.position), font: .systemFont(ofSize: 11), color: .secondaryLabel, spacingAfter: 4, startsBlock: false)
+            PDFLine(text: "#\(player.number)  \(player.name)", font: .boldSystemFont(ofSize: 14), color: primaryColor, spacingAfter: 1, startsBlock: true),
+            PDFLine(text: positionName(player.position), font: .systemFont(ofSize: 11), color: secondaryColor, spacingAfter: 4, startsBlock: false)
         ]
 
         let details: [(String, String)] = [
@@ -125,7 +130,7 @@ enum RosterExporter {
             ("Notes", player.notes)
         ]
         for (label, value) in details where !value.isEmpty {
-            lines.append(PDFLine(text: "\(label): \(value)", font: .systemFont(ofSize: 11), color: .label, spacingAfter: 2, startsBlock: false))
+            lines.append(PDFLine(text: "\(label): \(value)", font: .systemFont(ofSize: 11), color: primaryColor, spacingAfter: 2, startsBlock: false))
         }
         return lines
     }
