@@ -22,8 +22,10 @@ final class GameDayViewModel: ObservableObject {
     private var accumulatedPlaying: [UUID: TimeInterval] = [:]
     private var accumulatedPlayingAtPeriodStart: [UUID: TimeInterval] = [:]
     private var elapsedAtPeriodStart: TimeInterval = 0
-    private var runAnchor: Date?
-    private let now: () -> Date
+    /// Monotonic seconds marking when the current running interval began.
+    private var runAnchor: TimeInterval?
+    /// Source of monotonic seconds (injectable for testing).
+    private let now: () -> TimeInterval
 
     // Game state.
     @Published var starterIDs: Set<UUID> = []
@@ -43,17 +45,26 @@ final class GameDayViewModel: ObservableObject {
     @Published var subAlertLeadMinutes = 1
     @Published var formation: LineupFormation = .balanced
 
-    /// `now` is injectable purely for testing; production uses `Date.init`.
-    /// `nonisolated` so the app-wide `AppStore` can own an instance.
-    nonisolated init(now: @escaping () -> Date = Date.init) {
+    /// `now` is injectable purely for testing; production uses a monotonic
+    /// source. `nonisolated` so the app-wide `AppStore` can own an instance.
+    nonisolated init(now: @escaping () -> TimeInterval = GameDayViewModel.monotonicNow) {
         self.now = now
+    }
+
+    /// Monotonic seconds that keep advancing while the device sleeps (locked
+    /// phone) and are immune to wall-clock changes (NTP/DST/manual), so the game
+    /// clock can't jump or run backward mid-match.
+    nonisolated static func monotonicNow() -> TimeInterval {
+        var timebase = mach_timebase_info_data_t()
+        mach_timebase_info(&timebase)
+        return Double(mach_continuous_time()) * Double(timebase.numer) / Double(timebase.denom) / 1_000_000_000
     }
 
     // MARK: - Wall-clock derived values
 
     private var liveInterval: TimeInterval {
         guard let anchor = runAnchor else { return 0 }
-        return max(0, now().timeIntervalSince(anchor))
+        return max(0, now() - anchor)
     }
 
     /// Total elapsed game time in whole seconds.
@@ -81,7 +92,7 @@ final class GameDayViewModel: ObservableObject {
     private func settle() {
         guard let anchor = runAnchor else { return }
         let current = now()
-        let delta = current.timeIntervalSince(anchor)
+        let delta = current - anchor
         runAnchor = current
         guard delta > 0 else { return }
         accumulatedElapsed += delta
@@ -369,6 +380,7 @@ final class GameDayViewModel: ObservableObject {
         runAnchor = now()
         isRunning = true
     }
+    // (runAnchor now holds monotonic seconds; all reset paths clear it to nil.)
 
     func pause() {
         guard isRunning else { return }

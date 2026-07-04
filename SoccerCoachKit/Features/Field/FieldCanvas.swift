@@ -115,12 +115,19 @@ struct FieldCanvas: View {
             )
             coneCount += 1
         case .zone:
-            let origin = CGPoint(x: clamp(point.x - 0.14), y: clamp(point.y - 0.09))
+            let width: CGFloat = 0.28
+            let height: CGFloat = 0.18
+            // Center on the drop point but keep the whole rect on the pitch, so
+            // a zone dropped near the right/bottom edge doesn't extend past 1.0.
+            let origin = CGPoint(
+                x: min(max(0, point.x - width / 2), 1 - width),
+                y: min(max(0, point.y - height / 2), 1 - height)
+            )
             zones.append(
                 BoardZone(
                     id: UUID(),
                     title: "Zone \(zoneCount)",
-                    rect: CGRect(x: origin.x, y: origin.y, width: 0.28, height: 0.18)
+                    rect: CGRect(x: origin.x, y: origin.y, width: width, height: height)
                 )
             )
             zoneCount += 1
