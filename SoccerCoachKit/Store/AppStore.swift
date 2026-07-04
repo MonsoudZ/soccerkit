@@ -3,6 +3,9 @@ import Foundation
 
 /// App-wide source of truth. Holds the published domain collections and the
 /// intents that mutate them, delegating durability to a `PersistenceService`.
+/// `@MainActor` enforces the invariant that all state access happens on the
+/// main thread (persistence itself encodes/writes on a background queue).
+@MainActor
 final class AppStore: ObservableObject {
     @Published var teams: [Team] {
         didSet { persist() }
@@ -54,6 +57,7 @@ final class AppStore: ObservableObject {
     /// otherwise sample data. A snapshot that exists but can't be decoded is
     /// backed up (never overwritten) before falling back, so real user data is
     /// recoverable instead of being silently replaced.
+    @MainActor
     static var storedOrSample: AppStore {
         let persistence = UserDefaultsPersistenceService()
         let snapshot: AppSnapshot
@@ -72,6 +76,12 @@ final class AppStore: ObservableObject {
         }
 
         return AppStore(snapshot: snapshot, persistence: persistence)
+    }
+
+    /// Synchronously flushes any pending background write. Call when the app is
+    /// about to suspend so the latest state is durable before termination.
+    func flushPendingWrites() {
+        persistence.flushPendingSync()
     }
 
     // MARK: - Derived collections

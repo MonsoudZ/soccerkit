@@ -12,6 +12,7 @@ final class InMemoryPersistence: PersistenceService {
     func load() -> PersistenceLoadResult { stored.map { .success($0) } ?? .empty }
     func save(_ snapshot: AppSnapshot) { stored = snapshot }
     func backupCorruptData(_ data: Data) { backedUp = data }
+    func flushPendingSync() {}
 }
 
 /// A controllable monotonic clock for `GameDayViewModel` tests.
@@ -49,6 +50,7 @@ enum TestData {
                            diagrams: [], games: [], events: [], selectedTeamID: t.id)
     }
 
+    @MainActor
     static func store(_ snapshot: AppSnapshot? = nil) -> AppStore {
         AppStore(snapshot: snapshot ?? Self.snapshot(), persistence: InMemoryPersistence())
     }

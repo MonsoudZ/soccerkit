@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var store: AppStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selection: AppSection? = .dashboard
 
     var body: some View {
@@ -21,6 +22,10 @@ struct ContentView: View {
             .navigationTitle("Coach")
         } detail: {
             DetailContainer(selection: selection ?? .dashboard)
+        }
+        .onChange(of: scenePhase) { _ in
+            // Persist the latest state durably before the app suspends.
+            if scenePhase != .active { store.flushPendingWrites() }
         }
     }
 }

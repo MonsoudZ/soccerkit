@@ -10,6 +10,7 @@ enum SessionExporter {
     private static let primaryColor = UIColor.black
     private static let secondaryColor = UIColor(white: 0.35, alpha: 1)
 
+    @MainActor
     static func pdfData(for session: TrainingSession, in store: AppStore) -> Data {
         let pageSize = CGSize(width: 612, height: 792) // US Letter, 72 dpi
         let margin: CGFloat = 44
@@ -52,6 +53,7 @@ enum SessionExporter {
         var startsBlock: Bool = false
     }
 
+    @MainActor
     private static func planLines(for session: TrainingSession, in store: AppStore) -> [PDFLine] {
         var lines: [PDFLine] = []
 

@@ -3,6 +3,7 @@ import XCTest
 
 /// Covers the persistence layer, including the corrupt-data path that guards
 /// against the original silent data-loss bug.
+@MainActor
 final class PersistenceTests: XCTestCase {
     private var defaults: UserDefaults!
     private let key = "test.snapshot"
@@ -31,6 +32,7 @@ final class PersistenceTests: XCTestCase {
         let snapshot = TestData.snapshot(playerCount: 4)
         let svc = service()
         svc.save(snapshot)
+        svc.flushPendingSync() // writes happen on a background queue; wait for them
 
         guard case .success(let loaded) = svc.load() else {
             return XCTFail("expected .success after save")
@@ -38,6 +40,21 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(loaded.teams.count, 1)
         XCTAssertEqual(loaded.players.count, 4)
         XCTAssertEqual(loaded.selectedTeamID, snapshot.selectedTeamID)
+    }
+
+    func testRapidSavesCoalesceToLatest() {
+        let svc = service()
+        // Three quick saves; only the last should be the persisted state.
+        svc.save(TestData.snapshot(playerCount: 2))
+        svc.save(TestData.snapshot(playerCount: 5))
+        let latest = TestData.snapshot(playerCount: 9)
+        svc.save(latest)
+        svc.flushPendingSync()
+
+        guard case .success(let loaded) = svc.load() else {
+            return XCTFail("expected .success")
+        }
+        XCTAssertEqual(loaded.players.count, 9, "the most recent snapshot wins")
     }
 
     func testCorruptDataReportsCorruptAndDoesNotLose() {
