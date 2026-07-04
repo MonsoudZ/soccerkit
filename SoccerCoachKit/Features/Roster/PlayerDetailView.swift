@@ -71,6 +71,39 @@ struct PlayerDetailView: View {
                     Section("Coach Notes") {
                         Text(player.notes.isEmpty ? "—" : player.notes)
                     }
+
+                    Section {
+                        let entries = player.developmentLog.sorted { $0.date > $1.date }
+                        if entries.isEmpty {
+                            Text("No development entries yet.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(entries) { entry in
+                                Button {
+                                    viewModel.editingEntry = entry
+                                } label: {
+                                    DevelopmentEntryRow(entry: entry)
+                                }
+                                .buttonStyle(.plain)
+                                .swipeActions {
+                                    Button(role: .destructive) {
+                                        store.deleteDevelopmentEntry(entry, for: player)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+
+                        Button {
+                            viewModel.showingNewEntry = true
+                        } label: {
+                            Label("Add Development Entry", systemImage: "chart.line.uptrend.xyaxis")
+                        }
+                    } header: {
+                        Text("Development")
+                    }
                 }
             } else {
                 EmptyStateView(title: "Player Removed", systemImage: "person.crop.circle.badge.xmark")
@@ -98,6 +131,16 @@ struct PlayerDetailView: View {
                 NavigationStack {
                     PlayerFormView(player: player)
                 }
+            }
+        }
+        .sheet(isPresented: $viewModel.showingNewEntry) {
+            NavigationStack {
+                DevelopmentEntryFormView(playerID: viewModel.playerID)
+            }
+        }
+        .sheet(item: $viewModel.editingEntry) { entry in
+            NavigationStack {
+                DevelopmentEntryFormView(playerID: viewModel.playerID, entry: entry)
             }
         }
     }

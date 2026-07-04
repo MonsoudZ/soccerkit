@@ -269,6 +269,21 @@ final class AppStore: ObservableObject {
         players[index] = player
     }
 
+    /// Adds a new development entry or replaces the existing one with the same id.
+    func saveDevelopmentEntry(_ entry: DevelopmentEntry, for player: Player) {
+        guard let index = players.firstIndex(where: { $0.id == player.id }) else { return }
+        if let existing = players[index].developmentLog.firstIndex(where: { $0.id == entry.id }) {
+            players[index].developmentLog[existing] = entry
+        } else {
+            players[index].developmentLog.append(entry)
+        }
+    }
+
+    func deleteDevelopmentEntry(_ entry: DevelopmentEntry, for player: Player) {
+        guard let index = players.firstIndex(where: { $0.id == player.id }) else { return }
+        players[index].developmentLog.removeAll { $0.id == entry.id }
+    }
+
     func deletePlayer(_ player: Player) {
         batch {
             players.removeAll { $0.id == player.id }

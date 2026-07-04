@@ -20,6 +20,8 @@ struct Player: Identifiable, Hashable, Codable {
     /// Per-player override of the team's minimum-minutes goal. `nil` means the
     /// player uses the team default.
     var minMinutesOverride: Int?
+    /// Dated development records (notes + skill ratings), oldest-to-newest as added.
+    var developmentLog: [DevelopmentEntry]
 
     init(
         id: UUID,
@@ -38,7 +40,8 @@ struct Player: Identifiable, Hashable, Codable {
         emergencyContactRelation: String = "",
         allergies: String = "",
         medicalNotes: String = "",
-        minMinutesOverride: Int? = nil
+        minMinutesOverride: Int? = nil,
+        developmentLog: [DevelopmentEntry] = []
     ) {
         self.id = id
         self.teamID = teamID
@@ -57,6 +60,7 @@ struct Player: Identifiable, Hashable, Codable {
         self.allergies = allergies
         self.medicalNotes = medicalNotes
         self.minMinutesOverride = minMinutesOverride
+        self.developmentLog = developmentLog
     }
 
     enum CodingKeys: String, CodingKey {
@@ -77,6 +81,7 @@ struct Player: Identifiable, Hashable, Codable {
         case allergies
         case medicalNotes
         case minMinutesOverride
+        case developmentLog
     }
 
     init(from decoder: Decoder) throws {
@@ -98,5 +103,6 @@ struct Player: Identifiable, Hashable, Codable {
         allergies = try container.decodeIfPresent(String.self, forKey: .allergies) ?? ""
         medicalNotes = try container.decodeIfPresent(String.self, forKey: .medicalNotes) ?? ""
         minMinutesOverride = try container.decodeIfPresent(Int.self, forKey: .minMinutesOverride)
+        developmentLog = try container.decodeIfPresent([DevelopmentEntry].self, forKey: .developmentLog) ?? []
     }
 }
