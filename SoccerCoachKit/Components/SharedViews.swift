@@ -40,7 +40,7 @@ struct TagChipsView: View {
         if !tags.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    ForEach(tags, id: \.self) { tag in
+                    ForEach(Array(tags.enumerated()), id: \.offset) { _, tag in
                         Text(tag)
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 8)

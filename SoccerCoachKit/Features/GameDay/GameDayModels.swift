@@ -128,9 +128,11 @@ enum LineupFormation: String, CaseIterable, Identifiable {
 }
 
 struct LineupSlot: Identifiable {
-    let id = UUID()
     let label: String
     let position: CGPoint
+    // Derived from stable content (each slot has a distinct position) so empty
+    // slots keep their identity across renders instead of churning every tick.
+    var id: String { "\(label)@\(position.x),\(position.y)" }
 }
 
 func formatClock(_ seconds: Int) -> String {

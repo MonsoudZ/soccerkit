@@ -144,11 +144,20 @@ final class GameDayViewModel: ObservableObject {
         // minutes) even when the roster itself is unchanged.
         loadConfiguration(from: store)
 
+        // Bank the running interval before any lineup change below.
+        settle()
+
+        // If the field size shrank (e.g. age group lowered mid-game), trim the
+        // starting lineup so extra starters don't keep accruing time while being
+        // dropped from the pitch diagram.
+        if starterIDs.count > playersOnField {
+            let kept = roster.filter { starterIDs.contains($0.id) }.prefix(playersOnField).map(\.id)
+            starterIDs = Set(kept)
+            normalizeSelections()
+        }
+
         let updated = store.roster
         guard updated != roster else { return }
-
-        // Bank the running interval before changing who's on the roster.
-        settle()
 
         let validIDs = Set(updated.map(\.id))
         roster = updated
@@ -189,7 +198,9 @@ final class GameDayViewModel: ObservableObject {
     }
 
     var periodSeconds: Int {
-        max(0, elapsedSeconds - Int(elapsedAtPeriodStart))
+        // Floor the whole period interval once, so it can't read a second ahead
+        // of the game clock from independently truncating both values.
+        Int(max(0, accumulatedElapsed + liveInterval - elapsedAtPeriodStart))
     }
 
     var activeReminderText: String {
@@ -491,8 +502,11 @@ final class GameDayViewModel: ObservableObject {
     }
 
     func applySubstitution(_ reminder: SubReminder) {
-        substitute(outID: reminder.outPlayerID, inID: reminder.inPlayerID, note: "Reminder")
-        reminders.removeAll { $0.id == reminder.id }
+        // Only clear the reminder if the swap actually happened (it no-ops when
+        // the incoming/outgoing player is no longer available).
+        if substitute(outID: reminder.outPlayerID, inID: reminder.inPlayerID, note: "Reminder") {
+            reminders.removeAll { $0.id == reminder.id }
+        }
     }
 
     func recordSelectedSub() {
@@ -513,9 +527,10 @@ final class GameDayViewModel: ObservableObject {
         reminders.removeAll { $0.id == reminder.id }
     }
 
-    private func substitute(outID: UUID, inID: UUID, note: String) {
-        guard starterIDs.contains(outID), !starterIDs.contains(inID) else { return }
-        guard playerStatuses[outID, default: .available] == .available, playerStatuses[inID, default: .available] == .available else { return }
+    @discardableResult
+    private func substitute(outID: UUID, inID: UUID, note: String) -> Bool {
+        guard starterIDs.contains(outID), !starterIDs.contains(inID) else { return false }
+        guard playerStatuses[outID, default: .available] == .available, playerStatuses[inID, default: .available] == .available else { return false }
         settle()
         starterIDs.remove(outID)
         starterIDs.insert(inID)
@@ -524,6 +539,7 @@ final class GameDayViewModel: ObservableObject {
             at: 0
         )
         normalizeSelections()
+        return true
     }
 
     // MARK: - Drag and drop

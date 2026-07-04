@@ -427,13 +427,15 @@ final class AppStore: ObservableObject {
     }
 
     func deleteSession(_ session: TrainingSession) {
-        sessions.removeAll { $0.id == session.id }
-        diagrams = diagrams.map { diagram in
-            var updated = diagram
-            if updated.sessionID == session.id {
-                updated.sessionID = nil
+        batch {
+            sessions.removeAll { $0.id == session.id }
+            diagrams = diagrams.map { diagram in
+                var updated = diagram
+                if updated.sessionID == session.id {
+                    updated.sessionID = nil
+                }
+                return updated
             }
-            return updated
         }
     }
 
@@ -577,17 +579,19 @@ final class AppStore: ObservableObject {
     }
 
     func deleteDiagram(_ diagram: TacticsDiagram) {
-        diagrams.removeAll { $0.id == diagram.id }
-        sessions = sessions.map { session in
-            var updated = session
-            updated.blocks = updated.blocks.map { block in
-                var updatedBlock = block
-                if updatedBlock.diagramID == diagram.id {
-                    updatedBlock.diagramID = nil
+        batch {
+            diagrams.removeAll { $0.id == diagram.id }
+            sessions = sessions.map { session in
+                var updated = session
+                updated.blocks = updated.blocks.map { block in
+                    var updatedBlock = block
+                    if updatedBlock.diagramID == diagram.id {
+                        updatedBlock.diagramID = nil
+                    }
+                    return updatedBlock
                 }
-                return updatedBlock
+                return updated
             }
-            return updated
         }
     }
 

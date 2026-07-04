@@ -7,8 +7,11 @@ enum ContactKind {
     func url(for value: String) -> URL? {
         switch self {
         case .phone:
-            let digits = value.filter { !$0.isWhitespace }
-            return URL(string: "tel:\(digits)")
+            // Keep only characters a dialer accepts, so formatted numbers like
+            // "(555) 123-4567" still produce a valid tel: URL.
+            let dialable = value.filter { $0.isNumber || "+*#".contains($0) }
+            guard !dialable.isEmpty else { return nil }
+            return URL(string: "tel:\(dialable)")
         case .email:
             return URL(string: "mailto:\(value)")
         }
