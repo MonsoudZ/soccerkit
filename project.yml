@@ -20,6 +20,8 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - SoccerCoachKitTests
     profile:
       config: Release
     analyze:
@@ -38,6 +40,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit
         PRODUCT_NAME: "$(TARGET_NAME)"
         GENERATE_INFOPLIST_FILE: "YES"
+        ENABLE_TESTABILITY: "YES"
         ENABLE_PREVIEWS: "YES"
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
@@ -49,3 +52,15 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+  SoccerCoachKitTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: SoccerCoachKitTests
+    dependencies:
+      - target: SoccerCoachKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKitTests
+        GENERATE_INFOPLIST_FILE: "YES"

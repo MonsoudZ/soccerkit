@@ -43,6 +43,24 @@ The app follows an MVVM + services layout, grouped by feature:
 - `Components/` — reusable views shared across features (rows, cards, badges).
 - `Navigation/` — `ContentView` and the `AppSection` sidebar model.
 - `Extensions/` — small shared helpers.
+- `SoccerCoachKitTests/` — XCTest unit tests (timekeeping, persistence, Codable migration, store intents).
+
+## Development
+
+The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonyz/XcodeGen) — treat `project.yml` as the source of truth and regenerate after adding files or changing build settings:
+
+```sh
+brew install xcodegen
+xcodegen generate
+```
+
+Run the tests from the command line:
+
+```sh
+xcodebuild test -scheme SoccerCoachKit -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+Every push and pull request builds the app and runs the test suite via GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Good Next Features
 
