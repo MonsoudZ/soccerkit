@@ -12,15 +12,21 @@ final class GameDayViewModel: ObservableObject {
     @Published private(set) var defaultMinimumMinutes = 0
     @Published private(set) var periodFormat: PeriodFormat = .halves
     private var teamID: UUID?
-    /// Each player's accumulated minutes at the moment the current period began,
-    /// so resetting the period rewinds minutes as well as the clock.
-    private var playingSecondsAtPeriodStart: [UUID: Int] = [:]
+
+    // MARK: Wall-clock timekeeping
+    // The clock is derived from timestamps, not tick counts, so it stays
+    // accurate across missed ticks (app backgrounded, view off-screen, phone
+    // locked). `accumulated*` hold time banked up to the last `settle`;
+    // `runAnchor` marks when the current running interval began.
+    private var accumulatedElapsed: TimeInterval = 0
+    private var accumulatedPlaying: [UUID: TimeInterval] = [:]
+    private var accumulatedPlayingAtPeriodStart: [UUID: TimeInterval] = [:]
+    private var elapsedAtPeriodStart: TimeInterval = 0
+    private var runAnchor: Date?
+    private let now: () -> Date
 
     // Game state.
     @Published var starterIDs: Set<UUID> = []
-    @Published var playingSeconds: [UUID: Int] = [:]
-    @Published var elapsedSeconds = 0
-    @Published var periodStartSeconds = 0
     @Published var currentPeriod = 1
     @Published var isRunning = false
     @Published var reminders: [SubReminder] = []
@@ -36,6 +42,52 @@ final class GameDayViewModel: ObservableObject {
     /// How many minutes before a reminder's minute the early heads-up fires.
     @Published var subAlertLeadMinutes = 1
     @Published var formation: LineupFormation = .balanced
+
+    /// `now` is injectable purely for testing; production uses `Date.init`.
+    init(now: @escaping () -> Date = Date.init) {
+        self.now = now
+    }
+
+    // MARK: - Wall-clock derived values
+
+    private var liveInterval: TimeInterval {
+        guard let anchor = runAnchor else { return 0 }
+        return max(0, now().timeIntervalSince(anchor))
+    }
+
+    /// Total elapsed game time in whole seconds.
+    var elapsedSeconds: Int { Int(accumulatedElapsed + liveInterval) }
+
+    /// Each roster player's playing time in whole seconds, including the live
+    /// interval for players currently on the field and available.
+    var playingSeconds: [UUID: Int] {
+        let live = liveInterval
+        let running = runAnchor != nil
+        var result: [UUID: Int] = [:]
+        for player in roster {
+            var total = accumulatedPlaying[player.id] ?? 0
+            if running, starterIDs.contains(player.id), playerStatuses[player.id, default: .available] == .available {
+                total += live
+            }
+            result[player.id] = Int(total)
+        }
+        return result
+    }
+
+    /// Banks the running interval into the accumulators and re-anchors. Must be
+    /// called before any change to who is playing or whether the clock runs, so
+    /// time accrues under the configuration that was actually in effect.
+    private func settle() {
+        guard let anchor = runAnchor else { return }
+        let current = now()
+        let delta = current.timeIntervalSince(anchor)
+        runAnchor = current
+        guard delta > 0 else { return }
+        accumulatedElapsed += delta
+        for id in starterIDs where playerStatuses[id, default: .available] == .available {
+            accumulatedPlaying[id, default: 0] += delta
+        }
+    }
 
     // MARK: - Configuration
 
@@ -83,20 +135,23 @@ final class GameDayViewModel: ObservableObject {
         let updated = store.roster
         guard updated != roster else { return }
 
+        // Bank the running interval before changing who's on the roster.
+        settle()
+
         let validIDs = Set(updated.map(\.id))
         roster = updated
 
         // Drop state for players no longer on the roster.
         starterIDs = starterIDs.intersection(validIDs)
-        playingSeconds = playingSeconds.filter { validIDs.contains($0.key) }
-        playingSecondsAtPeriodStart = playingSecondsAtPeriodStart.filter { validIDs.contains($0.key) }
+        accumulatedPlaying = accumulatedPlaying.filter { validIDs.contains($0.key) }
+        accumulatedPlayingAtPeriodStart = accumulatedPlayingAtPeriodStart.filter { validIDs.contains($0.key) }
         playerStatuses = playerStatuses.filter { validIDs.contains($0.key) }
         reminders.removeAll { !validIDs.contains($0.outPlayerID) || !validIDs.contains($0.inPlayerID) }
 
         // Seed state for newly added players.
         for player in updated {
-            if playingSeconds[player.id] == nil { playingSeconds[player.id] = 0 }
-            if playingSecondsAtPeriodStart[player.id] == nil { playingSecondsAtPeriodStart[player.id] = playingSeconds[player.id] ?? 0 }
+            if accumulatedPlaying[player.id] == nil { accumulatedPlaying[player.id] = 0 }
+            if accumulatedPlayingAtPeriodStart[player.id] == nil { accumulatedPlayingAtPeriodStart[player.id] = accumulatedPlaying[player.id] ?? 0 }
             if playerStatuses[player.id] == nil { playerStatuses[player.id] = .available }
         }
 
@@ -122,7 +177,7 @@ final class GameDayViewModel: ObservableObject {
     }
 
     var periodSeconds: Int {
-        max(0, elapsedSeconds - periodStartSeconds)
+        max(0, elapsedSeconds - Int(elapsedAtPeriodStart))
     }
 
     var activeReminderText: String {
@@ -238,12 +293,10 @@ final class GameDayViewModel: ObservableObject {
 
     func tick() {
         guard isRunning else { return }
-
-        elapsedSeconds += 1
-        for playerID in starterIDs where playerStatuses[playerID, default: .available] == .available {
-            playingSeconds[playerID, default: 0] += 1
-        }
-
+        // Bank elapsed time (also catches up after missed ticks) and refresh the
+        // wall-clock-derived displays, then check reminders.
+        settle()
+        objectWillChange.send()
         processReminderAlerts()
     }
 
@@ -310,30 +363,42 @@ final class GameDayViewModel: ObservableObject {
         }
     }
 
-    func start() { isRunning = true }
-    func pause() { isRunning = false }
+    func start() {
+        guard !isRunning else { return }
+        runAnchor = now()
+        isRunning = true
+    }
+
+    func pause() {
+        guard isRunning else { return }
+        settle()
+        runAnchor = nil
+        isRunning = false
+    }
 
     private func resetLineup() {
+        runAnchor = nil
         isRunning = false
-        elapsedSeconds = 0
+        accumulatedElapsed = 0
+        elapsedAtPeriodStart = 0
         reminders.removeAll()
         subLog.removeAll()
         playerStatuses = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, GamePlayerStatus.available) })
-        playingSeconds = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, 0) })
-        playingSecondsAtPeriodStart = playingSeconds
+        accumulatedPlaying = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, TimeInterval(0)) })
+        accumulatedPlayingAtPeriodStart = accumulatedPlaying
         starterIDs = Set(roster.prefix(playersOnField).map(\.id))
-        periodStartSeconds = 0
         currentPeriod = 1
         normalizeSelections()
     }
 
     func resetGameClock() {
+        runAnchor = nil
         isRunning = false
-        elapsedSeconds = 0
-        periodStartSeconds = 0
+        accumulatedElapsed = 0
+        elapsedAtPeriodStart = 0
         currentPeriod = 1
-        playingSeconds = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, 0) })
-        playingSecondsAtPeriodStart = playingSeconds
+        accumulatedPlaying = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, TimeInterval(0)) })
+        accumulatedPlayingAtPeriodStart = accumulatedPlaying
         // Restore the starting lineup so it matches the now-empty sub log.
         playerStatuses = Dictionary(uniqueKeysWithValues: roster.map { ($0.id, GamePlayerStatus.available) })
         starterIDs = Set(roster.prefix(playersOnField).map(\.id))
@@ -349,22 +414,24 @@ final class GameDayViewModel: ObservableObject {
 
     func advancePeriod() {
         guard !isLastPeriod else { return }
+        settle()
+        runAnchor = nil
         isRunning = false
         currentPeriod += 1
-        periodStartSeconds = elapsedSeconds
-        playingSecondsAtPeriodStart = playingSeconds
+        elapsedAtPeriodStart = accumulatedElapsed
+        accumulatedPlayingAtPeriodStart = accumulatedPlaying
     }
 
     func resetPeriodClock() {
+        runAnchor = nil
         isRunning = false
-        elapsedSeconds = periodStartSeconds
-        // Rewind minutes accrued during the aborted portion of this period.
-        for id in playingSeconds.keys {
-            playingSeconds[id] = playingSecondsAtPeriodStart[id] ?? 0
-        }
+        // Rewind the clock and minutes to this period's start snapshot.
+        accumulatedElapsed = elapsedAtPeriodStart
+        accumulatedPlaying = accumulatedPlayingAtPeriodStart
+        let elapsed = elapsedSeconds
         reminders = reminders.map { reminder in
             var updated = reminder
-            let due = elapsedSeconds >= reminder.minute * 60
+            let due = elapsed >= reminder.minute * 60
             updated.triggered = due
             // Only suppress the heads-up once the exact minute has passed; a
             // reminder still ahead of us gets a fresh chance at its pre-alert,
@@ -377,6 +444,7 @@ final class GameDayViewModel: ObservableObject {
     // MARK: - Lineup
 
     func moveToBench(_ player: Player) {
+        settle()
         starterIDs.remove(player.id)
         normalizeSelections()
     }
@@ -384,11 +452,13 @@ final class GameDayViewModel: ObservableObject {
     func moveToStarter(_ player: Player) {
         guard starterIDs.count < playersOnField else { return }
         guard status(for: player) == .available else { return }
+        settle()
         starterIDs.insert(player.id)
         normalizeSelections()
     }
 
     func setPlayerStatus(_ player: Player, _ status: GamePlayerStatus) {
+        settle()
         playerStatuses[player.id] = status
 
         if status != .available {
@@ -419,6 +489,7 @@ final class GameDayViewModel: ObservableObject {
 
     func undoLastSub() {
         guard canUndoLastSub, let last = subLog.first else { return }
+        settle()
         starterIDs.remove(last.inPlayerID)
         starterIDs.insert(last.outPlayerID)
         subLog.removeFirst()
@@ -432,6 +503,7 @@ final class GameDayViewModel: ObservableObject {
     private func substitute(outID: UUID, inID: UUID, note: String) {
         guard starterIDs.contains(outID), !starterIDs.contains(inID) else { return }
         guard playerStatuses[outID, default: .available] == .available, playerStatuses[inID, default: .available] == .available else { return }
+        settle()
         starterIDs.remove(outID)
         starterIDs.insert(inID)
         subLog.insert(
