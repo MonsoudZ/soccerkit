@@ -165,6 +165,47 @@ enum SampleData {
             rsvps: [:]
         )
 
+        let playedHome = GameEvent(
+            id: UUID(uuidString: "F19C4A70-1B2C-4E55-9A10-6B7C8D9E0003")!,
+            teamID: u12.id,
+            opponent: "Maple Strikers",
+            date: Calendar.current.date(byAdding: .day, value: -10, to: Date()) ?? Date(),
+            location: "Central Park Field 3",
+            isHome: true,
+            notes: "Controlled the midfield and finished our chances.",
+            attendance: [
+                players[0].id: .present, players[1].id: .present, players[2].id: .present,
+                players[3].id: .present, players[4].id: .late
+            ],
+            teamScore: 3,
+            opponentScore: 1,
+            playerReports: [
+                players[2].id: GamePlayerReport(goals: 2, assists: 0, effort: 5, developmentFocus: "Movement in the box"),
+                players[1].id: GamePlayerReport(goals: 1, assists: 1, effort: 4),
+                players[3].id: GamePlayerReport(goals: 0, assists: 1, effort: 4)
+            ]
+        )
+
+        let playedAway = GameEvent(
+            id: UUID(uuidString: "F19C4A70-1B2C-4E55-9A10-6B7C8D9E0004")!,
+            teamID: u12.id,
+            opponent: "Cedar United",
+            date: Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date(),
+            location: "Cedar Fields",
+            isHome: false,
+            notes: "Battled hard for a point away from home.",
+            attendance: [
+                players[0].id: .present, players[1].id: .present, players[2].id: .present,
+                players[3].id: .absent, players[4].id: .present
+            ],
+            teamScore: 2,
+            opponentScore: 2,
+            playerReports: [
+                players[1].id: GamePlayerReport(goals: 1, assists: 0, effort: 4),
+                players[2].id: GamePlayerReport(goals: 1, assists: 1, effort: 5)
+            ]
+        )
+
         let tournament = TeamEvent(
             id: UUID(uuidString: "D53A9C11-77E4-4B2A-9F0E-2C4A6B8D0001")!,
             teamID: u12.id,
@@ -198,7 +239,7 @@ enum SampleData {
             drills: [rondo, finishing, pressureCover, game],
             sessions: [session, secondSession],
             diagrams: [],
-            games: [leagueGame, awayGame],
+            games: [playedHome, playedAway, leagueGame, awayGame],
             events: [tournament, teamSocial],
             selectedTeamID: u12.id
         )

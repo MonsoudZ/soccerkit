@@ -47,6 +47,8 @@ private struct DetailContainer: View {
                 GameDayView(viewModel: store.gameDay)
             case .games:
                 GamesView()
+            case .stats:
+                SeasonStatsView()
             case .field:
                 FieldBoardView()
             case .training:
