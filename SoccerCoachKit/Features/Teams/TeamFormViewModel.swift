@@ -49,7 +49,11 @@ final class TeamFormViewModel: ObservableObject {
                     ageGroup: ageGroup,
                     season: cleanSeason,
                     accentName: cleanAccent.isEmpty ? team.accentName : cleanAccent,
-                    trainingDefaults: defaults
+                    trainingDefaults: defaults,
+                    // Preserve the coach's configured match rules; clamp the
+                    // minutes goal in case the age group was lowered here.
+                    periodFormat: team.periodFormat,
+                    defaultMinimumMinutes: min(team.defaultMinimumMinutes, ageGroup.defaultGameMinutes)
                 )
             )
         } else {

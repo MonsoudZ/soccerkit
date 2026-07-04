@@ -25,12 +25,13 @@ struct ContentView: View {
     }
 }
 
-/// The persistent detail root. It owns the game-day model so an in-progress
-/// match survives section switches, and — because the sidebar lives in a
-/// sibling subtree — a running clock re-renders only this container, not the
-/// whole navigation shell.
+/// The detail root. The game-day model lives on `AppStore` (app-lifetime), so a
+/// live match survives section switches on every device — including the iPhone,
+/// where this container is torn down when navigating back to the sidebar. This
+/// view reads (not observes) `store.gameDay`, so the per-second clock re-renders
+/// only `GameDayView`, never the navigation shell.
 private struct DetailContainer: View {
-    @StateObject private var gameDay = GameDayViewModel()
+    @EnvironmentObject private var store: AppStore
     let selection: AppSection
 
     var body: some View {
@@ -43,7 +44,7 @@ private struct DetailContainer: View {
             case .roster:
                 RosterView()
             case .game:
-                GameDayView(viewModel: gameDay)
+                GameDayView(viewModel: store.gameDay)
             case .games:
                 GamesView()
             case .field:

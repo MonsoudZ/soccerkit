@@ -44,7 +44,8 @@ final class GameDayViewModel: ObservableObject {
     @Published var formation: LineupFormation = .balanced
 
     /// `now` is injectable purely for testing; production uses `Date.init`.
-    init(now: @escaping () -> Date = Date.init) {
+    /// `nonisolated` so the app-wide `AppStore` can own an instance.
+    nonisolated init(now: @escaping () -> Date = Date.init) {
         self.now = now
     }
 

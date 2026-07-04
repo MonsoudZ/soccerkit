@@ -31,6 +31,13 @@ final class AppStore: ObservableObject {
 
     private let persistence: PersistenceService
 
+    /// The live game-day session. Held here (app-lifetime) so an in-progress
+    /// match survives navigating between sections on any device — including the
+    /// iPhone, where the detail view is torn down on section changes. It is not
+    /// `@Published`, so its per-second clock updates don't re-render the rest of
+    /// the app; `GameDayView` observes it directly.
+    let gameDay = GameDayViewModel()
+
     init(snapshot: AppSnapshot, persistence: PersistenceService = UserDefaultsPersistenceService()) {
         self.teams = snapshot.teams
         self.players = snapshot.players
