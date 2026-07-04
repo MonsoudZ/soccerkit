@@ -26,6 +26,8 @@ final class GameDayViewModel: ObservableObject {
     private var runAnchor: TimeInterval?
     /// Source of monotonic seconds (injectable for testing).
     private let now: () -> TimeInterval
+    /// Schedules background local notifications for pending sub reminders.
+    private let notifier = GameDayNotifier()
 
     // Game state.
     @Published var starterIDs: Set<UUID> = []
@@ -369,6 +371,7 @@ final class GameDayViewModel: ObservableObject {
         }
         activeReminder = nil
         showReminder = false
+        rescheduleNotifications()
         presentNextPendingAlert()
     }
 
@@ -386,18 +389,71 @@ final class GameDayViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Background notifications
+
+    /// Prompts for notification permission (once) so reminders can alert the
+    /// coach while the app is backgrounded or the phone is locked.
+    func requestNotificationAuthorization() {
+        notifier.requestAuthorization()
+    }
+
+    /// Rebuilds the scheduled background notifications from the pending reminders
+    /// and the current clock. Called whenever the clock state or reminders
+    /// change. When the clock isn't running there's no wall-clock mapping, so
+    /// all notifications are cleared.
+    private func rescheduleNotifications() {
+        guard isRunning else {
+            notifier.cancelAll()
+            return
+        }
+
+        let elapsed = elapsedSeconds
+        let lead = max(0, subAlertLeadMinutes)
+        var items: [GameDayNotifier.PendingNotification] = []
+
+        for reminder in reminders where !reminder.triggered {
+            let dueSeconds = TimeInterval(reminder.minute * 60 - elapsed)
+            let inName = playerName(reminder.inPlayerID)
+            let outName = playerName(reminder.outPlayerID)
+
+            if dueSeconds >= 1 {
+                items.append(.init(
+                    id: "\(reminder.id).exact",
+                    secondsFromNow: dueSeconds,
+                    title: "Substitution Time",
+                    body: "Put \(inName) in for \(outName) (\(reminder.minute)')."
+                ))
+            }
+
+            if lead > 0, !reminder.preAlertTriggered {
+                let preSeconds = dueSeconds - TimeInterval(lead * 60)
+                if preSeconds >= 1 {
+                    items.append(.init(
+                        id: "\(reminder.id).pre",
+                        secondsFromNow: preSeconds,
+                        title: "Sub Coming Up",
+                        body: "In \(lead) min: \(inName) for \(outName). Get them ready."
+                    ))
+                }
+            }
+        }
+
+        notifier.reschedule(items)
+    }
+
     func start() {
         guard !isRunning else { return }
         runAnchor = now()
         isRunning = true
+        rescheduleNotifications()
     }
-    // (runAnchor now holds monotonic seconds; all reset paths clear it to nil.)
 
     func pause() {
         guard isRunning else { return }
         settle()
         runAnchor = nil
         isRunning = false
+        rescheduleNotifications()
     }
 
     private func resetLineup() {
@@ -413,6 +469,7 @@ final class GameDayViewModel: ObservableObject {
         starterIDs = Set(roster.prefix(playersOnField).map(\.id))
         currentPeriod = 1
         normalizeSelections()
+        rescheduleNotifications()
     }
 
     func resetGameClock() {
@@ -434,6 +491,7 @@ final class GameDayViewModel: ObservableObject {
         }
         subLog.removeAll()
         normalizeSelections()
+        rescheduleNotifications()
     }
 
     func advancePeriod() {
@@ -444,6 +502,7 @@ final class GameDayViewModel: ObservableObject {
         currentPeriod += 1
         elapsedAtPeriodStart = accumulatedElapsed
         accumulatedPlayingAtPeriodStart = accumulatedPlaying
+        rescheduleNotifications()
     }
 
     func resetPeriodClock() {
@@ -463,6 +522,7 @@ final class GameDayViewModel: ObservableObject {
             updated.preAlertTriggered = due
             return updated
         }
+        rescheduleNotifications()
     }
 
     // MARK: - Lineup
@@ -499,6 +559,7 @@ final class GameDayViewModel: ObservableObject {
     func addReminder() {
         guard let outID = selectedOutPlayerID, let inID = selectedInPlayerID else { return }
         reminders.append(SubReminder(id: UUID(), minute: newReminderMinute, outPlayerID: outID, inPlayerID: inID, triggered: false))
+        rescheduleNotifications()
     }
 
     func applySubstitution(_ reminder: SubReminder) {
@@ -506,6 +567,7 @@ final class GameDayViewModel: ObservableObject {
         // the incoming/outgoing player is no longer available).
         if substitute(outID: reminder.outPlayerID, inID: reminder.inPlayerID, note: "Reminder") {
             reminders.removeAll { $0.id == reminder.id }
+            rescheduleNotifications()
         }
     }
 
@@ -525,6 +587,7 @@ final class GameDayViewModel: ObservableObject {
 
     func deleteReminder(_ reminder: SubReminder) {
         reminders.removeAll { $0.id == reminder.id }
+        rescheduleNotifications()
     }
 
     @discardableResult

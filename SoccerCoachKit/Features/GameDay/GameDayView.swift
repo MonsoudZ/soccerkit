@@ -41,7 +41,10 @@ struct GameDayView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
-        .onAppear { viewModel.prepareIfNeeded(with: store) }
+        .onAppear {
+            viewModel.prepareIfNeeded(with: store)
+            viewModel.requestNotificationAuthorization()
+        }
         .onChange(of: store.selectedTeamID) { _ in
             viewModel.reset(with: store)
         }

@@ -25,6 +25,7 @@
 		3C20AEA021D4E284DFEA73EA /* EventDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CBCAED5A092DA56C6328A68 /* EventDetailViewModel.swift */; };
 		3EB9A2F6A273C89C891940D1 /* FieldBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DF24DCFABC28CF3844D63A3 /* FieldBoardView.swift */; };
 		3EF18F3C87F6E97FC48772FB /* RosterRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3130B2033447EE2987662A49 /* RosterRows.swift */; };
+		414D2B5C62EAE176E3E87A5F /* GameDayNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CD30A6564C873B7AAF6358 /* GameDayNotifier.swift */; };
 		48188312534BC291BA21128F /* CalendarModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC1D4DC7679170888120A7D /* CalendarModels.swift */; };
 		50A2FD13DE97E4F105C3CB9E /* GameReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821EFBF7CF708FA1FAC9500A /* GameReportView.swift */; };
 		54E67C89E9E0C38155A49D48 /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62A674357C54F77B997AD8F7 /* TrainingSession.swift */; };
@@ -89,6 +90,7 @@
 		047218D64B0DDEE2757C28B8 /* GameDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDayView.swift; sourceTree = "<group>"; };
 		0E5490EAFB76F5859D53045B /* PlayerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerViews.swift; sourceTree = "<group>"; };
 		132367BBDD7B55DDC6A587CC /* PlayerFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerFormView.swift; sourceTree = "<group>"; };
+		14CD30A6564C873B7AAF6358 /* GameDayNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDayNotifier.swift; sourceTree = "<group>"; };
 		25B01D4D77B5396A712DE244 /* BoardMarkers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardMarkers.swift; sourceTree = "<group>"; };
 		28168C76EF304F6869DAF765 /* PlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDetailView.swift; sourceTree = "<group>"; };
 		2CBCAED5A092DA56C6328A68 /* EventDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailViewModel.swift; sourceTree = "<group>"; };
@@ -248,6 +250,7 @@
 			children = (
 				8C82BEA5599335EA01AA0841 /* GameDayComponents.swift */,
 				D670418A30F9393EC244F252 /* GameDayModels.swift */,
+				14CD30A6564C873B7AAF6358 /* GameDayNotifier.swift */,
 				047218D64B0DDEE2757C28B8 /* GameDayView.swift */,
 				82C3B12B392B328FE29FE2B1 /* GameDayViewModel.swift */,
 			);
@@ -505,6 +508,7 @@
 				86156778B7B1028D05124C51 /* FieldCanvas.swift in Sources */,
 				046043C46451E25208AB2053 /* GameDayComponents.swift in Sources */,
 				D19CD59F1EA7757D6E54BDCA /* GameDayModels.swift in Sources */,
+				414D2B5C62EAE176E3E87A5F /* GameDayNotifier.swift in Sources */,
 				A19767AF178D397224F7296C /* GameDayView.swift in Sources */,
 				B3DA61BD158B213EC1458594 /* GameDayViewModel.swift in Sources */,
 				981358A6E2AE64CF5975504C /* GameDetailView.swift in Sources */,
