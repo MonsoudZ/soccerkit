@@ -97,3 +97,39 @@ struct NextFixtureView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+/// The Lock Screen (`.accessoryRectangular`) layout. Accessory widgets render in
+/// a monochrome/vibrant mode, so this leans on SF Symbols, weight, and the text
+/// hierarchy rather than color; `.widgetAccentable()` lets the whole thing pick
+/// up an accent-tinted Lock Screen.
+struct AccessoryFixtureView: View {
+    let fixture: FixtureSnapshot?
+
+    var body: some View {
+        if let fixture {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Image(systemName: "soccerball")
+                    Text(fixture.isHome ? "NEXT · HOME" : "NEXT · AWAY")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .font(.caption2)
+                .widgetAccentable()
+
+                Text("vs \(fixture.opponent)")
+                    .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text(fixture.date, format: .relative(presentation: .named))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        } else {
+            Label("No upcoming games", systemImage: "soccerball")
+                .font(.caption)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+    }
+}

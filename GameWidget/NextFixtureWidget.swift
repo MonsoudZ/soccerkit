@@ -32,23 +32,59 @@ struct FixtureProvider: TimelineProvider {
 struct NextFixtureWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "NextFixture", provider: FixtureProvider()) { entry in
-            NextFixtureView(fixture: entry.fixture, compact: false)
-                .widgetContainer()
+            FixtureWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Next Fixture")
         .description("Your team's next game at a glance.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline])
+    }
+}
+
+/// Picks the right layout and container treatment for the current widget family,
+/// including the Lock Screen accessory families.
+private struct FixtureWidgetEntryView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: FixtureEntry
+
+    var body: some View {
+        switch family {
+        case .accessoryRectangular:
+            AccessoryFixtureView(fixture: entry.fixture)
+                .accessoryContainer()
+        case .accessoryInline:
+            // A single tinted line beside the Lock Screen clock.
+            Label(inlineText, systemImage: "soccerball")
+        default:
+            NextFixtureView(fixture: entry.fixture, compact: family == .systemSmall)
+                .widgetContainer()
+        }
+    }
+
+    private var inlineText: String {
+        guard let fixture = entry.fixture else { return "No games" }
+        return "vs \(fixture.opponent)"
     }
 }
 
 private extension View {
-    /// Applies the widget's content margins/background across OS versions.
+    /// Content margins/background for the Home Screen (system) families.
     @ViewBuilder
     func widgetContainer() -> some View {
         if #available(iOS 17.0, *) {
             self.padding(4).containerBackground(.fill.tertiary, for: .widget)
         } else {
             self.padding()
+        }
+    }
+
+    /// Lock Screen accessory widgets sit on the wallpaper, so their container is
+    /// clear.
+    @ViewBuilder
+    func accessoryContainer() -> some View {
+        if #available(iOS 17.0, *) {
+            self.containerBackground(.clear, for: .widget)
+        } else {
+            self
         }
     }
 }
