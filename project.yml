@@ -37,6 +37,11 @@ targets:
       - path: SoccerCoachKit
     dependencies:
       - target: GameWidget
+    entitlements:
+      path: SoccerCoachKit/SoccerCoachKit.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.monsoudzanaty.SoccerCoachKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit
@@ -73,8 +78,15 @@ targets:
     deploymentTarget: "16.1"
     sources:
       - path: GameWidget
-      # Shared with the app so both sides agree on the Live Activity type.
+      # Shared with the app so both sides agree on the Live Activity type and
+      # the Home Screen widget's model/view.
       - path: SoccerCoachKit/GameActivity/GameActivityAttributes.swift
+      - path: SoccerCoachKit/WidgetShared
+    entitlements:
+      path: GameWidget/GameWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.monsoudzanaty.SoccerCoachKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit.GameWidget

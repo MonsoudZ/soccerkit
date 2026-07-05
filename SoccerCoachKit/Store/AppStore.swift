@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import WidgetKit
 
 /// App-wide source of truth. Holds the published domain collections and the
 /// intents that mutate them, delegating durability to a `PersistenceService`.
@@ -51,6 +52,7 @@ final class AppStore: ObservableObject {
         self.events = snapshot.events
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
         self.persistence = persistence
+        publishWidgetData()
     }
 
     /// The store used at launch: persisted snapshot if present and readable,
@@ -717,6 +719,27 @@ final class AppStore: ObservableObject {
     private func persist() {
         guard !isBatchingPersist else { return }
         persistence.save(snapshot)
+        publishWidgetData()
+    }
+
+    /// Publishes the soonest fixture (across all teams) to the app group and
+    /// reloads the Home Screen widget — but only when it actually changed, so
+    /// frequent saves don't thrash WidgetKit.
+    func publishWidgetData() {
+        let fixture: FixtureSnapshot? = soonestGame.map { game in
+            let team = teams.first { $0.id == game.teamID }
+            return FixtureSnapshot(
+                teamName: team?.name ?? "",
+                opponent: game.opponent,
+                date: game.date,
+                location: game.location,
+                isHome: game.isHome,
+                accentHex: team?.accent.hex ?? "4F46E5"
+            )
+        }
+        guard fixture != WidgetSharedStore.load() else { return }
+        WidgetSharedStore.save(fixture)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - Backup & restore

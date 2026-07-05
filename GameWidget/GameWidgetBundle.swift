@@ -6,26 +6,13 @@ import WidgetKit
 struct GameWidgetBundle: WidgetBundle {
     var body: some Widget {
         GameLiveActivity()
+        NextFixtureWidget()
     }
 }
 
-// MARK: - Helpers (self-contained; the widget shares no code with the app)
+// MARK: - Helpers
 
-private extension Color {
-    /// 24-bit RGB hex string ("4F46E5") → Color, falling back to accentColor.
-    init(hex: String) {
-        var value: UInt64 = 0
-        guard Scanner(string: hex).scanHexInt64(&value), hex.count >= 6 else {
-            self = .accentColor
-            return
-        }
-        self = Color(
-            red: Double((value >> 16) & 0xFF) / 255,
-            green: Double((value >> 8) & 0xFF) / 255,
-            blue: Double(value & 0xFF) / 255
-        )
-    }
-}
+// `Color(hex:)` is defined in the shared NextFixtureView.swift.
 
 private func clockString(_ seconds: Int) -> String {
     String(format: "%d:%02d", seconds / 60, seconds % 60)
