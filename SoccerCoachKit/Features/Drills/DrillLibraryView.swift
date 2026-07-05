@@ -38,9 +38,11 @@ struct DrillLibraryView: View {
             }
 
             if filteredDrills.isEmpty {
-                Text("No drills match these filters.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                InlineEmptyView(
+                    title: "No Drills Found",
+                    systemImage: "sportscourt",
+                    message: "No drills match the current library, category, or tag filters."
+                )
             } else {
                 ForEach(filteredDrills) { drill in
                     NavigationLink {

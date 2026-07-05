@@ -5,31 +5,38 @@ struct GamesView: View {
     @StateObject private var viewModel = GamesViewModel()
 
     var body: some View {
-        List {
+        Group {
             if store.teamGames.isEmpty {
-                Text("No games scheduled yet.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                EmptyStateView(
+                    title: "No Games Scheduled",
+                    systemImage: "soccerball",
+                    message: "Add your first fixture to set the venue, date, and collect RSVPs from the roster.",
+                    actionTitle: "New Game"
+                ) {
+                    viewModel.showingNewGame = true
+                }
             } else {
-                ForEach(store.teamGames) { game in
-                    NavigationLink {
-                        GameDetailView(gameID: game.id)
-                    } label: {
-                        GameSummaryCard(game: game)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            viewModel.delete(game, from: store)
+                List {
+                    ForEach(store.teamGames) { game in
+                        NavigationLink {
+                            GameDetailView(gameID: game.id)
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            GameSummaryCard(game: game)
+                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                viewModel.delete(game, from: store)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
                 }
+                .listStyle(.plain)
+                .themedList()
             }
         }
-        .listStyle(.plain)
-        .themedList()
         .toolbar {
             Button {
                 viewModel.showingNewGame = true

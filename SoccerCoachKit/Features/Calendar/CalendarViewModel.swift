@@ -20,8 +20,34 @@ final class CalendarViewModel: ObservableObject {
     @Published var displayedMonth = Date()
     @Published var selectedDate = Date()
     @Published var activeSheet: CalendarSheet?
+    @Published var enabledKinds: Set<CalendarEventKind> = Set(CalendarEventKind.allCases)
 
     let calendar = Calendar.current
+
+    /// Kinds shown in the filter row, in a stable display order.
+    let filterableKinds: [CalendarEventKind] = CalendarEventKind.allCases
+
+    // MARK: Filtering
+
+    var isFiltering: Bool {
+        enabledKinds.count != CalendarEventKind.allCases.count
+    }
+
+    func isEnabled(_ kind: CalendarEventKind) -> Bool {
+        enabledKinds.contains(kind)
+    }
+
+    func toggle(_ kind: CalendarEventKind) {
+        if enabledKinds.contains(kind) {
+            enabledKinds.remove(kind)
+        } else {
+            enabledKinds.insert(kind)
+        }
+    }
+
+    func enableAllKinds() {
+        enabledKinds = Set(CalendarEventKind.allCases)
+    }
 
     // MARK: Navigation
 
@@ -81,13 +107,13 @@ final class CalendarViewModel: ObservableObject {
 
     func itemsForSelectedDay(in store: AppStore) -> [CalendarItem] {
         store.calendarItems
-            .filter { $0.covers(selectedDate, calendar: calendar) }
+            .filter { enabledKinds.contains($0.kind) && $0.covers(selectedDate, calendar: calendar) }
             .sorted { $0.date < $1.date }
     }
 
     func kinds(on day: Date, in store: AppStore) -> [CalendarEventKind] {
         var seen: [CalendarEventKind] = []
-        for item in store.calendarItems where item.covers(day, calendar: calendar) {
+        for item in store.calendarItems where enabledKinds.contains(item.kind) && item.covers(day, calendar: calendar) {
             if !seen.contains(item.kind) {
                 seen.append(item.kind)
             }

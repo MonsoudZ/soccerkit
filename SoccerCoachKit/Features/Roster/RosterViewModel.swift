@@ -4,6 +4,31 @@ import Foundation
 final class RosterViewModel: ObservableObject {
     @Published var showingAddPlayer = false
     @Published var exportFile: RosterExportFile?
+    @Published var searchText = ""
+    @Published var positionFilter: PlayerPosition?
+
+    var isFiltering: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || positionFilter != nil
+    }
+
+    /// The selected team's roster narrowed by the search text and position filter.
+    func filteredRoster(in store: AppStore) -> [Player] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return store.roster.filter { player in
+            let matchesPosition = positionFilter == nil || player.position == positionFilter
+            let matchesQuery = query.isEmpty
+                || player.name.lowercased().contains(query)
+                || player.guardian.lowercased().contains(query)
+                || player.position.rawValue.lowercased().contains(query)
+                || "\(player.number)".contains(query)
+            return matchesPosition && matchesQuery
+        }
+    }
+
+    func clearFilters() {
+        searchText = ""
+        positionFilter = nil
+    }
 
     func delete(_ player: Player, from store: AppStore) {
         store.deletePlayer(player)
