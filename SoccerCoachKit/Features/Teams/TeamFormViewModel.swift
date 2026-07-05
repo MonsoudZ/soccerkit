@@ -60,6 +60,7 @@ final class TeamFormViewModel: ObservableObject {
             store.addTeam(name: cleanName, ageGroup: ageGroup, season: cleanSeason.isEmpty ? "Current Season" : cleanSeason)
             var newTeam = store.selectedTeam
             newTeam.trainingDefaults = defaults
+            if !cleanAccent.isEmpty { newTeam.accentName = cleanAccent }
             store.updateTeam(newTeam)
         }
     }

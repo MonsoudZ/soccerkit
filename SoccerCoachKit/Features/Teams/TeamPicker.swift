@@ -6,11 +6,16 @@ struct TeamPicker: View {
     var body: some View {
         Picker("Team", selection: $store.selectedTeamID) {
             ForEach(store.teams) { team in
-                VStack(alignment: .leading) {
-                    Text(team.name)
-                    Text("\(team.ageGroup.rawValue) - \(team.season)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack {
+                    Circle()
+                        .fill(team.accentColor)
+                        .frame(width: 10, height: 10)
+                    VStack(alignment: .leading) {
+                        Text(team.name)
+                        Text("\(team.ageGroup.rawValue) - \(team.season)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .tag(team.id)
             }

@@ -18,7 +18,7 @@ struct TeamHeader: View {
         .padding(18)
         .background(
             LinearGradient(
-                colors: [Color.teal.opacity(0.22), Color.indigo.opacity(0.12), Color(.systemBackground)],
+                colors: [team.accentColor.opacity(0.28), team.accentColor.opacity(0.10), Color(.systemBackground)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

@@ -19,7 +19,29 @@ struct TeamFormView: View {
                     }
                 }
                 TextField("Season", text: $viewModel.season)
-                TextField("Accent", text: $viewModel.accentName)
+            }
+
+            Section("Accent Color") {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(TeamAccent.allCases) { accent in
+                            let isSelected = viewModel.accentName.lowercased() == accent.rawValue
+                            Button {
+                                viewModel.accentName = accent.rawValue
+                            } label: {
+                                Circle()
+                                    .fill(accent.color)
+                                    .frame(width: 30, height: 30)
+                                    .overlay(Circle().strokeBorder(.primary, lineWidth: isSelected ? 3 : 0))
+                                    .padding(2)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(accent.displayName)
+                            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
             }
 
             Section("Rules") {

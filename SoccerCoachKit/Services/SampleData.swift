@@ -17,7 +17,7 @@ enum SampleData {
             name: "Park United",
             ageGroup: .u10,
             season: "Fall 2026",
-            accentName: "Coral",
+            accentName: "Orange",
             trainingDefaults: TrainingBoardDefaults(playerCount: 6, opponentCount: 2, coneCount: 8, zoneCount: 1)
         )
 

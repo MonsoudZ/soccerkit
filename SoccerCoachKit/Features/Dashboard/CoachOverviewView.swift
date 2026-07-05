@@ -80,6 +80,14 @@ private struct TeamOverviewCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(team.accentColor.opacity(0.2))
+                Text(team.name.prefix(1))
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(team.accentColor)
+            }
+            .frame(width: 44, height: 44)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(team.name)
                     .font(.headline)
