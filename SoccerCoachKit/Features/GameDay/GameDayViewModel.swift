@@ -12,6 +12,8 @@ final class GameDayViewModel: ObservableObject {
     @Published private(set) var defaultMinimumMinutes = 0
     @Published private(set) var periodFormat: PeriodFormat = .halves
     private var teamID: UUID?
+    private var teamName = ""
+    private var accentHex = "4F46E5"
 
     // MARK: Wall-clock timekeeping
     // The clock is derived from timestamps, not tick counts, so it stays
@@ -46,6 +48,11 @@ final class GameDayViewModel: ObservableObject {
     /// How many minutes before a reminder's minute the early heads-up fires.
     @Published var subAlertLeadMinutes = 1
     @Published var formation: LineupFormation = .balanced
+
+    // Live scoreboard (surfaced on the Game Day screen and the Live Activity).
+    @Published var teamScore = 0
+    @Published var opponentScore = 0
+    @Published var opponentName = "Opponent"
 
     /// `now` is injectable purely for testing; production uses a monotonic
     /// source. `nonisolated` so the app-wide `AppStore` can own an instance.
@@ -120,6 +127,8 @@ final class GameDayViewModel: ObservableObject {
     private func loadConfiguration(from store: AppStore) {
         let team = store.selectedTeam
         teamID = store.selectedTeamID
+        teamName = team.name
+        accentHex = team.accent.hex
         playersOnField = team.ageGroup.playersOnField
         defaultGameMinutes = team.ageGroup.defaultGameMinutes
         defaultMinimumMinutes = team.defaultMinimumMinutes
@@ -446,6 +455,10 @@ final class GameDayViewModel: ObservableObject {
         runAnchor = now()
         isRunning = true
         rescheduleNotifications()
+        // Begin (or resume) the Live Activity when the clock starts running.
+        activity.start(teamName: teamName, opponentName: opponentName, accentHex: accentHex,
+                       teamScore: teamScore, opponentScore: opponentScore,
+                       periodLabel: currentPeriodLabel, isRunning: true, elapsed: elapsedSeconds)
     }
 
     func pause() {
@@ -454,6 +467,34 @@ final class GameDayViewModel: ObservableObject {
         runAnchor = nil
         isRunning = false
         rescheduleNotifications()
+        refreshActivity()
+    }
+
+    // MARK: Live scoreboard
+
+    func scoreTeam(_ delta: Int) {
+        teamScore = max(0, teamScore + delta)
+        refreshActivity()
+    }
+
+    func scoreOpponent(_ delta: Int) {
+        opponentScore = max(0, opponentScore + delta)
+        refreshActivity()
+    }
+
+    // MARK: Live Activity
+
+    private let activity = GameActivityController.shared
+
+    /// Pushes the current match state to a running Live Activity (no-op if none).
+    private func refreshActivity() {
+        guard activity.isActive else { return }
+        activity.update(teamScore: teamScore, opponentScore: opponentScore,
+                        periodLabel: currentPeriodLabel, isRunning: isRunning, elapsed: elapsedSeconds)
+    }
+
+    private func endActivity() {
+        activity.end()
     }
 
     private func resetLineup() {
@@ -468,8 +509,12 @@ final class GameDayViewModel: ObservableObject {
         accumulatedPlayingAtPeriodStart = accumulatedPlaying
         starterIDs = Set(roster.prefix(playersOnField).map(\.id))
         currentPeriod = 1
+        teamScore = 0
+        opponentScore = 0
+        opponentName = "Opponent"
         normalizeSelections()
         rescheduleNotifications()
+        endActivity()
     }
 
     func resetGameClock() {
@@ -490,8 +535,11 @@ final class GameDayViewModel: ObservableObject {
             return updated
         }
         subLog.removeAll()
+        teamScore = 0
+        opponentScore = 0
         normalizeSelections()
         rescheduleNotifications()
+        endActivity()
     }
 
     func advancePeriod() {
@@ -503,6 +551,7 @@ final class GameDayViewModel: ObservableObject {
         elapsedAtPeriodStart = accumulatedElapsed
         accumulatedPlayingAtPeriodStart = accumulatedPlaying
         rescheduleNotifications()
+        refreshActivity()
     }
 
     func resetPeriodClock() {
@@ -523,6 +572,7 @@ final class GameDayViewModel: ObservableObject {
             return updated
         }
         rescheduleNotifications()
+        refreshActivity()
     }
 
     // MARK: - Lineup

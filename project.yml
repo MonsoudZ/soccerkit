@@ -35,11 +35,14 @@ targets:
     deploymentTarget: "16.0"
     sources:
       - path: SoccerCoachKit
+    dependencies:
+      - target: GameWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit
         PRODUCT_NAME: "$(TARGET_NAME)"
         GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_NSSupportsLiveActivities: "YES"
         ENABLE_TESTABILITY: "YES"
         ENABLE_PREVIEWS: "YES"
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -64,3 +67,24 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKitTests
         GENERATE_INFOPLIST_FILE: "YES"
+  GameWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "16.1"
+    sources:
+      - path: GameWidget
+      # Shared with the app so both sides agree on the Live Activity type.
+      - path: SoccerCoachKit/GameActivity/GameActivityAttributes.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit.GameWidget
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_FILE: GameWidget/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: "Game Day"
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        SKIP_INSTALL: "YES"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        SUPPORTS_MACCATALYST: "NO"
+        SWIFT_EMIT_LOC_STRINGS: "YES"

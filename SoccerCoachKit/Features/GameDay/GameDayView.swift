@@ -29,6 +29,8 @@ struct GameDayView: View {
                     resetPeriodAction: { viewModel.resetPeriodClock() }
                 )
 
+                scoreboardSection
+
                 quickSubSection
                 lineupSection
                 reminderSection
@@ -144,6 +146,88 @@ struct GameDayView: View {
                 )
             }
         }
+    }
+
+    private var scoreboardSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
+            HStack {
+                SectionHeader("Scoreboard")
+                Spacer()
+                if viewModel.teamScore > 0 || viewModel.opponentScore > 0 {
+                    Text("\(viewModel.teamScore)–\(viewModel.opponentScore)")
+                        .font(.subheadline.weight(.bold).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(alignment: .top, spacing: Spacing.md) {
+                scoreColumn(
+                    name: store.selectedTeam.name,
+                    tint: store.selectedTeam.accentColor,
+                    score: viewModel.teamScore,
+                    onChange: viewModel.scoreTeam
+                )
+
+                Text("–")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 28)
+
+                opponentColumn
+            }
+        }
+        .cardStyle()
+    }
+
+    private func scoreColumn(name: String, tint: Color, score: Int, onChange: @escaping (Int) -> Void) -> some View {
+        VStack(spacing: Spacing.sm) {
+            Text(name)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text("\(score)")
+                .font(.system(size: 44, weight: .heavy, design: .rounded))
+                .foregroundStyle(tint)
+                .contentTransition(.numericText())
+                .animation(.snappy, value: score)
+            stepper(tint: tint, onMinus: { onChange(-1) }, onPlus: { onChange(1) })
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var opponentColumn: some View {
+        VStack(spacing: Spacing.sm) {
+            TextField("Opponent", text: $viewModel.opponentName)
+                .font(.caption.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 120)
+            Text("\(viewModel.opponentScore)")
+                .font(.system(size: 44, weight: .heavy, design: .rounded))
+                .contentTransition(.numericText())
+                .animation(.snappy, value: viewModel.opponentScore)
+            stepper(tint: .secondary, onMinus: { viewModel.scoreOpponent(-1) }, onPlus: { viewModel.scoreOpponent(1) })
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func stepper(tint: Color, onMinus: @escaping () -> Void, onPlus: @escaping () -> Void) -> some View {
+        HStack(spacing: Spacing.md) {
+            Button(action: onMinus) {
+                Image(systemName: "minus")
+                    .frame(width: 30, height: 30)
+            }
+            .accessibilityLabel("Decrease")
+            Button(action: onPlus) {
+                Image(systemName: "plus")
+                    .frame(width: 30, height: 30)
+            }
+            .accessibilityLabel("Increase")
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .tint(tint)
+        .font(.headline)
     }
 
     private var quickSubSection: some View {

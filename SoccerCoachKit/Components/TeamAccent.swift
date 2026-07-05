@@ -22,6 +22,21 @@ enum TeamAccent: String, CaseIterable, Identifiable {
         }
     }
 
+    /// 24-bit RGB hex (approximating the system color) for contexts that can't
+    /// use `Color` directly, e.g. the Live Activity widget.
+    var hex: String {
+        switch self {
+        case .teal: return "30B0C7"
+        case .blue: return "007AFF"
+        case .indigo: return "5856D6"
+        case .purple: return "AF52DE"
+        case .pink: return "FF2D55"
+        case .red: return "FF3B30"
+        case .orange: return "FF9500"
+        case .green: return "34C759"
+        }
+    }
+
     static func named(_ name: String) -> TeamAccent {
         TeamAccent(rawValue: name.lowercased()) ?? .teal
     }
