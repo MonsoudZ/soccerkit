@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: AppSection? = .dashboard
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
 
     var body: some View {
         NavigationSplitView {
@@ -24,10 +25,19 @@ struct ContentView: View {
         } detail: {
             DetailContainer(selection: selection ?? .dashboard)
         }
+        .undoBanner()
         .onChange(of: scenePhase) { _ in
             // Persist the latest state durably before the app suspends.
             if scenePhase != .active { store.flushPendingWrites() }
         }
+        .fullScreenCover(isPresented: showOnboarding) {
+            OnboardingView { hasOnboarded = true }
+        }
+    }
+
+    /// Onboarding is shown once, on first launch.
+    private var showOnboarding: Binding<Bool> {
+        Binding(get: { !hasOnboarded }, set: { hasOnboarded = !$0 })
     }
 }
 

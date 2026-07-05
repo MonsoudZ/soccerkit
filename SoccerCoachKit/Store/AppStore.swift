@@ -276,6 +276,7 @@ final class AppStore: ObservableObject {
     /// Shared drills (`teamID == nil`) are preserved. No-op on the last team.
     func deleteTeam(_ team: Team) {
         guard canDeleteTeam, teams.contains(where: { $0.id == team.id }) else { return }
+        registerUndo("Deleted \(team.name)")
 
         batch {
             players.removeAll { $0.teamID == team.id }
@@ -319,6 +320,7 @@ final class AppStore: ObservableObject {
     }
 
     func deletePlayer(_ player: Player) {
+        registerUndo("Deleted \(player.name)")
         batch {
             players.removeAll { $0.id == player.id }
             sessions = sessions.map { session in
@@ -375,6 +377,7 @@ final class AppStore: ObservableObject {
     }
 
     func deleteGame(_ game: GameEvent) {
+        registerUndo("Deleted game vs \(game.opponent)")
         games.removeAll { $0.id == game.id }
     }
 
@@ -401,6 +404,7 @@ final class AppStore: ObservableObject {
     }
 
     func deleteEvent(_ event: TeamEvent) {
+        registerUndo("Deleted \(event.title)")
         events.removeAll { $0.id == event.id }
     }
 
@@ -435,6 +439,7 @@ final class AppStore: ObservableObject {
     /// area, intensity, diagram, notes) and still resolve for display.
     func deleteDrill(_ drill: Drill) {
         guard let index = drills.firstIndex(where: { $0.id == drill.id }) else { return }
+        registerUndo("Removed \(drill.title)")
         // If no session block still references this drill, remove it outright so
         // archived drills don't accumulate; otherwise archive it so those blocks
         // keep their planned content.
@@ -476,6 +481,7 @@ final class AppStore: ObservableObject {
     }
 
     func deleteSession(_ session: TrainingSession) {
+        registerUndo("Deleted \(session.title)")
         batch {
             sessions.removeAll { $0.id == session.id }
             diagrams = diagrams.map { diagram in
@@ -774,6 +780,52 @@ final class AppStore: ObservableObject {
                 ? snapshot.selectedTeamID
                 : (teams.first?.id ?? snapshot.selectedTeamID)
         }
+    }
+
+    // MARK: - Onboarding
+
+    /// Replaces all data with a single freshly-created team. Used by onboarding
+    /// when a coach chooses to start clean instead of exploring the sample data.
+    func startFresh(name: String, ageGroup: AgeGroup, season: String, accent: TeamAccent) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let team = Team(
+            id: UUID(),
+            name: trimmed.isEmpty ? "My Team" : trimmed,
+            ageGroup: ageGroup,
+            season: season,
+            accentName: accent.rawValue,
+            trainingDefaults: .standard
+        )
+        restore(AppSnapshot(teams: [team], players: [], drills: [], sessions: [],
+                            diagrams: [], games: [], events: [], selectedTeamID: team.id))
+    }
+
+    // MARK: - Undo
+
+    /// A short-lived message shown after a delete; `nil` when there's nothing to
+    /// undo. The captured snapshot lets any delete (including cascading team
+    /// deletes) be reverted as a whole.
+    @Published private(set) var undoMessage: String?
+    private var undoSnapshot: AppSnapshot?
+
+    /// Snapshots the current state so the next delete can be reverted. Call
+    /// *before* the mutation so the removed items are still captured.
+    private func registerUndo(_ message: String) {
+        undoSnapshot = snapshot
+        undoMessage = message
+    }
+
+    /// Restores the state captured before the most recent delete.
+    func undoLastDelete() {
+        guard let undoSnapshot else { return }
+        restore(undoSnapshot)
+        self.undoSnapshot = nil
+        undoMessage = nil
+    }
+
+    func dismissUndo() {
+        undoSnapshot = nil
+        undoMessage = nil
     }
 
     var hasCorruptBackup: Bool { persistence.corruptBackup() != nil }
