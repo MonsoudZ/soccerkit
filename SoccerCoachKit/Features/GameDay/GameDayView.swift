@@ -165,7 +165,7 @@ struct GameDayView: View {
                     name: store.selectedTeam.name,
                     tint: store.selectedTeam.accentColor,
                     score: viewModel.teamScore,
-                    onChange: viewModel.scoreTeam
+                    onChange: { viewModel.scoreTeam($0, in: store) }
                 )
 
                 Text("–")
@@ -175,8 +175,56 @@ struct GameDayView: View {
 
                 opponentColumn
             }
+
+            gameLink
         }
         .cardStyle()
+    }
+
+    /// Links the live match to a scheduled game so the score writes straight
+    /// into that game's post-game report.
+    private var gameLink: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Menu {
+                Button {
+                    viewModel.linkGame(nil, in: store)
+                } label: {
+                    Label("Don't link to a game", systemImage: viewModel.linkedGameID == nil ? "checkmark" : "calendar")
+                }
+                ForEach(store.teamGames) { game in
+                    Button {
+                        viewModel.linkGame(game.id, in: store)
+                    } label: {
+                        Label(
+                            "vs \(game.opponent) · \(game.date.formatted(date: .abbreviated, time: .omitted))",
+                            systemImage: viewModel.linkedGameID == game.id ? "checkmark" : "calendar"
+                        )
+                    }
+                }
+            } label: {
+                Label(linkedGameLabel, systemImage: "link")
+                    .font(.caption.weight(.semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, Spacing.sm)
+                    .padding(.horizontal, Spacing.md)
+                    .background(Color.screenBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: CornerRadius.small, style: .continuous))
+            }
+
+            if viewModel.isLinkedToGame {
+                Text("Score saves to this game's post-game report.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var linkedGameLabel: String {
+        guard let id = viewModel.linkedGameID,
+              let game = store.teamGames.first(where: { $0.id == id }) else {
+            return "Link to a game"
+        }
+        return "vs \(game.opponent) · \(game.date.formatted(date: .abbreviated, time: .omitted))"
     }
 
     private func scoreColumn(name: String, tint: Color, score: Int, onChange: @escaping (Int) -> Void) -> some View {
@@ -206,7 +254,7 @@ struct GameDayView: View {
                 .font(.system(size: 44, weight: .heavy, design: .rounded))
                 .contentTransition(.numericText())
                 .animation(.snappy, value: viewModel.opponentScore)
-            stepper(tint: .secondary, onMinus: { viewModel.scoreOpponent(-1) }, onPlus: { viewModel.scoreOpponent(1) })
+            stepper(tint: .secondary, onMinus: { viewModel.scoreOpponent(-1, in: store) }, onPlus: { viewModel.scoreOpponent(1, in: store) })
         }
         .frame(maxWidth: .infinity)
     }

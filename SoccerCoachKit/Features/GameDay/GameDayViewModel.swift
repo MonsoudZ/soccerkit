@@ -53,6 +53,8 @@ final class GameDayViewModel: ObservableObject {
     @Published var teamScore = 0
     @Published var opponentScore = 0
     @Published var opponentName = "Opponent"
+    /// The scheduled game this live match writes its score into, if any.
+    @Published var linkedGameID: UUID?
 
     /// `now` is injectable purely for testing; production uses a monotonic
     /// source. `nonisolated` so the app-wide `AppStore` can own an instance.
@@ -472,14 +474,41 @@ final class GameDayViewModel: ObservableObject {
 
     // MARK: Live scoreboard
 
-    func scoreTeam(_ delta: Int) {
+    var isLinkedToGame: Bool { linkedGameID != nil }
+
+    func scoreTeam(_ delta: Int, in store: AppStore) {
         teamScore = max(0, teamScore + delta)
+        persistScore(in: store)
         refreshActivity()
     }
 
-    func scoreOpponent(_ delta: Int) {
+    func scoreOpponent(_ delta: Int, in store: AppStore) {
         opponentScore = max(0, opponentScore + delta)
+        persistScore(in: store)
         refreshActivity()
+    }
+
+    /// Links (or unlinks) the live match to a scheduled game so the score is
+    /// written straight into that game's post-game report. Linking adopts the
+    /// game's opponent, and seeds the scoreboard from any score already recorded
+    /// before writing the current score back.
+    func linkGame(_ id: UUID?, in store: AppStore) {
+        linkedGameID = id
+        guard let id, let game = store.games.first(where: { $0.id == id }) else { return }
+        opponentName = game.opponent
+        if let recorded = game.teamScore { teamScore = recorded }
+        if let recorded = game.opponentScore { opponentScore = recorded }
+        persistScore(in: store)
+        refreshActivity()
+    }
+
+    /// Mirrors the live score into the linked game's record. No-op when unlinked.
+    private func persistScore(in store: AppStore) {
+        guard let id = linkedGameID,
+              var game = store.games.first(where: { $0.id == id }) else { return }
+        game.teamScore = teamScore
+        game.opponentScore = opponentScore
+        store.updateGame(game)
     }
 
     // MARK: Live Activity
@@ -512,6 +541,7 @@ final class GameDayViewModel: ObservableObject {
         teamScore = 0
         opponentScore = 0
         opponentName = "Opponent"
+        linkedGameID = nil
         normalizeSelections()
         rescheduleNotifications()
         endActivity()
