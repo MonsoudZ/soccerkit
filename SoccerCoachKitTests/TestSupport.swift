@@ -13,6 +13,8 @@ final class InMemoryPersistence: PersistenceService {
     func save(_ snapshot: AppSnapshot) { stored = snapshot }
     func backupCorruptData(_ data: Data) { backedUp = data }
     func flushPendingSync() {}
+    func corruptBackup() -> Data? { backedUp }
+    func clearCorruptBackup() { backedUp = nil }
 }
 
 /// A controllable monotonic clock for `GameDayViewModel` tests.

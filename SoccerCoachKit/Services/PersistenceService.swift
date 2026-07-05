@@ -27,6 +27,10 @@ protocol PersistenceService {
     /// Synchronously writes any pending snapshot. Called before the app
     /// suspends so an in-flight background write isn't lost on termination.
     func flushPendingSync()
+    /// The most recent undecodable blob, if one was backed up, so it can be
+    /// exported for recovery.
+    func corruptBackup() -> Data?
+    func clearCorruptBackup()
 }
 
 /// Default persistence backed by `UserDefaults`, storing a JSON-encoded
@@ -85,6 +89,10 @@ final class UserDefaultsPersistenceService: PersistenceService {
         guard defaults.data(forKey: backupKey) == nil else { return }
         defaults.set(data, forKey: backupKey)
     }
+
+    func corruptBackup() -> Data? { defaults.data(forKey: backupKey) }
+
+    func clearCorruptBackup() { defaults.removeObject(forKey: backupKey) }
 
     // MARK: - Background writing
 

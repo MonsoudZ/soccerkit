@@ -11,6 +11,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     case field = "Field"
     case training = "Training"
     case drills = "Drills"
+    case settings = "Settings"
 
     var id: String { rawValue }
 
@@ -25,6 +26,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .field: return "rectangle.dashed"
         case .training: return "calendar.badge.clock"
         case .drills: return "sportscourt"
+        case .settings: return "gearshape"
         }
     }
 }

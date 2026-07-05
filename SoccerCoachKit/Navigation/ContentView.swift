@@ -60,6 +60,8 @@ private struct DetailContainer: View {
                 TrainingPlannerView()
             case .drills:
                 DrillLibraryView()
+            case .settings:
+                SettingsView()
             }
         }
         .navigationTitle(selection.rawValue)

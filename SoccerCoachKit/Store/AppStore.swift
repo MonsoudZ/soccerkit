@@ -623,17 +623,7 @@ final class AppStore: ObservableObject {
     // MARK: - Sample data
 
     func resetToSampleData() {
-        let sample = SampleData.snapshot
-        batch {
-            teams = sample.teams
-            players = sample.players
-            drills = sample.drills
-            sessions = sample.sessions
-            diagrams = sample.diagrams
-            games = sample.games
-            events = sample.events
-            selectedTeamID = sample.selectedTeamID
-        }
+        restore(SampleData.snapshot)
     }
 
     // MARK: - Board layout helpers
@@ -689,19 +679,59 @@ final class AppStore: ObservableObject {
         work()
     }
 
-    private func persist() {
-        guard !isBatchingPersist else { return }
-        persistence.save(
-            AppSnapshot(
-                teams: teams,
-                players: players,
-                drills: drills,
-                sessions: sessions,
-                diagrams: diagrams,
-                games: games,
-                events: events,
-                selectedTeamID: selectedTeamID
-            )
+    private var snapshot: AppSnapshot {
+        AppSnapshot(
+            teams: teams,
+            players: players,
+            drills: drills,
+            sessions: sessions,
+            diagrams: diagrams,
+            games: games,
+            events: events,
+            selectedTeamID: selectedTeamID
         )
     }
+
+    private func persist() {
+        guard !isBatchingPersist else { return }
+        persistence.save(snapshot)
+    }
+
+    // MARK: - Backup & restore
+
+    /// Encodes the entire app state as pretty-printed JSON for export/sharing.
+    func exportData() -> Data? {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try? encoder.encode(snapshot)
+    }
+
+    /// Replaces all state from an exported backup. Returns false (leaving the
+    /// current state untouched) if the data isn't a valid, non-empty snapshot.
+    @discardableResult
+    func importData(_ data: Data) -> Bool {
+        guard let imported = try? JSONDecoder().decode(AppSnapshot.self, from: data),
+              !imported.teams.isEmpty else { return false }
+        restore(imported)
+        return true
+    }
+
+    private func restore(_ snapshot: AppSnapshot) {
+        batch {
+            teams = snapshot.teams
+            players = snapshot.players
+            drills = snapshot.drills
+            sessions = snapshot.sessions
+            diagrams = snapshot.diagrams
+            games = snapshot.games
+            events = snapshot.events
+            selectedTeamID = teams.contains(where: { $0.id == snapshot.selectedTeamID })
+                ? snapshot.selectedTeamID
+                : (teams.first?.id ?? snapshot.selectedTeamID)
+        }
+    }
+
+    var hasCorruptBackup: Bool { persistence.corruptBackup() != nil }
+    func corruptBackupData() -> Data? { persistence.corruptBackup() }
+    func clearCorruptBackup() { persistence.clearCorruptBackup() }
 }
