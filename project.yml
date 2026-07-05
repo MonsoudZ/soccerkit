@@ -42,6 +42,8 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.com.monsoudzanaty.SoccerCoachKit
+        com.apple.developer.applesignin:
+          - Default
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit

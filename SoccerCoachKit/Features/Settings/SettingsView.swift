@@ -4,10 +4,22 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var themeManager: ThemeManager
+    @EnvironmentObject private var auth: AuthController
     @StateObject private var viewModel = SettingsViewModel()
 
     var body: some View {
         List {
+            Section {
+                LabeledContent("Signed in", value: auth.displayName ?? "Apple ID")
+                Button(role: .destructive) {
+                    auth.signOut()
+                } label: {
+                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            } header: {
+                Text("Account")
+            }
+
             Section {
                 ThemePickerRow(themeManager: themeManager)
             } header: {

@@ -40,6 +40,7 @@
 		414D2B5C62EAE176E3E87A5F /* GameDayNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CD30A6564C873B7AAF6358 /* GameDayNotifier.swift */; };
 		48188312534BC291BA21128F /* CalendarModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC1D4DC7679170888120A7D /* CalendarModels.swift */; };
 		491A09353FC5B995DC197634 /* UndoAndOnboardingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE36A74989B7D4D3E99B363C /* UndoAndOnboardingTests.swift */; };
+		49F926A64C41345BF7FA44E4 /* AuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6420E11FEE914E4CE04BCE8F /* AuthTests.swift */; };
 		50A2FD13DE97E4F105C3CB9E /* GameReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821EFBF7CF708FA1FAC9500A /* GameReportView.swift */; };
 		52D7BF3C476FAAEB78E44115 /* TestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B6A23DC307C0F03CBFB286 /* TestSupport.swift */; };
 		54DF5ADE7B44B8A9BE6C889A /* GameWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E027F0A69041086C12D31B40 /* GameWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -73,6 +74,7 @@
 		981358A6E2AE64CF5975504C /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5327669D3423586D136AE8FA /* GameDetailView.swift */; };
 		9B8583C0D0878D3ACA3E7C42 /* GameActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E5BFC6A7D5EF0E06BF2CACB /* GameActivityAttributes.swift */; };
 		9E6DEF26460091470682A70C /* CalendarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93BC45242599A06D694145D /* CalendarViewModel.swift */; };
+		A03C586FDA18038472B4314F /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCBCB965EC3A3C92886CC5 /* LoginView.swift */; };
 		A10DADF9EE998E05769244A5 /* UndoBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C0098B4E14E8DF7B4CD3A3 /* UndoBanner.swift */; };
 		A11F31B66D037A0DCBB94C83 /* DrillLibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890FB74DF7045103CF8FB54F /* DrillLibraryViewModel.swift */; };
 		A19767AF178D397224F7296C /* GameDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047218D64B0DDEE2757C28B8 /* GameDayView.swift */; };
@@ -125,6 +127,7 @@
 		F68C62E1F6DBF2B79F570405 /* GameEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46C14BB458AD7E7A697EF6F /* GameEvent.swift */; };
 		F735367F8DAC63270106A806 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1356A7E479BCF8B1BE17C844 /* Palette.swift */; };
 		F7E947B0EB9493F7D56FE8D1 /* TeamAccentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51A80545226188D8769ACBEB /* TeamAccentTests.swift */; };
+		F96C25EFC9FF96FD6154959F /* AuthController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E283044F9FD0730BBA851B0D /* AuthController.swift */; };
 		FD99FA2811F541000FAA3086 /* SessionFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBED3C0A741627273D21CB5D /* SessionFormView.swift */; };
 /* End PBXBuildFile section */
 
@@ -202,6 +205,7 @@
 		5E1260BD4E867F8BF7DB40D0 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		6074F1AD6AB71F6939C334D1 /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
 		62A674357C54F77B997AD8F7 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
+		6420E11FEE914E4CE04BCE8F /* AuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthTests.swift; sourceTree = "<group>"; };
 		65CFD7C31322FFFD50D9A850 /* SettingsBackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsBackupTests.swift; sourceTree = "<group>"; };
 		669E831BC9A1091C55557857 /* GameFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameFormView.swift; sourceTree = "<group>"; };
 		66AF516B7AF47BA0D3165FE2 /* SessionFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionFormViewModel.swift; sourceTree = "<group>"; };
@@ -267,6 +271,7 @@
 		DF006DC70EE25A4FA70938F5 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		E000B301A0E0880343CAA894 /* GameFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameFormViewModel.swift; sourceTree = "<group>"; };
 		E027F0A69041086C12D31B40 /* GameWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GameWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E283044F9FD0730BBA851B0D /* AuthController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthController.swift; sourceTree = "<group>"; };
 		E2B15765B4A0F722BDB9B758 /* DrillLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillLibraryView.swift; sourceTree = "<group>"; };
 		E32C75C924C9B0748E97D82E /* AppSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSection.swift; sourceTree = "<group>"; };
 		E54D42C1930CB3AAC006563D /* GameDayClockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDayClockTests.swift; sourceTree = "<group>"; };
@@ -281,6 +286,7 @@
 		FE3BB6118FA14C8B546853F6 /* SoccerPitch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoccerPitch.swift; sourceTree = "<group>"; };
 		FE9656BD699164650E0C8CA0 /* SeasonStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonStatsView.swift; sourceTree = "<group>"; };
 		FF67E8FCC2CCFA7DAF8A34C8 /* Player.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Player.swift; sourceTree = "<group>"; };
+		FFFCBCB965EC3A3C92886CC5 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -338,6 +344,7 @@
 			children = (
 				7B1BCB72D4DB7B29E5D30F84 /* AccessibilityTests.swift */,
 				7B92027CEAFF183FF2B07A6D /* AppStoreTests.swift */,
+				6420E11FEE914E4CE04BCE8F /* AuthTests.swift */,
 				4B07991E52277EEF7E5A6E7C /* CalendarFilterTests.swift */,
 				53232505D31526D37D095C40 /* CodableMigrationTests.swift */,
 				3D6FF90BDF1EE67F1C42C609 /* DevelopmentTests.swift */,
@@ -519,6 +526,7 @@
 		AA5F44749D21015246EEC8CB /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				E2B5F9BBE9F3B18DF89CD6EE /* Auth */,
 				A5A0006C8F74C8C556A37CCE /* Calendar */,
 				040E3E2D53EF6D0D02E59123 /* Dashboard */,
 				2863211FE28920F0730E448A /* Drills */,
@@ -633,6 +641,15 @@
 				B59275DA8BE5DC7422A707EA /* SoccerCoachKit.entitlements */,
 			);
 			path = SoccerCoachKit;
+			sourceTree = "<group>";
+		};
+		E2B5F9BBE9F3B18DF89CD6EE /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				E283044F9FD0730BBA851B0D /* AuthController.swift */,
+				FFFCBCB965EC3A3C92886CC5 /* LoginView.swift */,
+			);
+			path = Auth;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -755,6 +772,7 @@
 				2FC443B64ED2A07EF25AC52A /* AppSnapshot.swift in Sources */,
 				BA9644AE84CCFD3A294B9DB9 /* AppStore.swift in Sources */,
 				EA9C3DDE0DAF6316041C526B /* Array+RemovingDuplicates.swift in Sources */,
+				F96C25EFC9FF96FD6154959F /* AuthController.swift in Sources */,
 				DBE057CB9554461453F29CBB /* BoardGeometry.swift in Sources */,
 				9378E2D24C1BCABEB4CB0683 /* BoardMarkers.swift in Sources */,
 				48188312534BC291BA21128F /* CalendarModels.swift in Sources */,
@@ -803,6 +821,7 @@
 				EA2158ABCD43D2D46CDC48AF /* GameReportViewModel.swift in Sources */,
 				CA897C825C9BD87BBE5D5864 /* GamesView.swift in Sources */,
 				DDD0B47B7A356436F18C4DAD /* GamesViewModel.swift in Sources */,
+				A03C586FDA18038472B4314F /* LoginView.swift in Sources */,
 				5EB0039465ADB75B5E4992B3 /* NextFixtureView.swift in Sources */,
 				7104AFCDAA8319F2B2A5B74F /* OnboardingView.swift in Sources */,
 				F735367F8DAC63270106A806 /* Palette.swift in Sources */,
@@ -855,6 +874,7 @@
 			files = (
 				D379A5442BDC80F3868C603E /* AccessibilityTests.swift in Sources */,
 				1EF16B2E10AF151C19DAAA66 /* AppStoreTests.swift in Sources */,
+				49F926A64C41345BF7FA44E4 /* AuthTests.swift in Sources */,
 				E539C349AF8E7AAF7A5CE767 /* CalendarFilterTests.swift in Sources */,
 				83593E6B307A131E210B9FC6 /* CodableMigrationTests.swift in Sources */,
 				2E88A421D16EC840389878B3 /* DevelopmentTests.swift in Sources */,
