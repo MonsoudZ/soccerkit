@@ -36,7 +36,7 @@ struct NextFixtureWidget: Widget {
         }
         .configurationDisplayName("Next Fixture")
         .description("Your team's next game at a glance.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline, .accessoryCircular])
     }
 }
 
@@ -54,6 +54,12 @@ private struct FixtureWidgetEntryView: View {
         case .accessoryInline:
             // A single tinted line beside the Lock Screen clock.
             Label(inlineText, systemImage: "soccerball")
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                AccessoryCircularFixtureView(fixture: entry.fixture)
+            }
+            .accessoryContainer()
         default:
             NextFixtureView(fixture: entry.fixture, compact: family == .systemSmall)
                 .widgetContainer()

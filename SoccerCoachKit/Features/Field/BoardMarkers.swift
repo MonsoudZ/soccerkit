@@ -6,7 +6,7 @@ struct PlayerMarker: View {
     @State private var dragStart: CGPoint?
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Spacing.xs) {
             ZStack {
                 Circle()
                     .fill(fillColor)
@@ -21,7 +21,7 @@ struct PlayerMarker: View {
 
             Text(player.label)
                 .font(.caption2.weight(.semibold))
-                .padding(.horizontal, 6)
+                .padding(.horizontal, Spacing.sm)
                 .padding(.vertical, 3)
                 .background(.thinMaterial)
                 .clipShape(Capsule())
@@ -71,7 +71,7 @@ struct EquipmentMarker: View {
             Text(item.label)
                 .font(.caption2.weight(.semibold))
                 .padding(.horizontal, 5)
-                .padding(.vertical, 2)
+                .padding(.vertical, Spacing.xxs)
                 .background(.thinMaterial)
                 .clipShape(Capsule())
         }
@@ -111,7 +111,7 @@ struct ZoneOverlay: View {
             Text(zone.title)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.black.opacity(0.72))
-                .padding(6)
+                .padding(Spacing.sm)
         }
         .frame(width: rect.width, height: rect.height)
         .position(x: rect.midX, y: rect.midY)

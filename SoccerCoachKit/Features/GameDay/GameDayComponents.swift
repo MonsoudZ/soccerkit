@@ -21,7 +21,7 @@ struct GameClockPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(formatClock(elapsedSeconds))
                         .font(.system(size: 46, weight: .bold, design: .rounded).monospacedDigit())
                     Text("\(periodLabel) of \(periodCount) · \(formatClock(periodSeconds)) this period")
@@ -31,7 +31,7 @@ struct GameClockPanel: View {
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: Spacing.xs) {
                     Text("\(starters)/\(playersOnField)")
                         .font(.title2.weight(.bold))
                     Text("on field")
@@ -215,7 +215,7 @@ struct LineupPitchView: View {
         .overlay(alignment: .topLeading) {
             Label("\(formation.rawValue) Shape", systemImage: "square.grid.3x3")
                 .font(.caption.weight(.semibold))
-                .padding(8)
+                .padding(Spacing.md)
                 .background(.thinMaterial)
                 .clipShape(Capsule())
                 .padding(10)
@@ -246,7 +246,7 @@ struct LineupPitchMarker: View {
                 .foregroundStyle(.secondary)
         }
         .frame(width: 82, height: 62)
-        .padding(4)
+        .padding(Spacing.xs)
         .background(status == .available ? Color(.systemBackground).opacity(0.95) : status.color.opacity(0.86))
         .foregroundStyle(status == .available ? Color.primary : Color.white)
         .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
@@ -292,7 +292,7 @@ struct StatusBadge: View {
                 .font(.caption2.weight(.semibold))
         }
         .padding(.horizontal, 7)
-        .padding(.vertical, 4)
+        .padding(.vertical, Spacing.xs)
         .background((status == .available ? Color.green : status.color).opacity(0.12))
         .foregroundStyle(status == .available && !isStarter ? Color.secondary : status.color)
         .clipShape(Capsule())
@@ -309,7 +309,7 @@ struct ReminderRow: View {
     let deleteAction: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.lg) {
             Text(formatClock(reminder.minute * 60))
                 .font(.headline.monospacedDigit())
                 .frame(width: 64, alignment: .leading)

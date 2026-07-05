@@ -10,7 +10,7 @@ struct SectionHeader: View {
     var body: some View {
         Text(title)
             .font(.system(.headline, design: .rounded))
-            .padding(.top, 4)
+            .padding(.top, Spacing.xs)
             .accessibilityAddTraits(.isHeader)
     }
 }
@@ -25,7 +25,7 @@ struct EmptyStateView: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.lg) {
             Image(systemName: systemImage)
                 .font(.system(size: 46))
                 .foregroundStyle(.secondary)
@@ -44,7 +44,7 @@ struct EmptyStateView: View {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.borderedProminent)
-                    .padding(.top, 6)
+                    .padding(.top, Spacing.sm)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -61,7 +61,7 @@ struct InlineEmptyView: View {
     var message: String? = nil
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Spacing.md) {
             Image(systemName: systemImage)
                 .font(.title2)
                 .foregroundStyle(.secondary)
@@ -85,12 +85,12 @@ struct TagChipsView: View {
     var body: some View {
         if !tags.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: Spacing.sm) {
                     ForEach(Array(tags.enumerated()), id: \.offset) { _, tag in
                         Text(tag)
                             .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, Spacing.md)
+                            .padding(.vertical, Spacing.xs)
                             .background(.tint.opacity(0.14))
                             .foregroundStyle(.tint)
                             .clipShape(Capsule())

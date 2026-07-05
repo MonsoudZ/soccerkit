@@ -45,7 +45,7 @@ struct SoccerPitch: View {
 
                 Rectangle()
                     .stroke(line, lineWidth: 3)
-                    .padding(8)
+                    .padding(Spacing.md)
 
                 Path { path in
                     path.move(to: CGPoint(x: 8, y: size.height / 2))

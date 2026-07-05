@@ -33,7 +33,7 @@ struct SessionDetailView: View {
                         } else {
                             ForEach(session.blocks) { block in
                                 if let drill = store.drill(for: block.drillID) {
-                                    VStack(alignment: .leading, spacing: 6) {
+                                    VStack(alignment: .leading, spacing: Spacing.sm) {
                                         HStack {
                                             Label("\(block.minutes) min", systemImage: "timer")
                                                 .font(.caption)
@@ -44,8 +44,8 @@ struct SessionDetailView: View {
                                             Spacer()
                                             Text(drill.category.rawValue)
                                                 .font(.caption)
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 4)
+                                                .padding(.horizontal, Spacing.md)
+                                                .padding(.vertical, Spacing.xs)
                                                 .background(.thinMaterial)
                                                 .clipShape(Capsule())
                                         }
@@ -53,15 +53,15 @@ struct SessionDetailView: View {
                                         Text(block.topic.isEmpty ? drill.title : block.topic)
                                             .font(.headline)
 
-                                        HStack(spacing: 6) {
+                                        HStack(spacing: Spacing.sm) {
                                             Text(drill.title)
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                             if drill.isArchived {
                                                 Text("Deleted Drill")
                                                     .font(.caption2.weight(.semibold))
-                                                    .padding(.horizontal, 6)
-                                                    .padding(.vertical, 2)
+                                                    .padding(.horizontal, Spacing.sm)
+                                                    .padding(.vertical, Spacing.xxs)
                                                     .background(Color.orange.opacity(0.15))
                                                     .foregroundStyle(.orange)
                                                     .clipShape(Capsule())
@@ -98,12 +98,12 @@ struct SessionDetailView: View {
                                             .font(.caption.weight(.semibold))
                                         }
                                     }
-                                    .padding(.vertical, 4)
+                                    .padding(.vertical, Spacing.xs)
                                 } else {
                                     // Drill no longer resolves (e.g. removed with
                                     // its team). Keep the section's own content
                                     // instead of dropping it silently.
-                                    VStack(alignment: .leading, spacing: 6) {
+                                    VStack(alignment: .leading, spacing: Spacing.sm) {
                                         HStack {
                                             Label("\(block.minutes) min", systemImage: "timer")
                                                 .font(.caption)
@@ -114,8 +114,8 @@ struct SessionDetailView: View {
                                             Spacer()
                                             Text("Unavailable Drill")
                                                 .font(.caption2.weight(.semibold))
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
+                                                .padding(.horizontal, Spacing.sm)
+                                                .padding(.vertical, Spacing.xxs)
                                                 .background(Color.orange.opacity(0.15))
                                                 .foregroundStyle(.orange)
                                                 .clipShape(Capsule())
@@ -141,7 +141,7 @@ struct SessionDetailView: View {
                                                 .foregroundStyle(.secondary)
                                         }
                                     }
-                                    .padding(.vertical, 4)
+                                    .padding(.vertical, Spacing.xs)
                                 }
                             }
                         }
@@ -158,7 +158,7 @@ struct SessionDetailView: View {
                                 NavigationLink {
                                     DiagramPreviewView(diagramID: diagram.id)
                                 } label: {
-                                    VStack(alignment: .leading, spacing: 4) {
+                                    VStack(alignment: .leading, spacing: Spacing.xs) {
                                         Text(diagram.title)
                                             .font(.headline)
                                         Text("Updated \(diagram.updatedAt, style: .date)")

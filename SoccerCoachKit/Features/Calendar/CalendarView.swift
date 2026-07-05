@@ -6,7 +6,7 @@ struct CalendarView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: Spacing.xl) {
                 monthHeader
                 weekdayHeader
                 monthGrid
@@ -103,8 +103,8 @@ struct CalendarView: View {
     }
 
     private var monthGrid: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
-        return LazyVGrid(columns: columns, spacing: 4) {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.xs), count: 7)
+        return LazyVGrid(columns: columns, spacing: Spacing.xs) {
             ForEach(viewModel.gridDays, id: \.self) { day in
                 DayCell(
                     day: day,
@@ -123,7 +123,7 @@ struct CalendarView: View {
     // MARK: Agenda
 
     private var agenda: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             Text(viewModel.selectedDate, format: .dateTime.weekday(.wide).month(.wide).day())
                 .font(.headline)
 
@@ -156,7 +156,7 @@ struct CalendarView: View {
     }
 
     private var filterChips: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             HStack {
                 Text("Filter by type")
                     .font(.caption.weight(.semibold))
@@ -170,12 +170,12 @@ struct CalendarView: View {
                 }
             }
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)], alignment: .leading, spacing: 8) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)], alignment: .leading, spacing: Spacing.md) {
                 ForEach(viewModel.filterableKinds, id: \.self) { kind in
                     Button {
                         viewModel.toggle(kind)
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: Spacing.sm) {
                             Circle()
                                 .fill(kind.color)
                                 .frame(width: 8, height: 8)
@@ -195,7 +195,7 @@ struct CalendarView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 4)
+        .padding(.top, Spacing.xs)
     }
 
     @ViewBuilder
@@ -225,7 +225,7 @@ private struct DayCell: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Spacing.xs) {
             Text(dayNumber)
                 .font(.callout.weight(isToday ? .bold : .regular))
                 .foregroundStyle(numberColor)
@@ -245,7 +245,7 @@ private struct DayCell: View {
             .frame(height: 6)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
+        .padding(.vertical, Spacing.xs)
         .contentShape(Rectangle())
         .opacity(isInDisplayedMonth ? 1 : 0.3)
     }
@@ -263,13 +263,13 @@ private struct AgendaRow: View {
     let item: CalendarItem
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.lg) {
             RoundedRectangle(cornerRadius: 3)
                 .fill(item.kind.color)
                 .frame(width: 5)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                HStack(spacing: Spacing.md) {
                     Image(systemName: item.kind.symbol)
                         .font(.caption)
                         .foregroundStyle(item.kind.color)
@@ -292,8 +292,8 @@ private struct AgendaRow: View {
 
             Text(item.subtitle)
                 .font(.caption2.weight(.semibold))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.xs)
                 .background(item.kind.color.opacity(0.16))
                 .foregroundStyle(item.kind.color)
                 .clipShape(Capsule())

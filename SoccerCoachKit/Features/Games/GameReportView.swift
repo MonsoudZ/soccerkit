@@ -46,7 +46,7 @@ struct GameReportView: View {
                                 .lineLimit(1...3)
                                 .textFieldStyle(.roundedBorder)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, Spacing.xs)
                     }
                 }
             } header: {
@@ -77,7 +77,7 @@ struct EffortStars: View {
     @Binding var rating: Int
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.xs) {
             ForEach(1...5, id: \.self) { value in
                 Image(systemName: value <= rating ? "star.fill" : "star")
                     .foregroundStyle(value <= rating ? Color.yellow : Color.secondary)

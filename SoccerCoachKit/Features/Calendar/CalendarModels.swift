@@ -46,17 +46,7 @@ enum CalendarEventKind: Hashable, CaseIterable {
         }
     }
 
-    var color: Color {
-        switch self {
-        case .practice: return .teal
-        case .game: return .blue
-        case .tournament: return .orange
-        case .scrimmage: return .green
-        case .social: return .pink
-        case .meeting: return .indigo
-        case .other: return .gray
-        }
-    }
+    // `color` is defined in the design system (DomainColors.swift).
 }
 
 /// A read-only projection of a session/game/event used purely for rendering the

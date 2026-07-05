@@ -133,3 +133,38 @@ struct AccessoryFixtureView: View {
         }
     }
 }
+
+/// Days from today to a date, clamped at 0 (never counts a past game as negative).
+func daysUntil(_ date: Date, now: Date = Date()) -> Int {
+    let cal = Calendar.current
+    let days = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: date)).day ?? 0
+    return max(0, days)
+}
+
+/// The `.accessoryCircular` Lock Screen complication: a compact "days until"
+/// countdown. The widget wraps this in an `AccessoryWidgetBackground`.
+struct AccessoryCircularFixtureView: View {
+    let fixture: FixtureSnapshot?
+
+    var body: some View {
+        VStack(spacing: -1) {
+            Image(systemName: "soccerball")
+                .font(.system(size: 11))
+            if let fixture {
+                let days = daysUntil(fixture.date)
+                Text(days == 0 ? "Today" : "\(days)")
+                    .font(.system(size: days == 0 ? 13 : 20, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.6)
+                if days > 0 {
+                    Text(days == 1 ? "day" : "days")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text("—").font(.headline)
+            }
+        }
+        .widgetAccentable()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}

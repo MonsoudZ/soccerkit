@@ -10,7 +10,7 @@ struct GameDayView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 GameClockPanel(
                     elapsedSeconds: viewModel.elapsedSeconds,
                     periodSeconds: viewModel.periodSeconds,
@@ -76,14 +76,14 @@ struct GameDayView: View {
     }
 
     private var lineupSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             SectionHeader("Lineup")
 
             HStack {
                 Label("\(store.selectedTeam.ageGroup.rawValue): \(viewModel.playersOnField)v\(viewModel.playersOnField)", systemImage: "shield")
                 Spacer()
                 Text("\(viewModel.availableStarterPlayers.count) / \(viewModel.playersOnField) available starters")
-                    .foregroundStyle(viewModel.availableStarterPlayers.count == viewModel.playersOnField ? Color.secondary : Color.orange)
+                    .foregroundStyle(viewModel.availableStarterPlayers.count == viewModel.playersOnField ? Color.secondary : Color.caution)
             }
             .font(.subheadline)
 
@@ -108,7 +108,7 @@ struct GameDayView: View {
                 }
             )
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: Spacing.lg)], spacing: Spacing.lg) {
                 LineupColumn(
                     title: "Starting Team",
                     symbol: "figure.soccer",
@@ -171,7 +171,7 @@ struct GameDayView: View {
                 Text("–")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.top, 28)
+                    .padding(.top, Spacing.xxxl)
 
                 opponentColumn
             }
@@ -279,14 +279,14 @@ struct GameDayView: View {
     }
 
     private var quickSubSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             SectionHeader("Quick Sub")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Spacing.lg) {
                 Button {
                     viewModel.selectSuggestedSub()
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: Spacing.md) {
                         Image(systemName: "wand.and.stars")
                         VStack(alignment: .leading, spacing: 1) {
                             Text("Suggest balanced sub")
@@ -342,10 +342,10 @@ struct GameDayView: View {
     }
 
     private var reminderSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             SectionHeader("Sub Reminders")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Spacing.lg) {
                 Stepper("Minute \(viewModel.newReminderMinute)", value: $viewModel.newReminderMinute, in: 1...max(viewModel.defaultGameMinutes, 1))
 
                 Stepper("Alert \(viewModel.subAlertLeadMinutes) min early", value: $viewModel.subAlertLeadMinutes, in: 0...10)
@@ -381,7 +381,7 @@ struct GameDayView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: Spacing.md) {
                     ForEach(viewModel.reminders.sorted { $0.minute < $1.minute }) { reminder in
                         ReminderRow(reminder: reminder, outName: viewModel.playerName(reminder.outPlayerID), inName: viewModel.playerName(reminder.inPlayerID)) {
                             viewModel.applySubstitution(reminder)
@@ -395,12 +395,12 @@ struct GameDayView: View {
     }
 
     private var playingTimeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             SectionHeader("Playing Time")
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 10)], spacing: 10) {
                 ForEach(viewModel.roster) { player in
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
                         HStack {
                             Text("#\(player.number)")
                                 .font(.caption.weight(.bold))
@@ -416,16 +416,16 @@ struct GameDayView: View {
 
                         if viewModel.minimumSeconds(for: player) > 0 {
                             ProgressView(value: viewModel.goalProgress(for: player))
-                                .tint(viewModel.isAtRiskOfMissingGoal(player) ? .orange : (viewModel.hasReachedGoal(player) ? .green : .accentColor))
+                                .tint(viewModel.isAtRiskOfMissingGoal(player) ? Color.caution : (viewModel.hasReachedGoal(player) ? Color.positive : Color.accentColor))
                             if viewModel.isAtRiskOfMissingGoal(player) {
                                 Label("Behind minutes goal", systemImage: "exclamationmark.triangle.fill")
                                     .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(Color.caution)
                                     .lineLimit(1)
                             } else {
                                 Text("Goal \(viewModel.minimumSeconds(for: player) / 60)m")
                                     .font(.caption2)
-                                    .foregroundStyle(viewModel.hasReachedGoal(player) ? .green : .secondary)
+                                    .foregroundStyle(viewModel.hasReachedGoal(player) ? Color.positive : Color.secondary)
                             }
                         }
 
@@ -458,7 +458,7 @@ struct GameDayView: View {
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                         .frame(width: 52, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Spacing.xxs) {
                         Text("\(entry.inName) in for \(entry.outName)")
                         if !entry.note.isEmpty {
                             Text(entry.note)

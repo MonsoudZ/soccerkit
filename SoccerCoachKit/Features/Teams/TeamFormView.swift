@@ -33,14 +33,14 @@ struct TeamFormView: View {
                                     .fill(accent.color)
                                     .frame(width: 30, height: 30)
                                     .overlay(Circle().strokeBorder(.primary, lineWidth: isSelected ? 3 : 0))
-                                    .padding(2)
+                                    .padding(Spacing.xxs)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(accent.displayName)
                             .accessibilityAddTraits(isSelected ? [.isSelected] : [])
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, Spacing.xs)
                 }
             }
 

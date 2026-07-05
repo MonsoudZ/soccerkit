@@ -5,10 +5,10 @@ struct TeamHeader: View {
     let team: Team
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text(team.name)
                 .font(AppFont.display)
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.md) {
                 Label(team.ageGroup.rawValue, systemImage: "shield")
                 Label(team.season, systemImage: "leaf")
             }
@@ -35,7 +35,7 @@ struct MetricTile: View {
     let symbol: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Image(systemName: symbol)
                 .font(.title3)
                 .foregroundStyle(.tint)
@@ -62,7 +62,7 @@ struct GameSummaryCard: View {
 
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("vs \(game.opponent)")
                         .font(.headline)
                     Text(game.date, format: .dateTime.weekday().month().day().hour().minute())
@@ -74,8 +74,8 @@ struct GameSummaryCard: View {
 
                 Text(game.isHome ? "Home" : "Away")
                     .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.xs)
                     .background(.thinMaterial)
                     .clipShape(Capsule())
             }
@@ -86,7 +86,7 @@ struct GameSummaryCard: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.lg) {
                 Label("\(summary.going) going", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(Color.positive)
                 Label("\(summary.maybe) maybe", systemImage: "questionmark.circle.fill")
@@ -110,7 +110,7 @@ struct SessionSummaryCard: View {
 
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(session.title)
                         .font(.headline)
                     Text(session.date, style: .date)
@@ -159,7 +159,7 @@ struct DrillCard: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.md) {
                 Text(drill.category.rawValue)
                 Text(store.teamName(for: drill.teamID))
             }
@@ -183,13 +183,13 @@ struct DrillCard: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 ForEach(Array(drill.coachingPoints.enumerated()), id: \.offset) { _, point in
                     Label(point, systemImage: "checkmark.circle")
                         .font(.caption)
                 }
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, Spacing.sm)
     }
 }

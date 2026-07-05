@@ -40,7 +40,7 @@ struct DrillDetailView: View {
                                 NavigationLink {
                                     DiagramPreviewView(diagramID: diagram.id)
                                 } label: {
-                                    VStack(alignment: .leading, spacing: 4) {
+                                    VStack(alignment: .leading, spacing: Spacing.xs) {
                                         Text(diagram.title)
                                             .font(.headline)
                                         Text("Updated \(diagram.updatedAt, style: .date)")

@@ -17,7 +17,7 @@ struct TeamDashboardView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         TeamHeader(team: team)
 
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: Spacing.lg)], spacing: Spacing.lg) {
                             MetricTile(title: "Players", value: "\(store.players(inTeam: teamID).count)", symbol: "person.3.fill")
                             MetricTile(title: "Sessions", value: "\(store.sessions(inTeam: teamID).count)", symbol: "calendar")
                             MetricTile(title: "Games", value: "\(store.games(inTeam: teamID).count)", symbol: "soccerball")

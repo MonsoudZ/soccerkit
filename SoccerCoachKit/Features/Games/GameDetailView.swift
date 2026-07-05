@@ -124,7 +124,7 @@ struct PlayerReportRow: View {
     let report: GamePlayerReport
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack {
                 Text(name)
                     .font(.subheadline.weight(.semibold))

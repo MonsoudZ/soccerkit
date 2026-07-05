@@ -51,7 +51,7 @@ struct SessionBlockEditorRow: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Spacing.xs)
     }
 
     private var diagramBinding: Binding<UUID?> {

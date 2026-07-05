@@ -29,7 +29,7 @@ struct DiagramExportView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(diagram.title)
                     .font(.title.weight(.bold))
                 Text(diagram.updatedAt, style: .date)
@@ -78,7 +78,7 @@ struct StaticPlayerMarker: View {
     let fieldRect: CGRect
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Spacing.xs) {
             ZStack {
                 Circle()
                     .fill(fillColor)
@@ -92,7 +92,7 @@ struct StaticPlayerMarker: View {
 
             Text(player.label)
                 .font(.caption2.weight(.semibold))
-                .padding(.horizontal, 6)
+                .padding(.horizontal, Spacing.sm)
                 .padding(.vertical, 3)
                 .background(.thinMaterial)
                 .clipShape(Capsule())
@@ -125,7 +125,7 @@ struct StaticEquipmentMarker: View {
             Text(item.label)
                 .font(.caption2.weight(.semibold))
                 .padding(.horizontal, 5)
-                .padding(.vertical, 2)
+                .padding(.vertical, Spacing.xxs)
                 .background(.thinMaterial)
                 .clipShape(Capsule())
         }
@@ -148,7 +148,7 @@ struct StaticZoneOverlay: View {
             Text(zone.title)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.black.opacity(0.72))
-                .padding(6)
+                .padding(Spacing.sm)
         }
         .frame(width: rect.width, height: rect.height)
         .position(x: rect.midX, y: rect.midY)

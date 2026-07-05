@@ -56,14 +56,14 @@ struct DevelopmentEntryRow: View {
     let entry: DevelopmentEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(entry.date.formatted(date: .abbreviated, time: .omitted))
                 .font(.subheadline.weight(.semibold))
 
             if !entry.ratedSkills.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
                     ForEach(entry.ratedSkills) { skill in
-                        HStack(spacing: 6) {
+                        HStack(spacing: Spacing.sm) {
                             Text(skill.rawValue)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)

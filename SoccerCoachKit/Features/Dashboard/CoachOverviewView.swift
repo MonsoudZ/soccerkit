@@ -9,7 +9,7 @@ struct CoachOverviewView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: Spacing.lg)], spacing: Spacing.lg) {
                     MetricTile(title: store.teams.count == 1 ? "Team" : "Teams", value: "\(store.teams.count)", symbol: "shield.lefthalf.filled")
                     MetricTile(title: "Players", value: "\(store.players.count)", symbol: "person.3.fill")
                     MetricTile(title: "Games", value: "\(store.games.count)", symbol: "soccerball")
@@ -31,7 +31,7 @@ struct CoachOverviewView: View {
                 }
 
                 SectionHeader("Teams")
-                VStack(spacing: 12) {
+                VStack(spacing: Spacing.lg) {
                     ForEach(store.teams) { team in
                         NavigationLink {
                             TeamDashboardView(teamID: team.id)
@@ -64,7 +64,7 @@ struct CoachOverviewView: View {
     }
 
     private func upNext<Content: View>(team: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(team)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -79,7 +79,7 @@ private struct TeamOverviewCard: View {
     let nextGame: GameEvent?
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.lg) {
             ZStack {
                 Circle().fill(team.accentColor.opacity(0.2))
                 Text(team.name.prefix(1))
@@ -88,7 +88,7 @@ private struct TeamOverviewCard: View {
             }
             .frame(width: 44, height: 44)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(team.name)
                     .font(.headline)
                 Text("\(team.ageGroup.rawValue) · \(team.season)")

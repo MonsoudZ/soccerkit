@@ -4,7 +4,7 @@ struct PlayerRow: View {
     let player: Player
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.lg) {
             PlayerAvatar(number: player.number, position: player.position)
             VStack(alignment: .leading, spacing: 3) {
                 Text(player.name)

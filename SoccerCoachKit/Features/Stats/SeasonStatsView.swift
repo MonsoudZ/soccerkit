@@ -65,7 +65,7 @@ private struct PlayerStatRow: View {
                 }
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.lg) {
                 Label("\(stat.gamesPlayed) GP", systemImage: "figure.soccer")
                 if stat.averageEffort > 0 {
                     Label(String(format: "%.1f effort", stat.averageEffort), systemImage: "star.fill")
@@ -74,7 +74,7 @@ private struct PlayerStatRow: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, Spacing.xxs)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(stat.accessibilityLabel)
     }
