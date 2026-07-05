@@ -19,6 +19,7 @@ struct ContentView: View {
                     }
                 }
             }
+            .themedList()
             .navigationTitle("Coach")
         } detail: {
             DetailContainer(selection: selection ?? .dashboard)

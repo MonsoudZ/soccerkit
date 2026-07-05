@@ -78,9 +78,9 @@ struct RSVPRow: View {
 extension RSVPStatus {
     var color: Color {
         switch self {
-        case .going: return .green
-        case .maybe: return .orange
-        case .notGoing: return .red
+        case .going: return .positive
+        case .maybe: return .caution
+        case .notGoing: return .critical
         case .noResponse: return .secondary
         }
     }
@@ -123,12 +123,5 @@ struct AttendanceRow: View {
         }
     }
 
-    var statusColor: Color {
-        switch status {
-        case .present: return .green
-        case .late: return .orange
-        case .excused: return .blue
-        case .absent: return .red
-        }
-    }
+    var statusColor: Color { status.color }
 }

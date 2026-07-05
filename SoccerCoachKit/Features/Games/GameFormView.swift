@@ -28,6 +28,7 @@ struct GameFormView: View {
                     .frame(minHeight: 90)
             }
         }
+        .themedList()
         .navigationTitle(viewModel.isEditing ? "Edit Game" : "New Game")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

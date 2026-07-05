@@ -1,12 +1,13 @@
 import SwiftUI
 
 struct TeamHeader: View {
+    @Environment(\.theme) private var theme
     let team: Team
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(team.name)
-                .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                .font(AppFont.display)
             HStack(spacing: 8) {
                 Label(team.ageGroup.rawValue, systemImage: "shield")
                 Label(team.season, systemImage: "leaf")
@@ -15,15 +16,16 @@ struct TeamHeader: View {
             .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
+        .padding(Spacing.xxl)
         .background(
             LinearGradient(
-                colors: [team.accentColor.opacity(0.28), team.accentColor.opacity(0.10), Color(.systemBackground)],
+                colors: [team.accentColor.opacity(0.30), team.accentColor.opacity(0.12), theme.card],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .cardCorners()
+        .shadow(color: Elevation.cardColor, radius: Elevation.cardRadius, x: 0, y: Elevation.cardYOffset)
     }
 }
 
@@ -36,17 +38,16 @@ struct MetricTile: View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: symbol)
                 .font(.title3)
-                .foregroundStyle(.teal)
+                .foregroundStyle(.tint)
             Text(value)
-                .font(.title.weight(.bold))
+                .font(AppFont.metric)
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .surfaceStyle()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(value) \(title)")
     }
@@ -87,17 +88,16 @@ struct GameSummaryCard: View {
 
             HStack(spacing: 12) {
                 Label("\(summary.going) going", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color.positive)
                 Label("\(summary.maybe) maybe", systemImage: "questionmark.circle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Color.caution)
                 Label("\(summary.notGoing) out", systemImage: "xmark.circle.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.critical)
             }
             .font(.caption)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .surfaceStyle()
     }
 }
 
@@ -136,8 +136,7 @@ struct SessionSummaryCard: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .surfaceStyle()
     }
 
     var totalMinutes: Int {

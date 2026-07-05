@@ -196,6 +196,7 @@ struct SessionDetailView: View {
                         Text("\(summary.present) of \(summary.total) present")
                     }
                 }
+                .themedList()
             } else {
                 EmptyStateView(title: "Session Removed", systemImage: "calendar.badge.exclamationmark")
             }

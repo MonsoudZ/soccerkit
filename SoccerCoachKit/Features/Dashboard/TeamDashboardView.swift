@@ -43,7 +43,7 @@ struct TeamDashboardView: View {
                     }
                     .padding()
                 }
-                .background(Color(.systemGroupedBackground))
+                .screenBackground()
                 .navigationTitle(team.name)
                 .toolbar {
                     Menu {

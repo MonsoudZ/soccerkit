@@ -40,7 +40,7 @@ struct GameDayView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .screenBackground()
         .onAppear {
             viewModel.prepareIfNeeded(with: store)
             viewModel.requestNotificationAuthorization()
@@ -205,8 +205,7 @@ struct GameDayView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .surfaceStyle()
         }
     }
 
@@ -243,8 +242,7 @@ struct GameDayView: View {
                 .disabled(viewModel.selectedOutPlayerID == nil || viewModel.selectedInPlayerID == nil)
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .surfaceStyle()
 
             if viewModel.reminders.isEmpty {
                 Text("No reminders set.")
@@ -312,8 +310,7 @@ struct GameDayView: View {
                         }
                     }
                     .padding()
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .surfaceStyle()
                 }
             }
         }
@@ -341,8 +338,7 @@ struct GameDayView: View {
                 }
                 .font(.subheadline)
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .surfaceStyle()
             }
         }
     }

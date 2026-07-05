@@ -51,6 +51,7 @@ struct RosterView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .themedList()
         .toolbar {
             Menu {
                 Button {

@@ -63,6 +63,7 @@ struct DrillDetailView: View {
                     DrillDetailListSection(title: "Progression", items: drill.progressions, symbol: "arrow.up.forward.circle")
                     DrillDetailListSection(title: "Regression", items: drill.regressions, symbol: "arrow.down.backward.circle")
                 }
+                .themedList()
             } else {
                 EmptyStateView(title: "Drill Removed", systemImage: "sportscourt")
             }

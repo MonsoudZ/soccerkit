@@ -39,6 +39,7 @@ struct SeasonStatsView: View {
                 Text("Goals and assists come from post-game reports; games played counts games marked present or late.")
             }
         }
+        .themedList()
     }
 
     private func signed(_ value: Int) -> String {

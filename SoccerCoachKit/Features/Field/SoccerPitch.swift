@@ -69,7 +69,7 @@ struct SoccerPitch: View {
                 goalBox(atTop: false, size: size)
                     .stroke(line, lineWidth: 2)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
         }
     }
 

@@ -105,6 +105,7 @@ struct SessionFormView: View {
             }
         }
         .onAppear { viewModel.prepareDefaultDrillSelection(in: store) }
+        .themedList()
         .navigationTitle(viewModel.isEditing ? "Edit Session" : "New Session")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

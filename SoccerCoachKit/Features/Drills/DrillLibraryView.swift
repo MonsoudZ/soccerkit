@@ -65,6 +65,7 @@ struct DrillLibraryView: View {
             viewModel.normalizeTagSelection(in: store)
         }
         .listStyle(.insetGrouped)
+        .themedList()
         .navigationTitle("Drills")
         .toolbar {
             Button {

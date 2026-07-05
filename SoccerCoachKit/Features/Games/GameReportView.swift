@@ -55,6 +55,7 @@ struct GameReportView: View {
                 Text("Goals, assists, an effort rating, and a development focus for each player.")
             }
         }
+        .themedList()
         .navigationTitle("Post-Game Report")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -57,6 +57,7 @@ struct TeamFormView: View {
                 Stepper("Zones \(viewModel.defaultZoneCount)", value: $viewModel.defaultZoneCount, in: 0...8)
             }
         }
+        .themedList()
         .navigationTitle(viewModel.isEditing ? "Edit Team" : "New Team")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

@@ -104,9 +104,9 @@ struct ZoneOverlay: View {
         let rect = absolute(zone.rect, in: fieldRect)
 
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.yellow.opacity(0.24))
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .stroke(Color.yellow, style: StrokeStyle(lineWidth: 2, dash: [8, 5]))
             Text(zone.title)
                 .font(.caption.weight(.bold))

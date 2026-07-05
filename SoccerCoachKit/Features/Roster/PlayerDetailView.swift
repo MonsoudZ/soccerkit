@@ -105,6 +105,7 @@ struct PlayerDetailView: View {
                         Text("Development")
                     }
                 }
+                .themedList()
             } else {
                 EmptyStateView(title: "Player Removed", systemImage: "person.crop.circle.badge.xmark")
             }

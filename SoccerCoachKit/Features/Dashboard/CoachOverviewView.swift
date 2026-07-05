@@ -48,7 +48,7 @@ struct CoachOverviewView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .screenBackground()
         .toolbar {
             Button {
                 showingNewTeam = true
@@ -111,8 +111,7 @@ private struct TeamOverviewCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .surfaceStyle()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(team.name), \(team.ageGroup.rawValue), \(playerCount) player\(playerCount == 1 ? "" : "s")")
         .accessibilityHint("Opens the team dashboard")

@@ -25,23 +25,14 @@ struct PlayerAvatar: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(color.opacity(0.18))
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                .fill(position.color.opacity(0.18))
             Text("#\(number)")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(color)
+                .foregroundStyle(position.color)
         }
         .frame(width: 44, height: 44)
         // Decorative: every use is paired with the player's name/number in text.
         .accessibilityHidden(true)
-    }
-
-    var color: Color {
-        switch position {
-        case .goalkeeper: return .orange
-        case .defender: return .blue
-        case .midfielder: return .teal
-        case .forward: return .red
-        }
     }
 }

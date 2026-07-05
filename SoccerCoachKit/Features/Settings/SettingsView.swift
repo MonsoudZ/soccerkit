@@ -3,10 +3,19 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var themeManager: ThemeManager
     @StateObject private var viewModel = SettingsViewModel()
 
     var body: some View {
         List {
+            Section {
+                ThemePickerRow(themeManager: themeManager)
+            } header: {
+                Text("Appearance")
+            } footer: {
+                Text("Choose an accent and surface palette. Your choice applies across the app and is remembered.")
+            }
+
             Section {
                 Button {
                     viewModel.exportBackup(from: store)
@@ -57,8 +66,14 @@ struct SettingsView: View {
 
             Section("About") {
                 LabeledContent("Version", value: appVersion)
+                NavigationLink {
+                    StyleGuideView()
+                } label: {
+                    Label("Style Guide", systemImage: "paintpalette")
+                }
             }
         }
+        .themedList()
         .navigationTitle("Settings")
         .fileImporter(isPresented: $viewModel.showingImporter, allowedContentTypes: [.json]) { result in
             viewModel.importBackup(result, into: store)
@@ -96,6 +111,54 @@ struct SettingsView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
+    }
+}
+
+/// A horizontal row of theme swatches; tapping one switches the app theme live.
+struct ThemePickerRow: View {
+    @ObservedObject var themeManager: ThemeManager
+
+    var body: some View {
+        HStack(spacing: Spacing.md) {
+            ForEach(Theme.all) { theme in
+                let isSelected = theme.id == themeManager.selectedID
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        themeManager.select(theme)
+                    }
+                } label: {
+                    VStack(spacing: Spacing.sm) {
+                        ZStack {
+                            Circle()
+                                .fill(theme.brand)
+                                .frame(width: 40, height: 40)
+                            if isSelected {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .overlay(
+                            Circle().strokeBorder(
+                                isSelected ? theme.brand : Color.hairline,
+                                lineWidth: isSelected ? 2.5 : 1
+                            )
+                            .frame(width: 48, height: 48)
+                        )
+                        .frame(width: 48, height: 48)
+
+                        Text(theme.name)
+                            .font(.caption2.weight(isSelected ? .semibold : .regular))
+                            .foregroundStyle(isSelected ? .primary : .secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(theme.name)
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .padding(.vertical, Spacing.xs)
     }
 }
 

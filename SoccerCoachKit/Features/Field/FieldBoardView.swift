@@ -22,7 +22,7 @@ struct FieldBoardView: View {
             )
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .screenBackground()
         .onAppear { viewModel.ensureDiagramLoaded(in: store) }
         .onChange(of: store.selectedTeamID) { _ in
             viewModel.selectedDiagramID = nil
@@ -152,6 +152,6 @@ struct FieldBoardView: View {
                 .lineLimit(2, reservesSpace: true)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.cardBackground)
     }
 }

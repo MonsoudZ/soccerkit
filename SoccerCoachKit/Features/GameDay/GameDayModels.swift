@@ -31,9 +31,9 @@ enum GamePlayerStatus: String, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .available: return .green
-        case .late: return .orange
-        case .injured: return .red
+        case .available: return .positive
+        case .late: return .caution
+        case .injured: return .critical
         }
     }
 }

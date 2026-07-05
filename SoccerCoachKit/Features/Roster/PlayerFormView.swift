@@ -75,6 +75,7 @@ struct PlayerFormView: View {
                     .frame(minHeight: 100)
             }
         }
+        .themedList()
         .navigationTitle(viewModel.isEditing ? "Edit Player" : "Add Player")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

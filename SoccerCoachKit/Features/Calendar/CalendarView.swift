@@ -16,7 +16,7 @@ struct CalendarView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .screenBackground()
         .toolbar {
             ToolbarItem {
                 Button {
@@ -138,8 +138,7 @@ struct CalendarView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .surfaceStyle()
             } else {
                 ForEach(items) { item in
                     NavigationLink {
@@ -279,8 +278,7 @@ private struct AgendaRow: View {
                 .clipShape(Capsule())
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .surfaceStyle()
     }
 
     private var timeText: String {

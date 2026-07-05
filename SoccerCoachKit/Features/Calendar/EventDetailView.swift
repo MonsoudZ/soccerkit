@@ -48,6 +48,7 @@ struct EventDetailView: View {
                         Text("\(summary.going) going · \(summary.maybe) maybe · \(summary.notGoing) not going · \(summary.total - summary.going - summary.maybe - summary.notGoing) no response")
                     }
                 }
+                .themedList()
             } else {
                 EmptyStateView(title: "Event Removed", systemImage: "calendar.badge.exclamationmark")
             }

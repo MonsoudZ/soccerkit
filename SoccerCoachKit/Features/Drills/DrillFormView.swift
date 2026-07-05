@@ -56,6 +56,7 @@ struct DrillFormView: View {
             }
         }
         .onAppear { viewModel.prepareDefaultTeam(in: store) }
+        .themedList()
         .navigationTitle(viewModel.isEditing ? "Edit Drill" : "New Drill")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

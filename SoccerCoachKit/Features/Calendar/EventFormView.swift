@@ -32,6 +32,7 @@ struct EventFormView: View {
                     .frame(minHeight: 90)
             }
         }
+        .themedList()
         .navigationTitle(viewModel.isEditing ? "Edit Event" : "New Event")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

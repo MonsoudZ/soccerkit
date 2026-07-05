@@ -34,6 +34,7 @@ struct DevelopmentEntryFormView: View {
                     .frame(minHeight: 120)
             }
         }
+        .themedList()
         .navigationTitle(viewModel.isEditing ? "Edit Entry" : "New Entry")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

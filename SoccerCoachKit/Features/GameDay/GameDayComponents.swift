@@ -83,8 +83,7 @@ struct GameClockPanel: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .surfaceStyle()
     }
 }
 
@@ -112,8 +111,7 @@ struct LineupColumn: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .surfaceStyle()
             } else {
                 ForEach(players) { player in
                     HStack(spacing: 10) {
@@ -153,8 +151,7 @@ struct LineupColumn: View {
                         .buttonStyle(.borderless)
                     }
                     .padding()
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .surfaceStyle()
                     .onDrag {
                         NSItemProvider(object: player.id.uuidString as NSString)
                     }
@@ -214,7 +211,7 @@ struct LineupPitchView: View {
             }
         }
         .frame(height: 440)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
         .overlay(alignment: .topLeading) {
             Label("\(formation.rawValue) Shape", systemImage: "square.grid.3x3")
                 .font(.caption.weight(.semibold))
@@ -252,10 +249,10 @@ struct LineupPitchMarker: View {
         .padding(4)
         .background(status == .available ? Color(.systemBackground).opacity(0.95) : status.color.opacity(0.86))
         .foregroundStyle(status == .available ? Color.primary : Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
         .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .stroke(Color.white.opacity(0.6), lineWidth: 1)
         )
     }
@@ -274,9 +271,9 @@ struct EmptyLineupSlot: View {
         .frame(width: 64, height: 48)
         .background(Color.white.opacity(0.22))
         .foregroundStyle(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .stroke(Color.white.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
         )
     }
@@ -344,7 +341,6 @@ struct ReminderRow: View {
             .buttonStyle(.borderless)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .surfaceStyle()
     }
 }

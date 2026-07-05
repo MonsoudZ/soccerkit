@@ -79,6 +79,7 @@ struct GameDetailView: View {
                         Text("\(summary.present) of \(summary.total) present")
                     }
                 }
+                .themedList()
             } else {
                 EmptyStateView(title: "Game Removed", systemImage: "calendar.badge.exclamationmark")
             }

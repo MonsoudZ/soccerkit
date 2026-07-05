@@ -23,7 +23,7 @@ struct TrainingPlannerView: View {
             }
         }
         .listStyle(.plain)
-        .background(Color(.systemGroupedBackground))
+        .themedList()
         .toolbar {
             Button {
                 viewModel.showingNewSession = true

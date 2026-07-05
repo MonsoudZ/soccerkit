@@ -9,7 +9,7 @@ struct SectionHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.headline)
+            .font(.system(.headline, design: .rounded))
             .padding(.top, 4)
             .accessibilityAddTraits(.isHeader)
     }
@@ -30,7 +30,7 @@ struct EmptyStateView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .screenBackground()
     }
 }
 
@@ -46,8 +46,8 @@ struct TagChipsView: View {
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.teal.opacity(0.14))
-                            .foregroundStyle(.teal)
+                            .background(.tint.opacity(0.14))
+                            .foregroundStyle(.tint)
                             .clipShape(Capsule())
                     }
                 }

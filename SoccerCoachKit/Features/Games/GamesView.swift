@@ -29,7 +29,7 @@ struct GamesView: View {
             }
         }
         .listStyle(.plain)
-        .background(Color(.systemGroupedBackground))
+        .themedList()
         .toolbar {
             Button {
                 viewModel.showingNewGame = true
