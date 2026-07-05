@@ -90,30 +90,52 @@ final class AppStore: ObservableObject {
         teams.first(where: { $0.id == selectedTeamID }) ?? teams[0]
     }
 
-    var roster: [Player] {
-        players
-            .filter { $0.teamID == selectedTeamID }
-            .sorted { $0.number < $1.number }
+    var roster: [Player] { players(inTeam: selectedTeamID) }
+
+    var teamSessions: [TrainingSession] { sessions(inTeam: selectedTeamID) }
+
+    var nextSession: TrainingSession? { nextSession(inTeam: selectedTeamID) }
+
+    var teamGames: [GameEvent] { games(inTeam: selectedTeamID) }
+
+    var nextGame: GameEvent? { nextGame(inTeam: selectedTeamID) }
+
+    // MARK: - Per-team & cross-team lookups
+
+    func players(inTeam id: UUID) -> [Player] {
+        players.filter { $0.teamID == id }.sorted { $0.number < $1.number }
     }
 
-    var teamSessions: [TrainingSession] {
-        sessions
-            .filter { $0.teamID == selectedTeamID }
-            .sorted { $0.date < $1.date }
+    func games(inTeam id: UUID) -> [GameEvent] {
+        games.filter { $0.teamID == id }.sorted { $0.date < $1.date }
     }
 
-    var nextSession: TrainingSession? {
-        teamSessions.first { $0.date >= Calendar.current.startOfDay(for: Date()) } ?? teamSessions.last
+    func sessions(inTeam id: UUID) -> [TrainingSession] {
+        sessions.filter { $0.teamID == id }.sorted { $0.date < $1.date }
     }
 
-    var teamGames: [GameEvent] {
-        games
-            .filter { $0.teamID == selectedTeamID }
-            .sorted { $0.date < $1.date }
+    func drills(inTeam id: UUID) -> [Drill] {
+        drills.filter { !$0.isArchived && ($0.teamID == nil || $0.teamID == id) }
     }
 
-    var nextGame: GameEvent? {
-        teamGames.first { $0.date >= Calendar.current.startOfDay(for: Date()) } ?? teamGames.last
+    func nextGame(inTeam id: UUID) -> GameEvent? {
+        let scoped = games(inTeam: id)
+        return scoped.first { $0.date >= Calendar.current.startOfDay(for: Date()) } ?? scoped.last
+    }
+
+    func nextSession(inTeam id: UUID) -> TrainingSession? {
+        let scoped = sessions(inTeam: id)
+        return scoped.first { $0.date >= Calendar.current.startOfDay(for: Date()) } ?? scoped.last
+    }
+
+    /// Earliest upcoming game across every team, if any.
+    var soonestGame: GameEvent? {
+        games.filter { $0.date >= Calendar.current.startOfDay(for: Date()) }.min { $0.date < $1.date }
+    }
+
+    /// Earliest upcoming training across every team, if any.
+    var soonestSession: TrainingSession? {
+        sessions.filter { $0.date >= Calendar.current.startOfDay(for: Date()) }.min { $0.date < $1.date }
     }
 
     var teamEvents: [TeamEvent] {

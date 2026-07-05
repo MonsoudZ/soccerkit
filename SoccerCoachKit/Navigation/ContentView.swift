@@ -43,7 +43,7 @@ private struct DetailContainer: View {
         Group {
             switch selection {
             case .dashboard:
-                DashboardView()
+                CoachOverviewView()
             case .calendar:
                 CalendarView()
             case .roster:
