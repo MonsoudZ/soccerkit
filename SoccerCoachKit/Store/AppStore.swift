@@ -335,6 +335,9 @@ final class AppStore: ObservableObject {
     /// version (a local replacement like import/reset/onboarding, which should
     /// win over older remote data).
     private func restore(_ snapshot: AppSnapshot, adoptVersion: Bool = false) {
+        // restore starts its own batch; calling it mid-batch would defer the
+        // consuming persist and let `adoptingVersion` leak into a later edit.
+        assert(!isBatchingPersist, "restore must not be called within a batch")
         if adoptVersion { adoptingVersion = snapshot.dataVersion }
         batch {
             teams = snapshot.teams
