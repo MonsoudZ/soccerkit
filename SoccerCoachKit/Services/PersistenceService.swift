@@ -21,6 +21,11 @@ enum PersistenceLoadResult {
 protocol PersistenceService {
     func load() -> PersistenceLoadResult
     func save(_ snapshot: AppSnapshot)
+    /// Switches which user's data this store reads and writes. Passing a coach's
+    /// Apple user id partitions their data so a different account on the same
+    /// device can't see it; `nil` is the signed-out / guest namespace. Any
+    /// pending write for the outgoing namespace is flushed first.
+    func setNamespace(_ namespace: String?)
     /// Preserve an undecodable blob under a separate key so that a subsequent
     /// fallback save can't destroy the user's (recoverable) data.
     func backupCorruptData(_ data: Data)
@@ -38,16 +43,25 @@ protocol PersistenceService {
 /// mutations don't block the UI or waste work.
 final class UserDefaultsPersistenceService: PersistenceService {
     private let defaults: UserDefaults
-    private let storageKey: String
-    private let backupKey: String
+    private let baseKey: String
+    private var namespace: String?
+    private var storageKey: String { namespace.map { "\(baseKey).\($0)" } ?? baseKey }
+    private var backupKey: String { storageKey + ".corrupt-backup" }
     private let queue = DispatchQueue(label: "SoccerCoachKit.persistence", qos: .utility)
     private let lock = NSLock()
     private var pending: AppSnapshot?
 
-    init(defaults: UserDefaults = .standard, storageKey: String = "SoccerCoachKit.AppSnapshot.v1") {
+    init(defaults: UserDefaults = .standard,
+         namespace: String? = nil,
+         baseKey: String = "SoccerCoachKit.AppSnapshot.v1") {
         self.defaults = defaults
-        self.storageKey = storageKey
-        self.backupKey = storageKey + ".corrupt-backup"
+        self.baseKey = baseKey
+        self.namespace = namespace
+    }
+
+    func setNamespace(_ namespace: String?) {
+        flushPendingSync() // finish writing the outgoing user's data first
+        self.namespace = namespace
     }
 
     func load() -> PersistenceLoadResult {

@@ -4,13 +4,21 @@ import Foundation
 /// Persistence backed by memory (or primed to return a specific result) so tests
 /// don't touch UserDefaults.
 final class InMemoryPersistence: PersistenceService {
-    var stored: AppSnapshot?
+    private var storedByNamespace: [String: AppSnapshot] = [:]
+    private var namespace = "" // "" == guest / signed-out
     private(set) var backedUp: Data?
 
-    init(stored: AppSnapshot? = nil) { self.stored = stored }
+    init(stored: AppSnapshot? = nil) { storedByNamespace[""] = stored }
+
+    /// The snapshot for the current namespace (kept for existing tests).
+    var stored: AppSnapshot? {
+        get { storedByNamespace[namespace] }
+        set { storedByNamespace[namespace] = newValue }
+    }
 
     func load() -> PersistenceLoadResult { stored.map { .success($0) } ?? .empty }
     func save(_ snapshot: AppSnapshot) { stored = snapshot }
+    func setNamespace(_ namespace: String?) { self.namespace = namespace ?? "" }
     func backupCorruptData(_ data: Data) { backedUp = data }
     func flushPendingSync() {}
     func corruptBackup() -> Data? { backedUp }

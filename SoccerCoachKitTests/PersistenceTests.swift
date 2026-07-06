@@ -19,7 +19,7 @@ final class PersistenceTests: XCTestCase {
     }
 
     private func service() -> UserDefaultsPersistenceService {
-        UserDefaultsPersistenceService(defaults: defaults, storageKey: key)
+        UserDefaultsPersistenceService(defaults: defaults, baseKey: key)
     }
 
     func testEmptyWhenNothingStored() {

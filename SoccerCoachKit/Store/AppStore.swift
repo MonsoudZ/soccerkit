@@ -156,25 +156,39 @@ final class AppStore: ObservableObject {
     /// recoverable instead of being silently replaced.
     @MainActor
     static var storedOrSample: AppStore {
-        let persistence = UserDefaultsPersistenceService()
-        let snapshot: AppSnapshot
+        // Load the signed-in coach's partition (nil = guest / signed-out).
+        let userID = UserDefaults.standard.string(forKey: "appleUserID")
+        let persistence = UserDefaultsPersistenceService(namespace: userID)
+        let snapshot = Self.loadSnapshot(from: persistence)
 
+        let syncEnabled = (UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool) ?? true
+        let cloudSync = CloudSyncService(enabled: syncEnabled, namespace: userID)
+        return AppStore(snapshot: snapshot, persistence: persistence, cloudSync: cloudSync)
+    }
+
+    private static func loadSnapshot(from persistence: PersistenceService) -> AppSnapshot {
         switch persistence.load() {
         case .success(let loaded) where !loaded.teams.isEmpty:
-            snapshot = loaded
+            return loaded
         case .success, .empty:
-            // Decoded-but-empty or fresh install: safe to seed with sample data.
-            snapshot = SampleData.snapshot
+            // Decoded-but-empty or a coach we haven't seen: seed with sample data.
+            return SampleData.snapshot
         case .corrupt(let data, let error):
             // Preserve the unreadable blob before any save can clobber it.
             persistence.backupCorruptData(data)
             assertionFailure("Could not decode persisted snapshot; backed up under the corrupt-backup key. \(error)")
-            snapshot = SampleData.snapshot
+            return SampleData.snapshot
         }
+    }
 
-        let syncEnabled = (UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool) ?? true
-        let cloudSync = CloudSyncService(enabled: syncEnabled)
-        return AppStore(snapshot: snapshot, persistence: persistence, cloudSync: cloudSync)
+    /// Switches which coach's data is active. Called when the signed-in Apple
+    /// user changes: the outgoing coach's data is saved under their partition and
+    /// the incoming coach's data (or a fresh sample) is loaded — so a different
+    /// account never sees the previous coach's roster, and no one loses data.
+    func switchUser(to userID: String?) {
+        persistence.setNamespace(userID)
+        cloudSync?.setNamespace(userID)
+        restore(Self.loadSnapshot(from: persistence))
     }
 
     /// Synchronously flushes any pending background write. Call when the app is

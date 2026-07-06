@@ -27,6 +27,10 @@ final class CloudSyncService {
 
     private let store: KeyValueSyncStore
     private var observer: NSObjectProtocol?
+    /// Per-user key suffix so a different Apple ID on the device syncs under its
+    /// own value rather than reading the previous coach's data.
+    private var namespace: String?
+    private var storeKey: String { namespace.map { "\(Self.key).\($0)" } ?? Self.key }
     /// The last bytes we wrote or read, to suppress our own echoes and no-op
     /// duplicate pulls.
     private var lastData: Data?
@@ -45,9 +49,23 @@ final class CloudSyncService {
         return encoder
     }()
 
-    init(store: KeyValueSyncStore = NSUbiquitousKeyValueStore.default, enabled: Bool) {
+    init(store: KeyValueSyncStore = NSUbiquitousKeyValueStore.default,
+         enabled: Bool,
+         namespace: String? = nil) {
         self.store = store
         self.isEnabled = enabled
+        self.namespace = namespace
+    }
+
+    /// Points sync at a different user's key and re-reads its remote state.
+    func setNamespace(_ namespace: String?) {
+        self.namespace = namespace
+        lastData = nil
+        hasSyncedInitialState = false
+        guard isEnabled else { return }
+        store.synchronize()
+        if store.syncData(forKey: storeKey) != nil { hasSyncedInitialState = true }
+        pullRemote()
     }
 
     /// Begins observing external changes and pulls any newer remote snapshot.
@@ -63,7 +81,7 @@ final class CloudSyncService {
         }
         store.synchronize()
         // If iCloud has already downloaded a value, it's safe to upload from now on.
-        if store.syncData(forKey: Self.key) != nil { hasSyncedInitialState = true }
+        if store.syncData(forKey: storeKey) != nil { hasSyncedInitialState = true }
         pullRemote()
     }
 
@@ -95,7 +113,7 @@ final class CloudSyncService {
               data != lastData,
               data.count < Self.maxValueBytes else { return }
         lastData = data
-        store.setSyncData(data, forKey: Self.key)
+        store.setSyncData(data, forKey: storeKey)
         store.synchronize()
     }
 
@@ -104,7 +122,7 @@ final class CloudSyncService {
     /// remote value doesn't permanently suppress future good pulls.
     func pullRemote() {
         guard isEnabled,
-              let data = store.syncData(forKey: Self.key),
+              let data = store.syncData(forKey: storeKey),
               data != lastData,
               let snapshot = try? JSONDecoder().decode(AppSnapshot.self, from: data) else { return }
         lastData = data
