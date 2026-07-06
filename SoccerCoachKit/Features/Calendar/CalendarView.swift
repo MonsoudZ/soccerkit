@@ -264,18 +264,11 @@ private struct AgendaRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.lg) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(item.kind.color)
-                .frame(width: 5)
+            IconChip(symbol: item.kind.symbol, accent: item.kind.color)
 
             VStack(alignment: .leading, spacing: Spacing.xs) {
-                HStack(spacing: Spacing.md) {
-                    Image(systemName: item.kind.symbol)
-                        .font(.caption)
-                        .foregroundStyle(item.kind.color)
-                    Text(item.title)
-                        .font(.headline)
-                }
+                Text(item.title)
+                    .font(.headline)
 
                 Text(timeText)
                     .font(.caption)

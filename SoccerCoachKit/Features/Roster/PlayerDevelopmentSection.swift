@@ -13,9 +13,14 @@ struct PlayerDevelopmentSection: View {
                     .foregroundStyle(.secondary)
             } else {
                 LabeledContent("Attendance") {
-                    Text(attendanceText)
-                        .foregroundStyle(attendanceColor)
-                        .fontWeight(.semibold)
+                    HStack(spacing: Spacing.md) {
+                        Text(attendanceText)
+                            .foregroundStyle(attendanceColor)
+                            .fontWeight(.semibold)
+                        if let rate = profile.attendanceRate {
+                            MiniRing(progress: rate, color: attendanceColor)
+                        }
+                    }
                 }
                 if profile.minutes > 0 {
                     LabeledContent("Minutes Played", value: "\(profile.minutes)'")
@@ -79,6 +84,24 @@ struct PlayerDevelopmentSection: View {
         let contributions = games.reduce(0) { $0 + $1.contributions }
         if contributions > 0 { parts.append("\(contributions) goal contribution\(contributions == 1 ? "" : "s")") }
         return parts.joined(separator: ", ")
+    }
+}
+
+/// A small progress ring — used to visualise the attendance rate inline.
+private struct MiniRing: View {
+    let progress: Double
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(color.opacity(0.2), lineWidth: 3)
+            Circle()
+                .trim(from: 0, to: max(0, min(1, progress)))
+                .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 22, height: 22)
+        .accessibilityHidden(true)
     }
 }
 

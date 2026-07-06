@@ -27,8 +27,10 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: Spacing.lg) {
             Image(systemName: systemImage)
-                .font(.system(size: 46))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 40, weight: .semibold))
+                .foregroundStyle(Color.brand)
+                .frame(width: 92, height: 92)
+                .background(Circle().fill(Color.brand.opacity(0.12)))
 
             Text(title)
                 .font(.title3.weight(.semibold))
@@ -63,8 +65,10 @@ struct InlineEmptyView: View {
     var body: some View {
         VStack(spacing: Spacing.md) {
             Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Color.brand)
+                .frame(width: 52, height: 52)
+                .background(Circle().fill(Color.brand.opacity(0.12)))
             Text(title)
                 .font(.subheadline.weight(.medium))
             if let message {
