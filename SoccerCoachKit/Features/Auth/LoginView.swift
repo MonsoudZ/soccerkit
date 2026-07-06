@@ -35,6 +35,13 @@ struct LoginView: View {
                 .frame(height: 50)
                 .clipShape(RoundedRectangle(cornerRadius: CornerRadius.small, style: .continuous))
 
+                if let authError = auth.authError {
+                    Label(authError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(Color.critical)
+                        .multilineTextAlignment(.center)
+                }
+
                 Text("We only use your Apple ID to sign you in. Your team data stays on your device.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -45,6 +52,6 @@ struct LoginView: View {
         }
         .frame(maxWidth: 480)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.screenBackground.ignoresSafeArea())
+        .screenBackground()
     }
 }

@@ -43,7 +43,7 @@ final class GameActivityController {
         state.opponentScore = max(0, state.opponentScore + awayDelta)
 
         if #available(iOS 16.2, *) {
-            await activity.update(ActivityContent(state: state, staleDate: nil))
+            await activity.update(ActivityContent(state: state, staleDate: Self.staleAfter()))
         } else {
             await activity.update(using: state)
         }
@@ -78,7 +78,7 @@ final class GameActivityController {
             if #available(iOS 16.2, *) {
                 activity = try Activity.request(
                     attributes: attributes,
-                    content: ActivityContent(state: state, staleDate: nil),
+                    content: ActivityContent(state: state, staleDate: Self.staleAfter()),
                     pushType: .token
                 )
             } else {
@@ -91,6 +91,27 @@ final class GameActivityController {
         } catch {
             current = nil
         }
+    }
+
+    /// A running match with no updates for a few hours is almost certainly over,
+    /// so content goes stale — a forgotten activity dims and can be reclaimed by
+    /// the system instead of lingering on the Lock Screen forever.
+    private static func staleAfter() -> Date { Date().addingTimeInterval(3 * 3600) }
+
+    /// Pulls the activity's current score back into the app — e.g. goals tapped
+    /// on the Lock Screen while the app was backgrounded or terminated. Call on
+    /// foreground, after `onScoreChange` is wired.
+    func reconcile() {
+        guard #available(iOS 16.1, *),
+              let activity = (current as? Activity<GameActivityAttributes>)
+                ?? Activity<GameActivityAttributes>.activities.first else { return }
+        current = activity
+        let state: GameActivityAttributes.ContentState
+        if #available(iOS 16.2, *) { state = activity.content.state } else { state = activity.contentState }
+        let team = state.teamScore
+        let opponent = state.opponentScore
+        let callback = onScoreChange
+        Task { @MainActor in callback?(team, opponent) }
     }
 
     /// Streams the activity's push token to `pushToken` / `onPushTokenChange`.
@@ -114,7 +135,7 @@ final class GameActivityController {
                                  periodLabel: periodLabel, isRunning: isRunning, elapsed: elapsed)
         Task {
             if #available(iOS 16.2, *) {
-                await activity.update(ActivityContent(state: state, staleDate: nil))
+                await activity.update(ActivityContent(state: state, staleDate: Self.staleAfter()))
             } else {
                 await activity.update(using: state)
             }

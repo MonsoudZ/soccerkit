@@ -44,10 +44,12 @@ final class AppStore: ObservableObject {
     /// than on every attendance tap, RSVP, or score change.
     private var remindersDirty = false
 
-    // Stable projections of the fields that determine *when* reminders fire.
-    private func scheduleKey(_ game: GameEvent) -> String { "\(game.id)@\(game.date.timeIntervalSinceReferenceDate)" }
-    private func scheduleKey(_ session: TrainingSession) -> String { "\(session.id)@\(session.date.timeIntervalSinceReferenceDate)" }
-    private func scheduleKey(_ event: TeamEvent) -> String { "\(event.id)@\(event.date.timeIntervalSinceReferenceDate)@\(event.endDate?.timeIntervalSinceReferenceDate ?? 0)" }
+    // Stable projections of the fields that determine *when* a reminder fires
+    // and *what it says*, so renaming an opponent/session/event refreshes the
+    // scheduled notification's text too.
+    private func scheduleKey(_ game: GameEvent) -> String { "\(game.id)@\(game.date.timeIntervalSinceReferenceDate)@\(game.opponent)" }
+    private func scheduleKey(_ session: TrainingSession) -> String { "\(session.id)@\(session.date.timeIntervalSinceReferenceDate)@\(session.title)" }
+    private func scheduleKey(_ event: TeamEvent) -> String { "\(event.id)@\(event.date.timeIntervalSinceReferenceDate)@\(event.endDate?.timeIntervalSinceReferenceDate ?? 0)@\(event.title)" }
     @Published var selectedTeamID: UUID {
         didSet { persist() }
     }
@@ -248,6 +250,12 @@ final class AppStore: ObservableObject {
             remindersDirty = false
             if eventRemindersEnabled { refreshEventReminders() }
         }
+        // Invalidate a pending undo once a *subsequent* change lands.
+        if undoJustRegistered {
+            undoJustRegistered = false
+        } else if undoMessage != nil {
+            dismissUndo()
+        }
     }
 
     /// Publishes the soonest fixture (across all teams) to the app group and
@@ -329,12 +337,17 @@ final class AppStore: ObservableObject {
     /// deletes) be reverted as a whole.
     @Published private(set) var undoMessage: String?
     private var undoSnapshot: AppSnapshot?
+    /// True for the single persist caused by the delete itself, so a *later*
+    /// change can invalidate the undo offer (undo restores a whole snapshot, so
+    /// undoing after an unrelated edit would silently revert that edit too).
+    private var undoJustRegistered = false
 
     /// Snapshots the current state so the next delete can be reverted. Call
     /// *before* the mutation so the removed items are still captured.
     func registerUndo(_ message: String) {
         undoSnapshot = snapshot
         undoMessage = message
+        undoJustRegistered = true
     }
 
     /// Restores the state captured before the most recent delete.

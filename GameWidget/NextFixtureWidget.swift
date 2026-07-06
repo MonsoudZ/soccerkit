@@ -19,13 +19,29 @@ struct FixtureProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<FixtureEntry>) -> Void) {
-        let fixture = WidgetSharedStore.load()
-        let entry = FixtureEntry(date: Date(), fixture: fixture)
-        // Refresh soon after kickoff (or in an hour if there's nothing scheduled).
-        let nextRefresh = fixture.map { $0.date.addingTimeInterval(2 * 3600) }
-            ?? Date().addingTimeInterval(3600)
-        let policy: TimelineReloadPolicy = .after(max(nextRefresh, Date().addingTimeInterval(900)))
-        completion(Timeline(entries: [entry], policy: policy))
+        let now = Date()
+        // Ignore a fixture that has already kicked off (the app may not have
+        // republished the next one yet).
+        let fixture = WidgetSharedStore.load().flatMap { $0.date > now ? $0 : nil }
+
+        guard let fixture else {
+            completion(Timeline(entries: [FixtureEntry(date: now, fixture: nil)],
+                                policy: .after(now.addingTimeInterval(3600))))
+            return
+        }
+
+        // One entry now plus one per following midnight up to kickoff, so the
+        // relative countdown / "days until" stays current instead of freezing.
+        let calendar = Calendar.current
+        var entries = [FixtureEntry(date: now, fixture: fixture)]
+        var day = now
+        for _ in 0..<14 {
+            guard let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: day)),
+                  midnight < fixture.date else { break }
+            entries.append(FixtureEntry(date: midnight, fixture: fixture))
+            day = midnight
+        }
+        completion(Timeline(entries: entries, policy: .after(fixture.date)))
     }
 }
 
@@ -57,7 +73,7 @@ private struct FixtureWidgetEntryView: View {
         case .accessoryCircular:
             ZStack {
                 AccessoryWidgetBackground()
-                AccessoryCircularFixtureView(fixture: entry.fixture)
+                AccessoryCircularFixtureView(fixture: entry.fixture, now: entry.date)
             }
             .accessoryContainer()
         default:

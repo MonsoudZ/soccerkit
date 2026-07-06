@@ -33,7 +33,8 @@ private struct UndoBannerModifier: ViewModifier {
         .overlay(Capsule().strokeBorder(Color.hairline, lineWidth: 0.5))
         .shadow(color: Elevation.cardColor, radius: Elevation.cardRadius, y: Elevation.cardYOffset)
         .padding(.horizontal, Spacing.xl)
-        .padding(.bottom, Spacing.md)
+        // Clear the bottom tab bar so the capsule isn't obscured by it.
+        .padding(.bottom, 52)
         .task(id: message) {
             try? await Task.sleep(nanoseconds: 4_500_000_000)
             store.dismissUndo()

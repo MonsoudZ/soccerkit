@@ -27,7 +27,7 @@ struct OnboardingView: View {
             .frame(maxWidth: 520)
             .frame(maxWidth: .infinity)
         }
-        .background(Color.screenBackground.ignoresSafeArea())
+        .screenBackground()
     }
 
     // MARK: Hero

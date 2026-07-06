@@ -9,6 +9,8 @@ import SwiftUI
 final class AuthController: ObservableObject {
     @Published private(set) var userID: String?
     @Published private(set) var displayName: String?
+    /// A user-facing message when a sign-in attempt fails (nil = none / cancelled).
+    @Published var authError: String?
 
     var isSignedIn: Bool { userID != nil }
 
@@ -27,18 +29,24 @@ final class AuthController: ObservableObject {
         request.requestedScopes = [.fullName]
     }
 
-    /// Handles the button's completion, storing the identity on success.
+    /// Handles the button's completion, storing the identity on success and
+    /// surfacing a message on a genuine failure (user-cancellation is silent).
     func handle(_ result: Result<ASAuthorization, Error>) {
-        guard case .success(let authorization) = result,
-              let credential = authorization.credential as? ASAuthorizationAppleIDCredential
-        else { return }
-
-        // The full name is only returned on the *first* authorization, so we
-        // keep any previously stored name rather than overwriting it with nil.
-        let name = [credential.fullName?.givenName, credential.fullName?.familyName]
-            .compactMap { $0 }
-            .joined(separator: " ")
-        completeSignIn(userID: credential.user, name: name.isEmpty ? nil : name)
+        switch result {
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
+            // The full name is only returned on the *first* authorization, so we
+            // keep any previously stored name rather than overwriting it with nil.
+            let name = [credential.fullName?.givenName, credential.fullName?.familyName]
+                .compactMap { $0 }
+                .joined(separator: " ")
+            authError = nil
+            completeSignIn(userID: credential.user, name: name.isEmpty ? nil : name)
+        case .failure(let error):
+            // Don't nag when the user simply cancelled the sheet.
+            if (error as? ASAuthorizationError)?.code == .canceled { return }
+            authError = "Sign in couldn't be completed. Please try again."
+        }
     }
 
     /// Stores a signed-in identity. Exposed so the flow is testable without a

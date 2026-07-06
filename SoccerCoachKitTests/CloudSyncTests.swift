@@ -23,9 +23,24 @@ final class CloudSyncTests: XCTestCase {
     func testSaveWritesEncodedSnapshot() {
         let kv = FakeKVStore()
         let sync = CloudSyncService(store: kv, enabled: true)
+        sync.hasSyncedInitialState = true
 
         sync.save(snapshot(teamName: "Falcons"))
 
+        XCTAssertNotNil(kv.storage[CloudSyncService.key])
+    }
+
+    func testSaveIsGatedUntilInitialSync() {
+        let kv = FakeKVStore()
+        let sync = CloudSyncService(store: kv, enabled: true)
+
+        // Before iCloud reports its initial state, nothing is uploaded — so a
+        // fresh device showing sample data can't clobber good remote data.
+        sync.save(snapshot(teamName: "Falcons"))
+        XCTAssertNil(kv.storage[CloudSyncService.key])
+
+        sync.hasSyncedInitialState = true
+        sync.save(snapshot(teamName: "Falcons"))
         XCTAssertNotNil(kv.storage[CloudSyncService.key])
     }
 
@@ -55,6 +70,7 @@ final class CloudSyncTests: XCTestCase {
     func testOwnSaveIsNotRedeliveredAsRemote() {
         let kv = FakeKVStore()
         let sync = CloudSyncService(store: kv, enabled: true)
+        sync.hasSyncedInitialState = true
         var received = 0
         sync.onRemoteChange = { _ in received += 1 }
 

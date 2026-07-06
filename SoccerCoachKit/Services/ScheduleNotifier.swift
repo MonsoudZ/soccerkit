@@ -26,35 +26,39 @@ enum ScheduleReminderPlanner {
         limit: Int = 30
     ) -> [PlannedReminder] {
         let lead = TimeInterval(leadMinutes * 60)
-        var planned: [PlannedReminder] = []
+        // Soonest we can usefully schedule; an event happening within the lead
+        // window still gets a reminder now rather than being dropped.
+        let earliest = now.addingTimeInterval(60)
 
+        func plan(id: String, date: Date, title: String, body: String) -> PlannedReminder? {
+            guard date > now else { return nil } // already started
+            return PlannedReminder(
+                id: id,
+                fireDate: max(date.addingTimeInterval(-lead), earliest),
+                title: title,
+                body: body
+            )
+        }
+
+        var planned: [PlannedReminder?] = []
         for game in games {
-            planned.append(PlannedReminder(
-                id: "game.\(game.id.uuidString)",
-                fireDate: game.date.addingTimeInterval(-lead),
-                title: "Upcoming game",
-                body: "\(teamName(game.teamID)) vs \(game.opponent) — \(when(game.date))"
-            ))
+            planned.append(plan(
+                id: "game.\(game.id.uuidString)", date: game.date, title: "Upcoming game",
+                body: "\(teamName(game.teamID)) vs \(game.opponent) — \(when(game.date))"))
         }
         for session in sessions {
-            planned.append(PlannedReminder(
-                id: "session.\(session.id.uuidString)",
-                fireDate: session.date.addingTimeInterval(-lead),
-                title: "Training session",
-                body: "\(teamName(session.teamID)): \(session.title) — \(when(session.date))"
-            ))
+            planned.append(plan(
+                id: "session.\(session.id.uuidString)", date: session.date, title: "Training session",
+                body: "\(teamName(session.teamID)): \(session.title) — \(when(session.date))"))
         }
         for event in events {
-            planned.append(PlannedReminder(
-                id: "event.\(event.id.uuidString)",
-                fireDate: event.date.addingTimeInterval(-lead),
-                title: event.kind.rawValue,
-                body: "\(teamName(event.teamID)): \(event.title) — \(when(event.date))"
-            ))
+            planned.append(plan(
+                id: "event.\(event.id.uuidString)", date: event.date, title: event.kind.rawValue,
+                body: "\(teamName(event.teamID)): \(event.title) — \(when(event.date))"))
         }
 
         return planned
-            .filter { $0.fireDate > now }
+            .compactMap { $0 }
             .sorted { $0.fireDate < $1.fireDate }
             .prefix(limit)
             .map { $0 }

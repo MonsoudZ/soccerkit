@@ -155,6 +155,8 @@ final class GameDayViewModel: ObservableObject {
         } else {
             syncRoster(with: store)
         }
+        // Adopt any goals tapped on the Live Activity while we were away.
+        activity.reconcile()
     }
 
     /// Reconciles an in-progress game with the store's roster after a mid-game
@@ -446,8 +448,13 @@ final class GameDayViewModel: ObservableObject {
 
     /// Mirrors the live score into the linked game's record. No-op when unlinked.
     private func persistScore(in store: AppStore) {
-        guard let id = linkedGameID,
-              var game = store.games.first(where: { $0.id == id }) else { return }
+        guard let id = linkedGameID else { return }
+        guard var game = store.games.first(where: { $0.id == id }) else {
+            // The linked game was deleted — drop the stale link so the UI stops
+            // claiming the score is being saved.
+            linkedGameID = nil
+            return
+        }
         game.teamScore = teamScore
         game.opponentScore = opponentScore
         store.updateGame(game)
@@ -509,6 +516,9 @@ final class GameDayViewModel: ObservableObject {
         subLog.removeAll()
         teamScore = 0
         opponentScore = 0
+        // Unlink so the zeroed scoreboard doesn't silently disagree with the
+        // linked game's recorded result (the game keeps its last saved score).
+        linkedGameID = nil
         normalizeSelections()
         rescheduleNotifications()
         endActivity()

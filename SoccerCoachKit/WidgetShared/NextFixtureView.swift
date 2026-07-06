@@ -63,8 +63,9 @@ struct NextFixtureView: View {
 
             Spacer(minLength: 0)
 
-            // Relative countdown that keeps itself current on the timeline.
-            Text(fixture.date, format: .relative(presentation: .named))
+            // Auto-updating relative countdown (WidgetKit refreshes `.relative`
+            // style text on its own, unlike the static `.relative` format).
+            Text(fixture.date, style: .relative)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(accent)
                 .lineLimit(1)
@@ -142,16 +143,18 @@ func daysUntil(_ date: Date, now: Date = Date()) -> Int {
 }
 
 /// The `.accessoryCircular` Lock Screen complication: a compact "days until"
-/// countdown. The widget wraps this in an `AccessoryWidgetBackground`.
+/// countdown. The widget wraps this in an `AccessoryWidgetBackground` and passes
+/// the timeline entry's date as `now`, so the number decrements each day.
 struct AccessoryCircularFixtureView: View {
     let fixture: FixtureSnapshot?
+    var now: Date = Date()
 
     var body: some View {
         VStack(spacing: -1) {
             Image(systemName: "soccerball")
                 .font(.system(size: 11))
             if let fixture {
-                let days = daysUntil(fixture.date)
+                let days = daysUntil(fixture.date, now: now)
                 Text(days == 0 ? "Today" : "\(days)")
                     .font(.system(size: days == 0 ? 13 : 20, weight: .bold, design: .rounded))
                     .minimumScaleFactor(0.6)
@@ -166,5 +169,13 @@ struct AccessoryCircularFixtureView: View {
         }
         .widgetAccentable()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        guard let fixture else { return "No upcoming games" }
+        let days = daysUntil(fixture.date, now: now)
+        if days == 0 { return "Game today" }
+        return "\(days) day\(days == 1 ? "" : "s") until the next game"
     }
 }

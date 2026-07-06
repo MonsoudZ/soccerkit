@@ -21,12 +21,20 @@ extension NSUbiquitousKeyValueStore: KeyValueSyncStore {
 @MainActor
 final class CloudSyncService {
     static let key = "appSnapshot"
+    /// KVS caps a single value near 1 MB; stay under it and skip oversize writes
+    /// rather than letting the store silently reject them.
+    private static let maxValueBytes = 900_000
 
     private let store: KeyValueSyncStore
     private var observer: NSObjectProtocol?
     /// The last bytes we wrote or read, to suppress our own echoes and no-op
     /// duplicate pulls.
     private var lastData: Data?
+
+    /// Gates uploads until iCloud has reported its initial state. Prevents a
+    /// fresh device (still showing sample data while the real snapshot downloads)
+    /// from pushing that sample data up and clobbering good remote data.
+    var hasSyncedInitialState = false
 
     var isEnabled: Bool
     var onRemoteChange: ((AppSnapshot) -> Void)?
@@ -49,10 +57,13 @@ final class CloudSyncService {
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: store as? NSUbiquitousKeyValueStore,
             queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.pullRemote() }
+        ) { [weak self] note in
+            let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
+            MainActor.assumeIsolated { self?.handleExternalChange(reason: reason) }
         }
         store.synchronize()
+        // If iCloud has already downloaded a value, it's safe to upload from now on.
+        if store.syncData(forKey: Self.key) != nil { hasSyncedInitialState = true }
         pullRemote()
     }
 
@@ -61,22 +72,42 @@ final class CloudSyncService {
         observer = nil
     }
 
-    /// Writes the snapshot to iCloud, unless it matches what we last synced.
+    private func handleExternalChange(reason: Int?) {
+        switch reason {
+        case NSUbiquitousKeyValueStoreAccountChange, NSUbiquitousKeyValueStoreQuotaViolationChange:
+            // The iCloud account changed (sign-out / different Apple ID) or is
+            // over quota — the store's contents no longer represent this user's
+            // data, so do NOT overwrite local from it. Forget our echo baseline.
+            lastData = nil
+        default:
+            // ServerChange / InitialSyncChange: the store now reflects real
+            // remote state, so uploads are safe and there may be data to pull.
+            hasSyncedInitialState = true
+            pullRemote()
+        }
+    }
+
+    /// Writes the snapshot to iCloud, unless it matches what we last synced, sync
+    /// hasn't reported its initial state yet, or it exceeds the KVS size limit.
     func save(_ snapshot: AppSnapshot) {
-        guard isEnabled, let data = try? Self.encoder.encode(snapshot), data != lastData else { return }
+        guard isEnabled, hasSyncedInitialState,
+              let data = try? Self.encoder.encode(snapshot),
+              data != lastData,
+              data.count < Self.maxValueBytes else { return }
         lastData = data
         store.setSyncData(data, forKey: Self.key)
         store.synchronize()
     }
 
-    /// Reads the remote snapshot and notifies if it differs from what we last saw.
+    /// Reads the remote snapshot and notifies if it differs from what we last
+    /// saw. `lastData` is only advanced on a successful decode, so a malformed
+    /// remote value doesn't permanently suppress future good pulls.
     func pullRemote() {
         guard isEnabled,
               let data = store.syncData(forKey: Self.key),
-              data != lastData else { return }
+              data != lastData,
+              let snapshot = try? JSONDecoder().decode(AppSnapshot.self, from: data) else { return }
         lastData = data
-        if let snapshot = try? JSONDecoder().decode(AppSnapshot.self, from: data) {
-            onRemoteChange?(snapshot)
-        }
+        onRemoteChange?(snapshot)
     }
 }

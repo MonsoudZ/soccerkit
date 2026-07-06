@@ -63,12 +63,6 @@ struct FieldBoardView: View {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
 
-            Button {
-                viewModel.clearLines()
-            } label: {
-                Label("Clear Lines", systemImage: "scribble.variable")
-            }
-
             Button(role: .destructive) {
                 viewModel.resetCurrentBoard(in: store)
             } label: {
@@ -93,17 +87,13 @@ struct FieldBoardView: View {
                         Label(boardTool.rawValue, systemImage: boardTool.symbol)
                     }
                     .tint(viewModel.tool == boardTool ? Color.brand : Color.secondary)
+                    .accessibilityAddTraits(viewModel.tool == boardTool ? [.isButton, .isSelected] : .isButton)
                 }
                 Spacer()
                 Button {
                     viewModel.clearLines()
                 } label: {
                     Label("Clear Lines", systemImage: "scribble.variable")
-                }
-                Button {
-                    viewModel.createNewDiagram(in: store)
-                } label: {
-                    Label("New Diagram", systemImage: "plus")
                 }
             }
         }

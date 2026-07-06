@@ -37,6 +37,21 @@ final class UndoAndOnboardingTests: XCTestCase {
         XCTAssertEqual(store.players.count, 2, "...along with its cascaded players")
     }
 
+    func testUndoIsDismissedByALaterEdit() {
+        let store = TestData.store(TestData.snapshot(playerCount: 3))
+        let player = store.roster.first!
+
+        store.deletePlayer(player)
+        XCTAssertNotNil(store.undoMessage)
+
+        // An unrelated change lands within the undo window.
+        store.addTeam(name: "New Team", ageGroup: .u10, season: "2026")
+        XCTAssertNil(store.undoMessage, "Undo offer is withdrawn once another change happens")
+
+        store.undoLastDelete() // no-op now
+        XCTAssertFalse(store.players.contains { $0.id == player.id })
+    }
+
     func testDismissUndoLeavesDataDeleted() {
         let store = TestData.store(TestData.snapshot(playerCount: 2))
         let player = store.roster.first!

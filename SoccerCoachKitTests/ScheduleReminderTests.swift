@@ -26,17 +26,20 @@ final class ScheduleReminderTests: XCTestCase {
         XCTAssertTrue(reminders[0].body.contains("Falcons vs Rivals"))
     }
 
-    func testDropsPastEventsAndEventsWhoseLeadHasElapsed() {
+    func testDropsPastEventsButClampsImminentOnes() {
         let now = Date()
-        let past = game(daysFromNow: -1, now: now)          // already played
-        let tooSoon = game(daysFromNow: 0.01, now: now)     // ~15 min away, lead 60 -> fire in the past
+        let past = game(daysFromNow: -1, now: now)          // already played -> dropped
+        let tooSoon = game(daysFromNow: 0.01, now: now)     // ~15 min away, lead 60 -> clamped to now, not dropped
         let upcoming = game(daysFromNow: 3, now: now)
 
         let reminders = ScheduleReminderPlanner.reminders(
             games: [past, tooSoon, upcoming], sessions: [], events: [], teamName: name(_:),
             leadMinutes: 60, now: now)
 
-        XCTAssertEqual(reminders.map(\.id), ["game.\(upcoming.id.uuidString)"])
+        XCTAssertEqual(reminders.map(\.id),
+                       ["game.\(tooSoon.id.uuidString)", "game.\(upcoming.id.uuidString)"],
+                       "Past dropped; imminent event clamped to fire soon rather than dropped")
+        XCTAssertGreaterThan(reminders[0].fireDate, now, "Clamped fire date is still in the future")
     }
 
     func testSortsByFireDateAndCapsAtLimit() {
