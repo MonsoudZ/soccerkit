@@ -82,6 +82,31 @@ struct FieldBoardView: View {
             }
             .disabled(viewModel.currentDiagram(in: store) == nil)
         }
+        // Context row: pick what to place on the board, add a diagram, or clear
+        // drawn lines — the field's quick actions, above the tab bar.
+        .toolbar {
+            ToolbarItemGroup(placement: .bottomBar) {
+                ForEach(BoardTool.allCases) { boardTool in
+                    Button {
+                        viewModel.tool = boardTool
+                    } label: {
+                        Label(boardTool.rawValue, systemImage: boardTool.symbol)
+                    }
+                    .tint(viewModel.tool == boardTool ? Color.brand : Color.secondary)
+                }
+                Spacer()
+                Button {
+                    viewModel.clearLines()
+                } label: {
+                    Label("Clear Lines", systemImage: "scribble.variable")
+                }
+                Button {
+                    viewModel.createNewDiagram(in: store)
+                } label: {
+                    Label("New Diagram", systemImage: "plus")
+                }
+            }
+        }
     }
 
     private var boardToolbar: some View {
@@ -137,14 +162,6 @@ struct FieldBoardView: View {
                 Label(viewModel.attachmentTitle(in: store), systemImage: "paperclip")
                     .font(.caption)
             }
-
-            Picker("Board Tool", selection: $viewModel.tool) {
-                ForEach(BoardTool.allCases) { item in
-                    Label(item.rawValue, systemImage: item.symbol)
-                        .tag(item)
-                }
-            }
-            .pickerStyle(.segmented)
 
             Text(viewModel.helpText)
                 .font(.footnote)
