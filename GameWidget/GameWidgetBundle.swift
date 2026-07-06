@@ -1,4 +1,5 @@
 import ActivityKit
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -54,13 +55,18 @@ struct GameLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Label(
-                        context.state.isRunning ? "Live" : "Paused",
-                        systemImage: context.state.isRunning ? "dot.radiowaves.left.and.right" : "pause.fill"
-                    )
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(context.state.isRunning ? accent : .secondary)
-                    .frame(maxWidth: .infinity)
+                    if #available(iOS 17.0, *) {
+                        HStack {
+                            goalButton(.home, tint: accent)
+                            Spacer()
+                            statusLabel(context, accent: accent)
+                            Spacer()
+                            goalButton(.away, tint: .secondary)
+                        }
+                    } else {
+                        statusLabel(context, accent: accent)
+                            .frame(maxWidth: .infinity)
+                    }
                 }
             } compactLeading: {
                 Text("\(context.state.teamScore)–\(context.state.opponentScore)")
@@ -87,6 +93,26 @@ struct GameLiveActivity: Widget {
             Text(clockString(context.state.frozenElapsed))
                 .font(font)
         }
+    }
+
+    private func statusLabel(_ context: ActivityViewContext<GameActivityAttributes>, accent: Color) -> some View {
+        Label(
+            context.state.isRunning ? "Live" : "Paused",
+            systemImage: context.state.isRunning ? "dot.radiowaves.left.and.right" : "pause.fill"
+        )
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(context.state.isRunning ? accent : .secondary)
+    }
+
+    /// A "+1" button that records a goal without opening the app.
+    @available(iOS 17.0, *)
+    private func goalButton(_ side: GoalSide, tint: Color) -> some View {
+        Button(intent: RecordGoalIntent(side: side)) {
+            Label("Goal", systemImage: "plus")
+                .font(.caption2.weight(.semibold))
+        }
+        .tint(tint)
+        .buttonStyle(.bordered)
     }
 }
 
@@ -119,8 +145,27 @@ private struct LockScreenLiveActivityView: View {
                 .frame(maxWidth: .infinity)
                 teamColumn(context.attributes.opponentName, context.state.opponentScore, tint: .primary)
             }
+
+            if #available(iOS 17.0, *) {
+                HStack {
+                    goalButton(.home, label: context.attributes.teamName, tint: accent)
+                    goalButton(.away, label: context.attributes.opponentName, tint: .primary)
+                }
+            }
         }
         .padding()
+    }
+
+    @available(iOS 17.0, *)
+    private func goalButton(_ side: GoalSide, label: String, tint: Color) -> some View {
+        Button(intent: RecordGoalIntent(side: side)) {
+            Text("+1 \(label)")
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+        }
+        .tint(tint)
+        .buttonStyle(.bordered)
     }
 
     @ViewBuilder

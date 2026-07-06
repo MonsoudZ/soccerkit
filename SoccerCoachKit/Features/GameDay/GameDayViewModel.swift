@@ -142,6 +142,14 @@ final class GameDayViewModel: ObservableObject {
     /// in-progress game intact (just reconciling the roster) so switching tabs
     /// mid-match doesn't wipe the clock, minutes, or lineup.
     func prepareIfNeeded(with store: AppStore) {
+        // Reflect goals scored from the Live Activity's interactive buttons back
+        // into the scoreboard (and the linked game's report).
+        activity.onScoreChange = { [weak self] team, opponent in
+            guard let self else { return }
+            self.teamScore = team
+            self.opponentScore = opponent
+            self.persistScore(in: store)
+        }
         if teamID != store.selectedTeamID {
             reset(with: store)
         } else {

@@ -24,6 +24,35 @@ final class GameActivityController {
     /// with a server. Set before starting an activity.
     var onPushTokenChange: ((String) -> Void)?
 
+    /// Called (on the main actor) when the score changes from an interactive
+    /// Live Activity button, so the in-app scoreboard can stay in sync.
+    var onScoreChange: ((_ team: Int, _ opponent: Int) -> Void)?
+
+    /// Adjusts the live score from a Live Activity button. Resolves the activity
+    /// from the running list (so it works even after the app was relaunched in
+    /// the background to run the intent), pushes the new state, and notifies the
+    /// app.
+    func adjustScore(homeDelta: Int, awayDelta: Int) async {
+        guard #available(iOS 16.1, *) else { return }
+        guard let activity = (current as? Activity<GameActivityAttributes>)
+                ?? Activity<GameActivityAttributes>.activities.first else { return }
+
+        var state: GameActivityAttributes.ContentState
+        if #available(iOS 16.2, *) { state = activity.content.state } else { state = activity.contentState }
+        state.teamScore = max(0, state.teamScore + homeDelta)
+        state.opponentScore = max(0, state.opponentScore + awayDelta)
+
+        if #available(iOS 16.2, *) {
+            await activity.update(ActivityContent(state: state, staleDate: nil))
+        } else {
+            await activity.update(using: state)
+        }
+
+        let team = state.teamScore, opponent = state.opponentScore
+        let callback = onScoreChange
+        await MainActor.run { callback?(team, opponent) }
+    }
+
     /// Starts a Live Activity, or updates the existing one if already running.
     func start(teamName: String, opponentName: String, accentHex: String,
                teamScore: Int, opponentScore: Int, periodLabel: String,
