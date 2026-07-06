@@ -55,19 +55,24 @@ final class AppStore: ObservableObject {
     }
 
     private let persistence: PersistenceService
-    private let cloudSync: CloudSyncService?
+    private let cloudKit: CloudKitSyncService?
+    /// The record set last mirrored to CloudKit, so each persist can push only
+    /// what changed.
+    private var lastSyncedRecords: [SyncRecord] = []
+    /// True while applying a remote change, so it isn't re-uploaded.
+    private var isApplyingRemote = false
 
-    /// Whether iCloud key-value sync is on. Mirrors the snapshot to iCloud so the
-    /// coach's data follows them across devices.
+    /// Whether iCloud (CloudKit) sync is on, so the coach's data follows them
+    /// across devices with record-level merge.
     @Published var cloudSyncEnabled: Bool {
         didSet {
             UserDefaults.standard.set(cloudSyncEnabled, forKey: "iCloudSyncEnabled")
-            cloudSync?.isEnabled = cloudSyncEnabled
             if cloudSyncEnabled {
-                cloudSync?.start()
-                cloudSync?.save(snapshot)
+                cloudKit?.start()
+                lastSyncedRecords = SyncRecords.records(from: snapshot)
+                syncLocalChanges()
             } else {
-                cloudSync?.stop()
+                cloudKit?.stop()
             }
         }
     }
@@ -123,7 +128,7 @@ final class AppStore: ObservableObject {
 
     init(snapshot: AppSnapshot,
          persistence: PersistenceService = UserDefaultsPersistenceService(),
-         cloudSync: CloudSyncService? = nil) {
+         cloudKit: CloudKitSyncService? = nil) {
         self.teams = snapshot.teams
         self.players = snapshot.players
         self.drills = snapshot.drills
@@ -134,24 +139,41 @@ final class AppStore: ObservableObject {
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
         self.dataVersion = snapshot.dataVersion
         self.persistence = persistence
-        self.cloudSync = cloudSync
-        self.cloudSyncEnabled = cloudSync?.isEnabled ?? false
+        self.cloudKit = cloudKit
+        self.cloudSyncEnabled = (UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool) ?? (cloudKit != nil)
         self.eventRemindersEnabled = UserDefaults.standard.bool(forKey: "eventRemindersEnabled")
         self.reminderLeadMinutes = (UserDefaults.standard.object(forKey: "reminderLeadMinutes") as? Int) ?? 60
+        self.lastSyncedRecords = SyncRecords.records(from: snapshot)
         publishWidgetData()
-        cloudSync?.onRemoteChange = { [weak self] snapshot in
-            self?.applyRemoteSnapshot(snapshot)
+        if let cloudKit {
+            cloudKit.snapshotProvider = { [weak self] in self?.snapshot ?? snapshot }
+            cloudKit.applyRemoteChanges = { [weak self] upserts, deletes in
+                self?.applyRemoteChanges(upserts: upserts, deletes: deletes)
+            }
+            if cloudSyncEnabled { cloudKit.start() }
         }
-        cloudSync?.start()
     }
 
-    /// Applies a snapshot pushed from another device. `restore` re-persists
-    /// locally and re-mirrors to iCloud (a no-op, since the bytes already match).
-    private func applyRemoteSnapshot(_ snapshot: AppSnapshot) {
-        // Newest-wins: ignore an older or equal remote so a stale device (or a
-        // just-re-enabled one) can't overwrite newer local edits.
-        guard snapshot.dataVersion > dataVersion else { return }
-        restore(snapshot, adoptVersion: true)
+    /// Applies record-level changes fetched from CloudKit, without re-uploading them.
+    private func applyRemoteChanges(upserts: [SyncRecord], deletes: [SyncRecordKey]) {
+        var updated = snapshot
+        for record in upserts { SyncRecords.apply(record, to: &updated) }
+        for key in deletes { SyncRecords.delete(type: key.type, id: key.id, from: &updated) }
+        isApplyingRemote = true
+        restore(updated, adoptVersion: true)
+        isApplyingRemote = false
+    }
+
+    /// Pushes local record changes to CloudKit (diffed against the last sync).
+    private func syncLocalChanges() {
+        guard let cloudKit, cloudSyncEnabled else { return }
+        let current = SyncRecords.records(from: snapshot)
+        defer { lastSyncedRecords = current }
+        guard !isApplyingRemote else { return } // remote change already synced
+        let (upserts, deletes) = SyncRecords.diff(from: lastSyncedRecords, to: current)
+        if !upserts.isEmpty || !deletes.isEmpty {
+            cloudKit.push(upserts: upserts, deletes: deletes)
+        }
     }
 
     /// The store used at launch: persisted snapshot if present and readable,
@@ -165,9 +187,8 @@ final class AppStore: ObservableObject {
         let persistence = UserDefaultsPersistenceService(namespace: userID)
         let snapshot = Self.loadSnapshot(from: persistence)
 
-        let syncEnabled = (UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool) ?? true
-        let cloudSync = CloudSyncService(enabled: syncEnabled, namespace: userID)
-        return AppStore(snapshot: snapshot, persistence: persistence, cloudSync: cloudSync)
+        let cloudKit = CloudKitSyncService(namespace: userID)
+        return AppStore(snapshot: snapshot, persistence: persistence, cloudKit: cloudKit)
     }
 
     private static func loadSnapshot(from persistence: PersistenceService) -> AppSnapshot {
@@ -191,8 +212,9 @@ final class AppStore: ObservableObject {
     /// account never sees the previous coach's roster, and no one loses data.
     func switchUser(to userID: String?) {
         persistence.setNamespace(userID)
-        cloudSync?.setNamespace(userID)
         restore(Self.loadSnapshot(from: persistence), adoptVersion: true)
+        lastSyncedRecords = SyncRecords.records(from: snapshot)
+        cloudKit?.setNamespace(userID)
     }
 
     /// Synchronously flushes any pending background write. Call when the app is
@@ -276,7 +298,7 @@ final class AppStore: ObservableObject {
         }
         persistence.save(snapshot)
         publishWidgetData()
-        cloudSync?.save(snapshot)
+        syncLocalChanges()
         // Reschedule reminders only when the schedule itself changed (and once
         // per batch), not on every attendance/score mutation.
         if remindersDirty {

@@ -9,7 +9,8 @@ provisioned and how to build the app signed for a device.
 |---|---|---|
 | **App Group** | Home Screen / Lock Screen widget + Live Activity data sharing | `com.apple.security.application-groups` → `group.com.monsoudzanaty.SoccerCoachKit` (app **and** widget) |
 | **Sign in with Apple** | The login gate | `com.apple.developer.applesignin` (app) |
-| **iCloud (key-value)** | Cross-device data sync | `com.apple.developer.ubiquity-kvstore-identifier` (app) |
+| **iCloud (CloudKit)** | Cross-device, record-level data sync | `com.apple.developer.icloud-services` → `CloudKit` + `com.apple.developer.icloud-container-identifiers` → `iCloud.com.monsoudzanaty.SoccerCoachKit` (app) |
+| **Push Notifications** | CloudKit sync + remote Live Activity updates | `aps-environment: development` (app) |
 | **Live Activities** | Game Day live score/clock | Info.plist `NSSupportsLiveActivities` (no portal capability) |
 
 Entitlements live in `SoccerCoachKit/SoccerCoachKit.entitlements` and
@@ -23,7 +24,27 @@ must stay identical in both files for cross-process sharing to work.
   and provisioning profiles.
 
 The capabilities are already provisioned: a signed device build succeeds and the
-profiles include the App Group, Sign in with Apple, and iCloud KVS entitlements.
+profiles include the App Group, Sign in with Apple, and iCloud CloudKit
+entitlements.
+
+### CloudKit sync
+
+Cross-device sync uses **CloudKit** (`CKSyncEngine`, iOS 17+) rather than a
+whole-document blob, so two devices editing different records merge instead of
+clobbering each other. Each entity (team, player, drill, session, diagram, game,
+event) is its own record in a per-coach private-database zone; app preferences
+are a single `Prefs` record. Same-record conflicts resolve **server-wins**.
+
+- The pure record mapping/diff (`SyncRecords`) is unit-tested (`SyncRecordsTests`).
+- The `CKSyncEngine` wiring (`CloudKitSyncService`) **must be validated
+  on-device** — it needs a signed build, an iCloud-signed-in account, and the
+  provisioned CloudKit container. It cannot run in the unsigned Simulator.
+- First device run creates the container schema in the CloudKit **Development**
+  environment automatically; promote to Production in the CloudKit Dashboard
+  before shipping.
+- Sync is user-toggleable in Settings → Sync and is keyed per Apple ID (each
+  coach gets an isolated zone), matching the local per-user persistence
+  namespace.
 
 ### Build signed (device)
 

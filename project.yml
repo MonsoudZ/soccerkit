@@ -2,7 +2,7 @@ name: SoccerCoachKit
 options:
   bundleIdPrefix: com.monsoudzanaty
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.0"
   createIntermediateGroups: true
   groupSortPosition: top
 settings:
@@ -33,7 +33,7 @@ targets:
   SoccerCoachKit:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: SoccerCoachKit
     dependencies:
@@ -45,7 +45,11 @@ targets:
           - group.com.monsoudzanaty.SoccerCoachKit
         com.apple.developer.applesignin:
           - Default
-        com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)$(CFBundleIdentifier)"
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.monsoudzanaty.SoccerCoachKit
+        aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit
@@ -67,7 +71,7 @@ targets:
   SoccerCoachKitTests:
     type: bundle.unit-test
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: SoccerCoachKitTests
     dependencies:
