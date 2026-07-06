@@ -32,6 +32,7 @@ struct GameReportView: View {
                                 Spacer()
                             }
 
+                            Stepper("Minutes: \(viewModel.binding(\.minutes, for: player.id).wrappedValue)", value: viewModel.binding(\.minutes, for: player.id), in: 0...120, step: 5)
                             Stepper("Goals: \(viewModel.binding(\.goals, for: player.id).wrappedValue)", value: viewModel.binding(\.goals, for: player.id), in: 0...20)
                             Stepper("Assists: \(viewModel.binding(\.assists, for: player.id).wrappedValue)", value: viewModel.binding(\.assists, for: player.id), in: 0...20)
 
@@ -52,7 +53,7 @@ struct GameReportView: View {
             } header: {
                 Text("Player Reports")
             } footer: {
-                Text("Goals, assists, an effort rating, and a development focus for each player.")
+                Text("Minutes, goals, assists, an effort rating, and a development focus for each player.")
             }
         }
         .themedList()

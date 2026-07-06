@@ -15,6 +15,8 @@ struct PlayerGameLine: Identifiable {
     let opponent: String
     /// Present or late (i.e. actually took part), from recorded attendance.
     let attended: Bool
+    /// Minutes played, from the post-game report; 0 when not recorded.
+    let minutes: Int
     let goals: Int
     let assists: Int
     /// 0 = unrated, otherwise 1...5.
@@ -30,6 +32,8 @@ struct PlayerGameLine: Identifiable {
 /// totals plus a per-game timeline for trend/form display. Pure and store-free
 /// so it can be unit-tested directly, mirroring `SeasonStats`.
 struct PlayerDevelopment {
+    /// Total minutes played across games with a recorded report.
+    let minutes: Int
     let goals: Int
     let assists: Int
     /// Mean effort across games where effort was recorded; 0 when none.
@@ -56,6 +60,7 @@ struct PlayerDevelopment {
     }
 
     static func profile(for player: Player, games: [GameEvent]) -> PlayerDevelopment {
+        var minutes = 0
         var goals = 0
         var assists = 0
         var effortSamples: [Int] = []
@@ -75,8 +80,10 @@ struct PlayerDevelopment {
                 if attended { gamesAttended += 1 }
             }
 
+            let m = report?.minutes ?? 0
             let g = report?.goals ?? 0
             let a = report?.assists ?? 0
+            minutes += m
             goals += g
             assists += a
             if let effort = report?.effort, effort > 0 { effortSamples.append(effort) }
@@ -87,6 +94,7 @@ struct PlayerDevelopment {
                     date: game.date,
                     opponent: game.opponent,
                     attended: attended,
+                    minutes: m,
                     goals: g,
                     assists: a,
                     effort: report?.effort ?? 0,
@@ -100,6 +108,7 @@ struct PlayerDevelopment {
             : Double(effortSamples.reduce(0, +)) / Double(effortSamples.count)
 
         return PlayerDevelopment(
+            minutes: minutes,
             goals: goals,
             assists: assists,
             averageEffort: averageEffort,

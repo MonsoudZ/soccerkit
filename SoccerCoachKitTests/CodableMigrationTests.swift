@@ -47,6 +47,15 @@ final class CodableMigrationTests: XCTestCase {
         XCTAssertTrue(decoded.playerReports.isEmpty)
     }
 
+    func testGamePlayerReportLegacyMinutesZero() throws {
+        let report = GamePlayerReport(minutes: 60, goals: 2, assists: 1, effort: 4)
+        let decoded = try decodeLegacy(report, removing: ["minutes"])
+        XCTAssertEqual(decoded.minutes, 0)
+        XCTAssertEqual(decoded.goals, 2, "other fields still decode")
+        XCTAssertEqual(decoded.assists, 1)
+        XCTAssertEqual(decoded.effort, 4)
+    }
+
     func testSnapshotRoundTrip() throws {
         let snapshot = TestData.snapshot(playerCount: 5)
         let data = try JSONEncoder().encode(snapshot)

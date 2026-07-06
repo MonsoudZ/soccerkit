@@ -26,19 +26,21 @@ final class PlayerDevelopmentTests: XCTestCase {
         XCTAssertEqual(profile.contributions, 0)
     }
 
-    func testAggregatesScoringAndEffort() {
+    func testAggregatesMinutesScoringAndEffort() {
         let player = TestData.player(teamID: teamID, number: 9)
         let games = [
             game(daysAgo: 3, attendance: [player.id: .present],
-                 reports: [player.id: GamePlayerReport(goals: 2, assists: 1, effort: 4)]),
+                 reports: [player.id: GamePlayerReport(minutes: 60, goals: 2, assists: 1, effort: 4)]),
             game(daysAgo: 2, attendance: [player.id: .present],
-                 reports: [player.id: GamePlayerReport(goals: 1, assists: 0, effort: 2)]),
+                 reports: [player.id: GamePlayerReport(minutes: 45, goals: 1, assists: 0, effort: 2)]),
         ]
         let profile = PlayerDevelopment.profile(for: player, games: games)
+        XCTAssertEqual(profile.minutes, 105)
         XCTAssertEqual(profile.goals, 3)
         XCTAssertEqual(profile.assists, 1)
         XCTAssertEqual(profile.contributions, 4)
         XCTAssertEqual(profile.averageEffort, 3.0, accuracy: 0.001)
+        XCTAssertEqual(profile.timeline.map(\.minutes), [60, 45])
     }
 
     func testAttendanceRateCountsPresentAndLateOverTracked() {

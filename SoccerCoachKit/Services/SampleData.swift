@@ -180,9 +180,9 @@ enum SampleData {
             teamScore: 3,
             opponentScore: 1,
             playerReports: [
-                players[2].id: GamePlayerReport(goals: 2, assists: 0, effort: 5, developmentFocus: "Movement in the box"),
-                players[1].id: GamePlayerReport(goals: 1, assists: 1, effort: 4),
-                players[3].id: GamePlayerReport(goals: 0, assists: 1, effort: 4)
+                players[2].id: GamePlayerReport(minutes: 60, goals: 2, assists: 0, effort: 5, developmentFocus: "Movement in the box"),
+                players[1].id: GamePlayerReport(minutes: 55, goals: 1, assists: 1, effort: 4),
+                players[3].id: GamePlayerReport(minutes: 50, goals: 0, assists: 1, effort: 4)
             ]
         )
 
@@ -201,8 +201,8 @@ enum SampleData {
             teamScore: 2,
             opponentScore: 2,
             playerReports: [
-                players[1].id: GamePlayerReport(goals: 1, assists: 0, effort: 4),
-                players[2].id: GamePlayerReport(goals: 1, assists: 1, effort: 5)
+                players[1].id: GamePlayerReport(minutes: 58, goals: 1, assists: 0, effort: 4),
+                players[2].id: GamePlayerReport(minutes: 62, goals: 1, assists: 1, effort: 5)
             ]
         )
 

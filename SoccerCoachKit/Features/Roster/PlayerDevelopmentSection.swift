@@ -17,11 +17,17 @@ struct PlayerDevelopmentSection: View {
                         .foregroundStyle(attendanceColor)
                         .fontWeight(.semibold)
                 }
+                if profile.minutes > 0 {
+                    LabeledContent("Minutes Played", value: "\(profile.minutes)'")
+                }
                 LabeledContent("Goals · Assists", value: "\(profile.goals)G · \(profile.assists)A")
                 if profile.averageEffort > 0 {
                     LabeledContent("Average Effort") {
-                        Label(String(format: "%.1f / 5", profile.averageEffort), systemImage: "star.fill")
-                            .foregroundStyle(Color.caution)
+                        HStack(spacing: Spacing.xs) {
+                            Image(systemName: "star.fill")
+                            Text(String(format: "%.1f / 5", profile.averageEffort))
+                        }
+                        .foregroundStyle(Color.caution)
                     }
                 }
 
