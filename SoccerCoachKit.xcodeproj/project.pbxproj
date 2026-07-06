@@ -39,6 +39,7 @@
 		381E79E42DC51AA9FE68D4B9 /* SessionExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B3CDB04A20B682765F2F848 /* SessionExport.swift */; };
 		3AD15EFD82C5B692B1AED8F1 /* Drill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 954B0CDB7A60FCB0CEDBA552 /* Drill.swift */; };
 		3C20AEA021D4E284DFEA73EA /* EventDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CBCAED5A092DA56C6328A68 /* EventDetailViewModel.swift */; };
+		3D2DFD5370AB3A980DB0C789 /* AppStore+Diagrams.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52B5E5F54C8686F8075A325 /* AppStore+Diagrams.swift */; };
 		3EB9A2F6A273C89C891940D1 /* FieldBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DF24DCFABC28CF3844D63A3 /* FieldBoardView.swift */; };
 		3EEE2698C7051EA6989289C0 /* StyleGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 775F523C6F898B4FA01B01B0 /* StyleGuideView.swift */; };
 		3EF18F3C87F6E97FC48772FB /* RosterRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3130B2033447EE2987662A49 /* RosterRows.swift */; };
@@ -58,6 +59,7 @@
 		65D969BC20C73EB7F7F885DD /* TeamDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3517FEEE8E5124FEB6D2DACA /* TeamDashboardView.swift */; };
 		68627C342EF762184193D972 /* DevelopmentEntryFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 873D71B7D8CA9DC3F660D2E7 /* DevelopmentEntryFormViewModel.swift */; };
 		6BB358F07C2FEA7CBE1A0FDB /* DrillDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF7ABBF47EDD4C368F66FAB8 /* DrillDetailView.swift */; };
+		6D2FAF8098B3A40418509F8D /* AppStore+Queries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 961F380E218287885C62677C /* AppStore+Queries.swift */; };
 		6F1C07C0F5E08420A5E52ADB /* ScheduleReminderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30E6D97EAEBD4EE57C72D181 /* ScheduleReminderTests.swift */; };
 		7104AFCDAA8319F2B2A5B74F /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF006DC70EE25A4FA70938F5 /* OnboardingView.swift */; };
 		7647CE4177E81C40EE9B0196 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3619A3D1D4E8D2DAE15DC687 /* Preview Assets.xcassets */; };
@@ -129,6 +131,7 @@
 		EA2158ABCD43D2D46CDC48AF /* GameReportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB9252531B81DFDE9F134F73 /* GameReportViewModel.swift */; };
 		EA9C3DDE0DAF6316041C526B /* Array+RemovingDuplicates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B224BF033A31D2C46817D1B /* Array+RemovingDuplicates.swift */; };
 		ECC9C5EC864E34BE1E4F10EF /* SessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2DC00C4A92BEC5FEE06FBF /* SessionDetailView.swift */; };
+		EE469454C290B8203EA7E6BA /* AppStore+Entities.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A39F6E533EFE13C0ACA3AE /* AppStore+Entities.swift */; };
 		F3BC950940AE72C7361DA3A2 /* PlayerFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B20BFCE54634FF5F874FAB3 /* PlayerFormViewModel.swift */; };
 		F546DBB26635235F2E329179 /* TacticsDiagram.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75EF94E3C6E64476A90AB827 /* TacticsDiagram.swift */; };
 		F68C62E1F6DBF2B79F570405 /* GameEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46C14BB458AD7E7A697EF6F /* GameEvent.swift */; };
@@ -252,10 +255,13 @@
 		9151D65E6E4025FAB74B7773 /* FieldBoardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldBoardViewModel.swift; sourceTree = "<group>"; };
 		91A370710F2EAF8273A872C7 /* DevelopmentEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentEntry.swift; sourceTree = "<group>"; };
 		954B0CDB7A60FCB0CEDBA552 /* Drill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Drill.swift; sourceTree = "<group>"; };
+		961F380E218287885C62677C /* AppStore+Queries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStore+Queries.swift"; sourceTree = "<group>"; };
 		9775CF5AE2802C4C6E32CA55 /* TeamPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamPicker.swift; sourceTree = "<group>"; };
 		997E4FE8CBACC52B7AD06E16 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		A16D370E7F937F9EAF54DDE7 /* SoccerCoachKitTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SoccerCoachKitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A282068D5A50407F9004CE62 /* GameWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameWidgetBundle.swift; sourceTree = "<group>"; };
+		A52B5E5F54C8686F8075A325 /* AppStore+Diagrams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStore+Diagrams.swift"; sourceTree = "<group>"; };
+		A7A39F6E533EFE13C0ACA3AE /* AppStore+Entities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStore+Entities.swift"; sourceTree = "<group>"; };
 		A86F01C02A51DFDA36F9BDC8 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		A93BC45242599A06D694145D /* CalendarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewModel.swift; sourceTree = "<group>"; };
 		B2DF2534C0FA5C3FFBCBBC60 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -418,6 +424,9 @@
 			isa = PBXGroup;
 			children = (
 				DE4A05EB2975B497AA428524 /* AppStore.swift */,
+				A52B5E5F54C8686F8075A325 /* AppStore+Diagrams.swift */,
+				A7A39F6E533EFE13C0ACA3AE /* AppStore+Entities.swift */,
+				961F380E218287885C62677C /* AppStore+Queries.swift */,
 			);
 			path = Store;
 			sourceTree = "<group>";
@@ -787,6 +796,9 @@
 			files = (
 				C0CC8E8F0567CD991BD5C7EE /* AppSection.swift in Sources */,
 				2FC443B64ED2A07EF25AC52A /* AppSnapshot.swift in Sources */,
+				3D2DFD5370AB3A980DB0C789 /* AppStore+Diagrams.swift in Sources */,
+				EE469454C290B8203EA7E6BA /* AppStore+Entities.swift in Sources */,
+				6D2FAF8098B3A40418509F8D /* AppStore+Queries.swift in Sources */,
 				BA9644AE84CCFD3A294B9DB9 /* AppStore.swift in Sources */,
 				EA9C3DDE0DAF6316041C526B /* Array+RemovingDuplicates.swift in Sources */,
 				F96C25EFC9FF96FD6154959F /* AuthController.swift in Sources */,
