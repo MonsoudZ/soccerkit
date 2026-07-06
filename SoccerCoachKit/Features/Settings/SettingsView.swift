@@ -21,6 +21,27 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle(isOn: $store.eventRemindersEnabled) {
+                    Label("Event Reminders", systemImage: "bell.badge")
+                }
+                if store.eventRemindersEnabled {
+                    Picker(selection: $store.reminderLeadMinutes) {
+                        Text("At start").tag(0)
+                        Text("30 minutes before").tag(30)
+                        Text("1 hour before").tag(60)
+                        Text("3 hours before").tag(180)
+                        Text("1 day before").tag(1440)
+                    } label: {
+                        Label("Remind me", systemImage: "clock")
+                    }
+                }
+            } header: {
+                Text("Reminders")
+            } footer: {
+                Text("Get a notification before upcoming games, practices, and events.")
+            }
+
+            Section {
                 Toggle(isOn: $store.cloudSyncEnabled) {
                     Label("iCloud Sync", systemImage: "icloud")
                 }

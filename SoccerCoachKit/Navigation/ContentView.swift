@@ -27,8 +27,13 @@ struct ContentView: View {
         }
         .undoBanner()
         .onChange(of: scenePhase) { _ in
-            // Persist the latest state durably before the app suspends.
-            if scenePhase != .active { store.flushPendingWrites() }
+            if scenePhase == .active {
+                // Keep reminders in step with the schedule when returning.
+                store.refreshEventReminders()
+            } else {
+                // Persist the latest state durably before the app suspends.
+                store.flushPendingWrites()
+            }
         }
         .fullScreenCover(isPresented: showOnboarding) {
             OnboardingView { hasOnboarded = true }

@@ -51,6 +51,48 @@ final class AppStore: ObservableObject {
         }
     }
 
+    private let scheduleNotifier = ScheduleNotifier()
+
+    /// Whether the coach opted into reminders for upcoming games/practices.
+    @Published var eventRemindersEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(eventRemindersEnabled, forKey: "eventRemindersEnabled")
+            if eventRemindersEnabled {
+                scheduleNotifier.requestAuthorization()
+                refreshEventReminders()
+            } else {
+                scheduleNotifier.cancelAll()
+            }
+        }
+    }
+
+    /// Minutes before an event to fire its reminder (0 = at start).
+    @Published var reminderLeadMinutes: Int {
+        didSet {
+            UserDefaults.standard.set(reminderLeadMinutes, forKey: "reminderLeadMinutes")
+            refreshEventReminders()
+        }
+    }
+
+    /// Reschedules local notifications for upcoming games, practices, and events.
+    /// No-op (beyond clearing) when reminders are off; never prompts for
+    /// permission here — that happens only when the coach enables the toggle.
+    func refreshEventReminders() {
+        guard eventRemindersEnabled else {
+            scheduleNotifier.cancelAll()
+            return
+        }
+        let planned = ScheduleReminderPlanner.reminders(
+            games: games,
+            sessions: sessions,
+            events: events,
+            teamName: { [weak self] in self?.teamName(for: $0) ?? "" },
+            leadMinutes: reminderLeadMinutes,
+            now: Date()
+        )
+        scheduleNotifier.apply(planned)
+    }
+
     /// The live game-day session. Held here (app-lifetime) so an in-progress
     /// match survives navigating between sections on any device — including the
     /// iPhone, where the detail view is torn down on section changes. It is not
@@ -72,6 +114,8 @@ final class AppStore: ObservableObject {
         self.persistence = persistence
         self.cloudSync = cloudSync
         self.cloudSyncEnabled = cloudSync?.isEnabled ?? false
+        self.eventRemindersEnabled = UserDefaults.standard.bool(forKey: "eventRemindersEnabled")
+        self.reminderLeadMinutes = (UserDefaults.standard.object(forKey: "reminderLeadMinutes") as? Int) ?? 60
         publishWidgetData()
         cloudSync?.onRemoteChange = { [weak self] snapshot in
             self?.applyRemoteSnapshot(snapshot)
@@ -759,6 +803,7 @@ final class AppStore: ObservableObject {
         persistence.save(snapshot)
         publishWidgetData()
         cloudSync?.save(snapshot)
+        if eventRemindersEnabled { refreshEventReminders() }
     }
 
     /// Publishes the soonest fixture (across all teams) to the app group and
