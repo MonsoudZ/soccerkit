@@ -11,13 +11,11 @@ private final class FakeKVStore: KeyValueSyncStore {
 
 @MainActor
 final class CloudSyncTests: XCTestCase {
-    private func snapshot(teamName: String) -> AppSnapshot {
-        let team = TestData.team()
-        var named = team
-        // Team is a struct; rebuild with the given name via a fresh team.
-        named = Team(id: team.id, name: teamName, ageGroup: .u10, season: "2026", accentName: "Teal")
+    private func snapshot(teamName: String, version: Int = 1) -> AppSnapshot {
+        let named = Team(id: UUID(), name: teamName, ageGroup: .u10, season: "2026", accentName: "Teal")
         return AppSnapshot(teams: [named], players: [], drills: [], sessions: [],
-                           diagrams: [], games: [], events: [], selectedTeamID: named.id)
+                           diagrams: [], games: [], events: [], selectedTeamID: named.id,
+                           dataVersion: version)
     }
 
     func testSaveWritesEncodedSnapshot() {
@@ -93,5 +91,27 @@ final class CloudSyncTests: XCTestCase {
 
         XCTAssertEqual(store.teams.first?.name, "Remote FC", "Remote snapshot replaced local on launch")
         XCTAssertTrue(store.players.isEmpty, "...including its (empty) roster")
+    }
+
+    /// Newest-wins conflict resolution: an older remote is ignored (so it can't
+    /// overwrite newer local edits), a newer one is adopted.
+    func testOlderRemoteIgnoredNewerAdopted() {
+        let kv = FakeKVStore()
+        let sync = CloudSyncService(store: kv, enabled: true)
+        let store = AppStore(snapshot: TestData.snapshot(playerCount: 2),
+                             persistence: InMemoryPersistence(), cloudSync: sync)
+
+        // A local edit advances the version past the remote's.
+        store.addTeam(name: "Local Team", ageGroup: .u10, season: "2026")
+
+        kv.storage[CloudSyncService.key] = try! JSONEncoder().encode(snapshot(teamName: "Stale", version: 0))
+        sync.pullRemote()
+        XCTAssertTrue(store.teams.contains { $0.name == "Local Team" },
+                      "An older remote must not overwrite newer local edits")
+
+        kv.storage[CloudSyncService.key] = try! JSONEncoder().encode(snapshot(teamName: "Fresh", version: 99))
+        sync.pullRemote()
+        XCTAssertTrue(store.teams.contains { $0.name == "Fresh" }, "A newer remote is adopted")
+        XCTAssertFalse(store.teams.contains { $0.name == "Local Team" })
     }
 }

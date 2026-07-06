@@ -132,6 +132,7 @@ final class AppStore: ObservableObject {
         self.games = snapshot.games
         self.events = snapshot.events
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
+        self.dataVersion = snapshot.dataVersion
         self.persistence = persistence
         self.cloudSync = cloudSync
         self.cloudSyncEnabled = cloudSync?.isEnabled ?? false
@@ -147,7 +148,10 @@ final class AppStore: ObservableObject {
     /// Applies a snapshot pushed from another device. `restore` re-persists
     /// locally and re-mirrors to iCloud (a no-op, since the bytes already match).
     private func applyRemoteSnapshot(_ snapshot: AppSnapshot) {
-        restore(snapshot)
+        // Newest-wins: ignore an older or equal remote so a stale device (or a
+        // just-re-enabled one) can't overwrite newer local edits.
+        guard snapshot.dataVersion > dataVersion else { return }
+        restore(snapshot, adoptVersion: true)
     }
 
     /// The store used at launch: persisted snapshot if present and readable,
@@ -188,7 +192,7 @@ final class AppStore: ObservableObject {
     func switchUser(to userID: String?) {
         persistence.setNamespace(userID)
         cloudSync?.setNamespace(userID)
-        restore(Self.loadSnapshot(from: persistence))
+        restore(Self.loadSnapshot(from: persistence), adoptVersion: true)
     }
 
     /// Synchronously flushes any pending background write. Call when the app is
@@ -240,6 +244,12 @@ final class AppStore: ObservableObject {
         work()
     }
 
+    /// Monotonic edit counter for iCloud conflict resolution (newest-wins).
+    private var dataVersion = 0
+    /// When set, the next persist adopts this version instead of bumping — used
+    /// when loading a remote/other-user snapshot rather than making a local edit.
+    private var adoptingVersion: Int?
+
     private var snapshot: AppSnapshot {
         AppSnapshot(
             teams: teams,
@@ -249,12 +259,21 @@ final class AppStore: ObservableObject {
             diagrams: diagrams,
             games: games,
             events: events,
-            selectedTeamID: selectedTeamID
+            selectedTeamID: selectedTeamID,
+            dataVersion: dataVersion
         )
     }
 
     private func persist() {
         guard !isBatchingPersist else { return }
+        // A local edit bumps the version; adopting a remote/other-user snapshot
+        // keeps its version so it isn't mistaken for a newer local change.
+        if let adopted = adoptingVersion {
+            dataVersion = adopted
+            adoptingVersion = nil
+        } else {
+            dataVersion += 1
+        }
         persistence.save(snapshot)
         publishWidgetData()
         cloudSync?.save(snapshot)
@@ -311,7 +330,12 @@ final class AppStore: ObservableObject {
         return true
     }
 
-    private func restore(_ snapshot: AppSnapshot) {
+    /// Replaces all state with `snapshot`. `adoptVersion` keeps the snapshot's
+    /// own `dataVersion` (loading remote/other-user data); the default bumps the
+    /// version (a local replacement like import/reset/onboarding, which should
+    /// win over older remote data).
+    private func restore(_ snapshot: AppSnapshot, adoptVersion: Bool = false) {
+        if adoptVersion { adoptingVersion = snapshot.dataVersion }
         batch {
             teams = snapshot.teams
             players = snapshot.players

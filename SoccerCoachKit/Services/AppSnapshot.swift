@@ -9,6 +9,11 @@ struct AppSnapshot: Codable {
     static let currentSchemaVersion = 1
 
     var schemaVersion: Int
+    /// A monotonically increasing edit counter used for iCloud conflict
+    /// resolution: a remote snapshot is adopted only if its `dataVersion` is
+    /// higher than the local one, so newest-wins is deterministic rather than
+    /// depending on upload order.
+    var dataVersion: Int
     var teams: [Team]
     var players: [Player]
     var drills: [Drill]
@@ -18,8 +23,9 @@ struct AppSnapshot: Codable {
     var events: [TeamEvent]
     var selectedTeamID: UUID
 
-    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, schemaVersion: Int = AppSnapshot.currentSchemaVersion) {
+    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
         self.schemaVersion = schemaVersion
+        self.dataVersion = dataVersion
         self.teams = teams
         self.players = players
         self.drills = drills
@@ -34,6 +40,7 @@ struct AppSnapshot: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         // Absent in pre-versioning blobs; those are schema v1 by definition.
         schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        dataVersion = try container.decodeIfPresent(Int.self, forKey: .dataVersion) ?? 0
         teams = try container.decode([Team].self, forKey: .teams)
         players = try container.decode([Player].self, forKey: .players)
         drills = try container.decode([Drill].self, forKey: .drills)
