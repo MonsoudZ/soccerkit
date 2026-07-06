@@ -21,6 +21,16 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle(isOn: $store.cloudSyncEnabled) {
+                    Label("iCloud Sync", systemImage: "icloud")
+                }
+            } header: {
+                Text("Sync")
+            } footer: {
+                Text("Keep your teams, players, games, and plans in sync across your devices using iCloud.")
+            }
+
+            Section {
                 ThemePickerRow(themeManager: themeManager)
             } header: {
                 Text("Appearance")

@@ -34,6 +34,22 @@ final class AppStore: ObservableObject {
     }
 
     private let persistence: PersistenceService
+    private let cloudSync: CloudSyncService?
+
+    /// Whether iCloud key-value sync is on. Mirrors the snapshot to iCloud so the
+    /// coach's data follows them across devices.
+    @Published var cloudSyncEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(cloudSyncEnabled, forKey: "iCloudSyncEnabled")
+            cloudSync?.isEnabled = cloudSyncEnabled
+            if cloudSyncEnabled {
+                cloudSync?.start()
+                cloudSync?.save(snapshot)
+            } else {
+                cloudSync?.stop()
+            }
+        }
+    }
 
     /// The live game-day session. Held here (app-lifetime) so an in-progress
     /// match survives navigating between sections on any device — including the
@@ -42,7 +58,9 @@ final class AppStore: ObservableObject {
     /// the app; `GameDayView` observes it directly.
     let gameDay = GameDayViewModel()
 
-    init(snapshot: AppSnapshot, persistence: PersistenceService = UserDefaultsPersistenceService()) {
+    init(snapshot: AppSnapshot,
+         persistence: PersistenceService = UserDefaultsPersistenceService(),
+         cloudSync: CloudSyncService? = nil) {
         self.teams = snapshot.teams
         self.players = snapshot.players
         self.drills = snapshot.drills
@@ -52,7 +70,19 @@ final class AppStore: ObservableObject {
         self.events = snapshot.events
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
         self.persistence = persistence
+        self.cloudSync = cloudSync
+        self.cloudSyncEnabled = cloudSync?.isEnabled ?? false
         publishWidgetData()
+        cloudSync?.onRemoteChange = { [weak self] snapshot in
+            self?.applyRemoteSnapshot(snapshot)
+        }
+        cloudSync?.start()
+    }
+
+    /// Applies a snapshot pushed from another device. `restore` re-persists
+    /// locally and re-mirrors to iCloud (a no-op, since the bytes already match).
+    private func applyRemoteSnapshot(_ snapshot: AppSnapshot) {
+        restore(snapshot)
     }
 
     /// The store used at launch: persisted snapshot if present and readable,
@@ -77,7 +107,9 @@ final class AppStore: ObservableObject {
             snapshot = SampleData.snapshot
         }
 
-        return AppStore(snapshot: snapshot, persistence: persistence)
+        let syncEnabled = (UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool) ?? true
+        let cloudSync = CloudSyncService(enabled: syncEnabled)
+        return AppStore(snapshot: snapshot, persistence: persistence, cloudSync: cloudSync)
     }
 
     /// Synchronously flushes any pending background write. Call when the app is
@@ -726,6 +758,7 @@ final class AppStore: ObservableObject {
         guard !isBatchingPersist else { return }
         persistence.save(snapshot)
         publishWidgetData()
+        cloudSync?.save(snapshot)
     }
 
     /// Publishes the soonest fixture (across all teams) to the app group and
