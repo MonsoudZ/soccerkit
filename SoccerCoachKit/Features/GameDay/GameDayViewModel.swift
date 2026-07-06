@@ -100,7 +100,7 @@ final class GameDayViewModel: ObservableObject {
     /// Banks the running interval into the accumulators and re-anchors. Must be
     /// called before any change to who is playing or whether the clock runs, so
     /// time accrues under the configuration that was actually in effect.
-    private func settle() {
+    func settle() {
         guard let anchor = runAnchor else { return }
         let current = now()
         let delta = current - anchor
@@ -267,72 +267,6 @@ final class GameDayViewModel: ObservableObject {
         return "End \(currentPeriodLabel)"
     }
 
-    // MARK: - Playing-time goals
-
-    private var totalGameSeconds: Int { max(defaultGameMinutes * 60, 1) }
-
-    /// The minimum-minutes goal for a player, in seconds. A per-player override
-    /// wins over the team default; zero means no goal.
-    func minimumSeconds(for player: Player) -> Int {
-        max(0, (player.minMinutesOverride ?? defaultMinimumMinutes)) * 60
-    }
-
-    /// Progress toward the player's minimum-minutes goal, 0...1 (1 when no goal).
-    func goalProgress(for player: Player) -> Double {
-        let goal = minimumSeconds(for: player)
-        guard goal > 0 else { return 1 }
-        return min(1, Double(playingSeconds[player.id, default: 0]) / Double(goal))
-    }
-
-    func hasReachedGoal(_ player: Player) -> Bool {
-        playingSeconds[player.id, default: 0] >= minimumSeconds(for: player)
-    }
-
-    /// A player is at risk when the minutes they still owe can only be met by
-    /// keeping them on the field for essentially all of the remaining game.
-    func isAtRiskOfMissingGoal(_ player: Player) -> Bool {
-        guard status(for: player) == .available else { return false }
-        let deficit = minimumSeconds(for: player) - playingSeconds[player.id, default: 0]
-        guard deficit > 0 else { return false }
-        let remaining = max(0, totalGameSeconds - elapsedSeconds)
-        // Strictly greater: a player who could reach the goal by playing exactly
-        // all remaining time is not yet at risk.
-        return deficit > remaining
-    }
-
-    // MARK: - Balanced-sub suggestion
-
-    /// How far a player is above (positive) or below (negative) their goal.
-    private func balanceScore(_ player: Player) -> Int {
-        playingSeconds[player.id, default: 0] - minimumSeconds(for: player)
-    }
-
-    /// Suggests swapping the most over-served available starter for the most
-    /// under-served available bench player, to even out minutes toward goals.
-    var suggestedSub: (out: Player, inPlayer: Player)? {
-        guard
-            let out = availableStarterPlayers.max(by: { balanceScore($0) < balanceScore($1) }),
-            let inPlayer = availableBenchPlayers.min(by: { balanceScore($0) < balanceScore($1) })
-        else { return nil }
-
-        // Only suggest when the swap actually reduces the imbalance.
-        guard balanceScore(inPlayer) < balanceScore(out) else { return nil }
-        return (out, inPlayer)
-    }
-
-    var suggestedSubText: String {
-        guard let suggestion = suggestedSub else { return "Minutes look balanced." }
-        return "\(suggestion.inPlayer.name) in for \(suggestion.out.name)"
-    }
-
-    /// Loads the balanced-sub suggestion into the Quick Sub selections so the
-    /// coach can review it before recording.
-    func selectSuggestedSub() {
-        guard let suggestion = suggestedSub else { return }
-        selectedOutPlayerID = suggestion.out.id
-        selectedInPlayerID = suggestion.inPlayer.id
-    }
-
     // MARK: - Clock
 
     func tick() {
@@ -420,7 +354,7 @@ final class GameDayViewModel: ObservableObject {
     /// and the current clock. Called whenever the clock state or reminders
     /// change. When the clock isn't running there's no wall-clock mapping, so
     /// all notifications are cleared.
-    private func rescheduleNotifications() {
+    func rescheduleNotifications() {
         guard isRunning else {
             notifier.cancelAll()
             return
@@ -642,107 +576,9 @@ final class GameDayViewModel: ObservableObject {
         normalizeSelections()
     }
 
-    // MARK: - Substitutions
-
-    func addReminder() {
-        guard let outID = selectedOutPlayerID, let inID = selectedInPlayerID else { return }
-        reminders.append(SubReminder(id: UUID(), minute: newReminderMinute, outPlayerID: outID, inPlayerID: inID, triggered: false))
-        rescheduleNotifications()
-    }
-
-    func applySubstitution(_ reminder: SubReminder) {
-        // Only clear the reminder if the swap actually happened (it no-ops when
-        // the incoming/outgoing player is no longer available).
-        if substitute(outID: reminder.outPlayerID, inID: reminder.inPlayerID, note: "Reminder") {
-            reminders.removeAll { $0.id == reminder.id }
-            rescheduleNotifications()
-        }
-    }
-
-    func recordSelectedSub() {
-        guard let outID = selectedOutPlayerID, let inID = selectedInPlayerID else { return }
-        substitute(outID: outID, inID: inID, note: "Manual sub")
-    }
-
-    func undoLastSub() {
-        guard canUndoLastSub, let last = subLog.first else { return }
-        settle()
-        starterIDs.remove(last.inPlayerID)
-        starterIDs.insert(last.outPlayerID)
-        subLog.removeFirst()
-        normalizeSelections()
-    }
-
-    func deleteReminder(_ reminder: SubReminder) {
-        reminders.removeAll { $0.id == reminder.id }
-        rescheduleNotifications()
-    }
-
-    @discardableResult
-    private func substitute(outID: UUID, inID: UUID, note: String) -> Bool {
-        guard starterIDs.contains(outID), !starterIDs.contains(inID) else { return false }
-        guard playerStatuses[outID, default: .available] == .available, playerStatuses[inID, default: .available] == .available else { return false }
-        settle()
-        starterIDs.remove(outID)
-        starterIDs.insert(inID)
-        subLog.insert(
-            SubLogEntry(id: UUID(), time: elapsedSeconds, outPlayerID: outID, inPlayerID: inID, outName: playerName(outID), inName: playerName(inID), note: note),
-            at: 0
-        )
-        normalizeSelections()
-        return true
-    }
-
-    // MARK: - Drag and drop
-
-    func handlePlayerDrop(_ providers: [NSItemProvider], target: LineupDropTarget) -> Bool {
-        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else { return false }
-
-        provider.loadObject(ofClass: NSString.self) { [weak self] object, _ in
-            guard let value = object as? NSString, let playerID = UUID(uuidString: value as String) else { return }
-
-            DispatchQueue.main.async {
-                self?.moveDroppedPlayer(playerID, target: target)
-            }
-        }
-
-        return true
-    }
-
-    private func moveDroppedPlayer(_ playerID: UUID, target: LineupDropTarget) {
-        guard let player = roster.first(where: { $0.id == playerID }) else { return }
-
-        switch target {
-        case .bench:
-            moveToBench(player)
-        case .starters:
-            guard status(for: player) == .available else { return }
-
-            if starterIDs.contains(player.id) {
-                return
-            }
-
-            if starterIDs.count < playersOnField {
-                moveToStarter(player)
-            } else if let outPlayer = availableStarterPlayers.first {
-                substitute(outID: outPlayer.id, inID: player.id, note: "Drag swap")
-            }
-        case .starterSlot(let outPlayerID):
-            guard player.id != outPlayerID, status(for: player) == .available else { return }
-
-            if starterIDs.contains(player.id), starterIDs.contains(outPlayerID) {
-                return
-            } else if starterIDs.contains(outPlayerID) {
-                substitute(outID: outPlayerID, inID: player.id, note: "Drag swap")
-            } else if starterIDs.count < playersOnField {
-                moveToStarter(player)
-            }
-        }
-    }
-
     // MARK: - Helpers
 
-    private func normalizeSelections() {
+    func normalizeSelections() {
         if selectedOutPlayerID == nil || !availableStarterPlayers.contains(where: { $0.id == selectedOutPlayerID }) {
             selectedOutPlayerID = availableStarterPlayers.first?.id
         }
