@@ -19,6 +19,10 @@ struct PlayerDetailView: View {
                         LabeledContent("Position", value: player.position.rawValue)
                     }
 
+                    PlayerDevelopmentSection(
+                        profile: PlayerDevelopment.profile(for: player, games: store.games(inTeam: player.teamID))
+                    )
+
                     Section("Parent / Guardian") {
                         LabeledContent("Guardian", value: player.guardian.isEmpty ? "—" : player.guardian)
                         ContactRow(label: "Phone", value: player.guardianPhone, kind: .phone)
