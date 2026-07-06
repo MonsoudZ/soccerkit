@@ -39,6 +39,12 @@ private struct SurfaceStyle: ViewModifier {
         content
             .background(theme.card)
             .cardCorners()
+            // A hairline edge gives cards a crisp, defined border — subtle depth
+            // that reads especially well against dark screen surfaces.
+            .overlay(
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                    .strokeBorder(theme.hairline, lineWidth: 0.5)
+            )
             .shadow(
                 color: Elevation.cardColor,
                 radius: Elevation.cardRadius,

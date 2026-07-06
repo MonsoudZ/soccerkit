@@ -33,23 +33,45 @@ struct MetricTile: View {
     let title: String
     let value: String
     let symbol: String
+    /// Tints the icon chip so a row of tiles reads as distinct, color-coded stats.
+    var accent: Color = .brand
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(.tint)
-            Text(value)
-                .font(AppFont.metric)
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: Spacing.lg) {
+            IconChip(symbol: symbol, accent: accent)
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
+                Text(value)
+                    .font(AppFont.metric)
+                    .contentTransition(.numericText())
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .surfaceStyle()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(value) \(title)")
+    }
+}
+
+/// A rounded-square icon badge tinted by an accent — the app's standard way to
+/// front a stat, list row, or section with a splash of color.
+struct IconChip: View {
+    let symbol: String
+    var accent: Color = .brand
+    var size: CGFloat = 40
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.44, weight: .semibold))
+            .foregroundStyle(accent)
+            .frame(width: size, height: size)
+            .background(
+                RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+                    .fill(accent.opacity(0.16))
+            )
     }
 }
 

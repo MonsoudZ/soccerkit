@@ -10,10 +10,10 @@ struct CoachOverviewView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: Spacing.lg)], spacing: Spacing.lg) {
-                    MetricTile(title: store.teams.count == 1 ? "Team" : "Teams", value: "\(store.teams.count)", symbol: "shield.lefthalf.filled")
-                    MetricTile(title: "Players", value: "\(store.players.count)", symbol: "person.3.fill")
-                    MetricTile(title: "Games", value: "\(store.games.count)", symbol: "soccerball")
-                    MetricTile(title: "Sessions", value: "\(store.sessions.count)", symbol: "calendar")
+                    MetricTile(title: store.teams.count == 1 ? "Team" : "Teams", value: "\(store.teams.count)", symbol: "shield.lefthalf.filled", accent: .brand)
+                    MetricTile(title: "Players", value: "\(store.players.count)", symbol: "person.3.fill", accent: .info)
+                    MetricTile(title: "Games", value: "\(store.games.count)", symbol: "soccerball", accent: .positive)
+                    MetricTile(title: "Sessions", value: "\(store.sessions.count)", symbol: "calendar", accent: .caution)
                 }
 
                 if store.soonestGame != nil || store.soonestSession != nil {
