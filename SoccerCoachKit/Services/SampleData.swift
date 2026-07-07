@@ -151,6 +151,13 @@ enum SampleData {
                 players[2].id: .maybe,
                 players[3].id: .notGoing,
                 players[4].id: .going
+            ],
+            // Maya is set to play but reported a tight hamstring and poor sleep —
+            // the availability board should flag her for a look.
+            preMatchCheckIns: [
+                players[0].id: PreMatchCheckIn(sleep: 2, energy: 2, freshness: 3, hydration: 3,
+                                               nutrition: 2, mood: 3, composure: 2, focus: 2,
+                                               hasPain: true, note: "Tight hamstring warming up.")
             ]
         )
 
@@ -212,6 +219,11 @@ enum SampleData {
             ],
             preMatchCheckIns: [
                 players[2].id: PreMatchCheckIn(sleep: 4, energy: 4, freshness: 4, hydration: 4, nutrition: 4, mood: 4, composure: 4, focus: 4, warmedUp: true, hasPain: false)
+            ],
+            // Sofia turned an ankle late on — carries into next game's availability.
+            postMatchReflections: [
+                players[1].id: PostMatchReflection(exertion: 4, performance: 3, hadInjury: true,
+                                                   workOn: "Rest the ankle; monitor this week.")
             ]
         )
 

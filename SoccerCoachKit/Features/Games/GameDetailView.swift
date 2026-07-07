@@ -31,6 +31,20 @@ struct GameDetailView: View {
 
                     Section {
                         NavigationLink {
+                            SquadAvailabilityView(gameID: game.id)
+                        } label: {
+                            Label {
+                                availabilityLabel(for: game)
+                            } icon: {
+                                IconChip(symbol: "person.badge.shield.checkmark", accent: .positive, size: 28)
+                            }
+                        }
+                    } header: {
+                        Text("Availability")
+                    }
+
+                    Section {
+                        NavigationLink {
                             MatchQuestionnaireView(game: game, phase: .pre)
                         } label: {
                             Label {
@@ -166,6 +180,25 @@ struct GameDetailView: View {
                     GameReportView(game: game)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func availabilityLabel(for game: GameEvent) -> some View {
+        let board = SquadAvailability.board(
+            players: store.players(inTeam: game.teamID),
+            game: game,
+            history: store.games(inTeam: game.teamID)
+        )
+        let summary = SquadAvailability.summary(board)
+        let needsAttention = summary.flagged + summary.out + summary.noResponse
+        VStack(alignment: .leading, spacing: Spacing.xxs) {
+            Text("Squad Availability")
+            Text(needsAttention == 0
+                 ? "\(summary.available + summary.maybe) available"
+                 : "\(needsAttention) need\(needsAttention == 1 ? "s" : "") a look")
+                .font(.caption)
+                .foregroundStyle(needsAttention == 0 ? Color.positive : Color.caution)
         }
     }
 
