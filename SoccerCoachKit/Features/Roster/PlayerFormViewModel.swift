@@ -58,7 +58,6 @@ final class PlayerFormViewModel: ObservableObject {
     func save(into store: AppStore) {
         let updated = Player(
             id: player?.id ?? UUID(),
-            teamID: player?.teamID ?? store.selectedTeamID,
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             number: number,
             position: position,
@@ -77,7 +76,9 @@ final class PlayerFormViewModel: ObservableObject {
         )
 
         if player == nil {
-            store.addPlayer(updated)
+            // A new player joins the currently selected team; edits leave the
+            // existing membership untouched.
+            store.addPlayer(updated, toTeam: store.selectedTeamID)
         } else {
             store.updatePlayer(updated)
         }

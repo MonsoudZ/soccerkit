@@ -101,7 +101,7 @@ final class EvaluationReadStoreTests: XCTestCase {
 
         // A game-day check-in written the legacy way (dictionary on the game).
         store.games.append(GameEvent(
-            id: UUID(), teamID: player.teamID, opponent: "Legacy FC", date: Date(),
+            id: UUID(), teamID: store.teamID(ofPlayer: player.id)!, opponent: "Legacy FC", date: Date(),
             preMatchCheckIns: [player.id: PreMatchCheckIn(sleep: 3, energy: 3)]
         ))
         // An engine-recorded development review.

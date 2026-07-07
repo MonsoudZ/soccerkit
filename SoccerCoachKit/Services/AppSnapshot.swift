@@ -22,6 +22,11 @@ struct AppSnapshot: Codable {
     var games: [GameEvent]
     var events: [TeamEvent]
     var selectedTeamID: UUID
+    /// The time-bounded player↔team joins that replaced `Player.teamID`. A
+    /// pre-membership snapshot (or a player still carrying a legacy team seed)
+    /// is migrated into memberships at construction, so old data never loses its
+    /// roster links.
+    var memberships: [RosterMembership]
     /// User/org-owned evaluation templates. Built-in templates live in code
     /// (`FormTemplateCatalog`) and are intentionally not persisted here, so they
     /// always match the app version. Empty until a coach saves a custom form.
@@ -31,7 +36,7 @@ struct AppSnapshot: Codable {
     /// instead of onto a per-entity dictionary.
     var formInstances: [FormInstance]
 
-    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, formTemplates: [FormTemplate] = [], formInstances: [FormInstance] = [], schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
+    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, memberships: [RosterMembership] = [], formTemplates: [FormTemplate] = [], formInstances: [FormInstance] = [], schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
         self.schemaVersion = schemaVersion
         self.dataVersion = dataVersion
         self.teams = teams
@@ -42,6 +47,7 @@ struct AppSnapshot: Codable {
         self.games = games
         self.events = events
         self.selectedTeamID = selectedTeamID
+        self.memberships = Self.migratingMemberships(players: players, existing: memberships)
         self.formTemplates = formTemplates
         self.formInstances = formInstances
     }
@@ -63,5 +69,23 @@ struct AppSnapshot: Codable {
         // simply have no custom templates or responses yet.
         formTemplates = try container.decodeIfPresent([FormTemplate].self, forKey: .formTemplates) ?? []
         formInstances = try container.decodeIfPresent([FormInstance].self, forKey: .formInstances) ?? []
+        let storedMemberships = try container.decodeIfPresent([RosterMembership].self, forKey: .memberships) ?? []
+        memberships = Self.migratingMemberships(players: players, existing: storedMemberships)
+    }
+
+    /// Ensures every player has a roster membership: keeps the ones already
+    /// present and synthesizes one (from a player's `legacyTeamID`) for any that
+    /// predate the membership model. A runtime player has no legacy seed, so this
+    /// is a no-op on the live snapshot path — it only fires for migrated data.
+    private static func migratingMemberships(players: [Player], existing: [RosterMembership]) -> [RosterMembership] {
+        var memberships = existing
+        let represented = Set(existing.map(\.playerID))
+        for player in players where !represented.contains(player.id) {
+            guard let teamID = player.legacyTeamID else { continue }
+            // Deterministic id (= player id) so two devices migrating the same
+            // old snapshot converge on one membership rather than duplicating.
+            memberships.append(RosterMembership(id: player.id, playerID: player.id, teamID: teamID, status: .active))
+        }
+        return memberships
     }
 }

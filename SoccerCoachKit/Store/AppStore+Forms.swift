@@ -40,10 +40,11 @@ extension AppStore {
     /// check-ins still stored on `GameEvent` — projected into the engine's shape
     /// for trend/aggregation reads.
     func athleteEvaluations(_ player: Player) -> [FormInstance] {
-        EvaluationReadModel.athleteInstances(
+        let teamGames = teamID(ofPlayer: player.id).map { games(inTeam: $0) } ?? []
+        return EvaluationReadModel.athleteInstances(
             playerID: player.id,
             developmentLog: player.developmentLog,
-            games: games(inTeam: player.teamID),
+            games: teamGames,
             stored: formInstances
         )
     }

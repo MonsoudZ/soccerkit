@@ -4,7 +4,8 @@ extension AppStore {
     // MARK: - Per-team & cross-team lookups
 
     func players(inTeam id: UUID) -> [Player] {
-        players.filter { $0.teamID == id }.sorted { $0.number < $1.number }
+        let memberIDs = Set(memberships.filter { $0.teamID == id && $0.isActive }.map(\.playerID))
+        return players.filter { memberIDs.contains($0.id) }.sorted { $0.number < $1.number }
     }
 
     func games(inTeam id: UUID) -> [GameEvent] {

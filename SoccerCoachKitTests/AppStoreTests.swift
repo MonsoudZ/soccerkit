@@ -25,7 +25,7 @@ final class AppStoreTests: XCTestCase {
 
         XCTAssertFalse(store.teams.contains { $0.id == teamA.id }, "team removed")
         XCTAssertTrue(store.teams.contains { $0.id == teamB.id }, "other team kept")
-        XCTAssertTrue(store.players.allSatisfy { $0.teamID == teamB.id }, "team A players removed")
+        XCTAssertTrue(store.players.allSatisfy { store.isMember($0.id, ofTeam: teamB.id) }, "team A players removed")
         XCTAssertTrue(store.drills.contains { $0.id == shared.id }, "shared drill kept")
         XCTAssertFalse(store.drills.contains { $0.id == teamADrill.id }, "team A drill removed")
         XCTAssertEqual(store.selectedTeamID, teamB.id, "reselected surviving team")

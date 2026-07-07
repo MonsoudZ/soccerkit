@@ -73,14 +73,17 @@ extension AppStore {
         registerUndo("Deleted \(team.name)")
 
         batch {
-            // Capture the players being removed so their evaluation responses go
-            // with them (form instances reference a player/team id directly).
-            let removedPlayerIDs = Set(players.filter { $0.teamID == team.id }.map(\.id))
+            // End this team's memberships. A player guesting on another team
+            // keeps that membership and survives; only players left with no team
+            // at all are removed — so deleting a team can't delete a play-up kid.
+            let teamMemberIDs = Set(memberships.filter { $0.teamID == team.id }.map(\.playerID))
+            memberships.removeAll { $0.teamID == team.id }
+            let orphanedIDs = teamMemberIDs.filter { pid in !memberships.contains { $0.playerID == pid } }
             formInstances.removeAll { instance in
                 (instance.subject.type == .team && instance.subject.id == team.id)
-                    || (instance.subject.type == .athlete && (instance.subject.id.map(removedPlayerIDs.contains) ?? false))
+                    || (instance.subject.type == .athlete && (instance.subject.id.map(orphanedIDs.contains) ?? false))
             }
-            players.removeAll { $0.teamID == team.id }
+            players.removeAll { orphanedIDs.contains($0.id) }
             sessions.removeAll { $0.teamID == team.id }
             games.removeAll { $0.teamID == team.id }
             events.removeAll { $0.teamID == team.id }
@@ -96,8 +99,13 @@ extension AppStore {
 
     // MARK: - Players
 
-    func addPlayer(_ player: Player) {
-        players.append(player)
+    /// Adds a player and opens their active membership on a team — the only way
+    /// a player enters a roster now that the team link is a time-bounded join.
+    func addPlayer(_ player: Player, toTeam teamID: UUID) {
+        batch {
+            players.append(player)
+            memberships.append(RosterMembership(playerID: player.id, teamID: teamID, joinedOn: Date(), status: .active))
+        }
     }
 
     func updatePlayer(_ player: Player) {
@@ -123,6 +131,7 @@ extension AppStore {
     func deletePlayer(_ player: Player) {
         registerUndo("Deleted \(player.name)")
         batch {
+            memberships.removeAll { $0.playerID == player.id }
             formInstances.removeAll { $0.subject.type == .athlete && $0.subject.id == player.id }
             players.removeAll { $0.id == player.id }
             sessions = sessions.map { session in

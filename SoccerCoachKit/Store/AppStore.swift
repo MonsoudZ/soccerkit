@@ -38,6 +38,10 @@ final class AppStore: ObservableObject {
             persist()
         }
     }
+    /// The time-bounded player↔team joins that replaced `Player.teamID`.
+    @Published var memberships: [RosterMembership] {
+        didSet { persist() }
+    }
     /// User/org-owned evaluation templates (built-ins live in code; see
     /// `allFormTemplates`).
     @Published var formTemplates: [FormTemplate] {
@@ -155,6 +159,7 @@ final class AppStore: ObservableObject {
         self.diagrams = snapshot.diagrams
         self.games = snapshot.games
         self.events = snapshot.events
+        self.memberships = snapshot.memberships
         self.formTemplates = snapshot.formTemplates
         self.formInstances = snapshot.formInstances
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
@@ -306,6 +311,7 @@ final class AppStore: ObservableObject {
             games: games,
             events: events,
             selectedTeamID: selectedTeamID,
+            memberships: memberships,
             formTemplates: formTemplates,
             formInstances: formInstances,
             dataVersion: dataVersion
@@ -395,6 +401,7 @@ final class AppStore: ObservableObject {
             diagrams = snapshot.diagrams
             games = snapshot.games
             events = snapshot.events
+            memberships = snapshot.memberships
             formTemplates = snapshot.formTemplates
             formInstances = snapshot.formInstances
             selectedTeamID = teams.contains(where: { $0.id == snapshot.selectedTeamID })
