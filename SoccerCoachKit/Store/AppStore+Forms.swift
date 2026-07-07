@@ -34,6 +34,29 @@ extension AppStore {
         formInstances.filter { $0.contextRef == ref }
     }
 
+    // MARK: - Read-side aggregation
+
+    /// Every evaluation about a player — engine-recorded plus the game-day
+    /// check-ins still stored on `GameEvent` — projected into the engine's shape
+    /// for trend/aggregation reads.
+    func athleteEvaluations(_ player: Player) -> [FormInstance] {
+        EvaluationReadModel.athleteInstances(
+            playerID: player.id,
+            developmentLog: player.developmentLog,
+            games: games(inTeam: player.teamID),
+            stored: formInstances
+        )
+    }
+
+    /// Each player's readiness standing for a team, lowest first.
+    func squadReadiness(inTeam id: UUID) -> [SquadReadinessEntry] {
+        EvaluationReadModel.squadReadiness(
+            players: players(inTeam: id),
+            games: games(inTeam: id),
+            stored: formInstances
+        )
+    }
+
     // MARK: - Mutating
 
     /// Saves a response, replacing any existing one with the same id. Empty

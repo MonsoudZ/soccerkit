@@ -27,6 +27,13 @@ struct PlayerDetailView: View {
                         insight: MatchInsights.insight(for: player.id, games: store.games(inTeam: player.teamID))
                     )
 
+                    let evaluations = store.athleteEvaluations(player)
+                    EvaluationTrendSection(
+                        readiness: EvaluationReadModel.readinessTrend(evaluations),
+                        averageReadiness: EvaluationReadModel.averageReadiness(evaluations),
+                        effort: EvaluationReadModel.effortTrend(evaluations)
+                    )
+
                     Section("Parent / Guardian") {
                         LabeledContent("Guardian", value: player.guardian.isEmpty ? "—" : player.guardian)
                         ContactRow(label: "Phone", value: player.guardianPhone, kind: .phone)

@@ -40,6 +40,19 @@ struct TeamDashboardView: View {
                                 PlayerRow(player: player)
                             }
                         }
+
+                        let squad = store.squadReadiness(inTeam: teamID).filter { $0.averageReadiness != nil }
+                        if !squad.isEmpty {
+                            SectionHeader("Squad Readiness")
+                            Text("Lowest pre-match readiness first — who to check on before the next game.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            VStack(spacing: 10) {
+                                ForEach(squad.prefix(6)) { entry in
+                                    SquadReadinessRow(entry: entry)
+                                }
+                            }
+                        }
                     }
                     .padding()
                 }
