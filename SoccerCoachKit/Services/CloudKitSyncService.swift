@@ -11,7 +11,7 @@ import Foundation
 /// `SyncRecords` and is unit-tested.
 @available(iOS 17.0, *)
 @MainActor
-final class CloudKitSyncService: CKSyncEngineDelegate {
+final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
     private let container: CKContainer
     private var zoneID: CKRecordZone.ID
     private var namespace: String

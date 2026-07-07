@@ -88,8 +88,10 @@ final class AppStore: ObservableObject {
     }
 
     private let persistence: PersistenceService
-    private let cloudKit: CloudKitSyncService?
-    /// The record set last mirrored to CloudKit, so each persist can push only
+    /// The remote sync backend — CloudKit today, the Go API once configured.
+    /// Both satisfy `RemoteSyncService`, so the store code is transport-agnostic.
+    private let remoteSync: RemoteSyncService?
+    /// The record set last mirrored remotely, so each persist can push only
     /// what changed.
     private var lastSyncedRecords: [SyncRecord] = []
     /// True while applying a remote change, so it isn't re-uploaded.
@@ -101,11 +103,11 @@ final class AppStore: ObservableObject {
         didSet {
             UserDefaults.standard.set(cloudSyncEnabled, forKey: "iCloudSyncEnabled")
             if cloudSyncEnabled {
-                cloudKit?.start()
+                remoteSync?.start()
                 lastSyncedRecords = SyncRecords.records(from: snapshot)
                 syncLocalChanges()
             } else {
-                cloudKit?.stop()
+                remoteSync?.stop()
                 syncStatus = .off
             }
         }
@@ -117,7 +119,7 @@ final class AppStore: ObservableObject {
     /// Re-attempts sync after a failure or once an iCloud account is available.
     func retrySync() {
         guard cloudSyncEnabled else { return }
-        cloudKit?.start()
+        remoteSync?.start()
     }
 
     private let scheduleNotifier = ScheduleNotifier()
@@ -171,7 +173,7 @@ final class AppStore: ObservableObject {
 
     init(snapshot: AppSnapshot,
          persistence: PersistenceService = UserDefaultsPersistenceService(),
-         cloudKit: CloudKitSyncService? = nil) {
+         remoteSync: RemoteSyncService? = nil) {
         self.teams = snapshot.teams
         self.players = snapshot.players
         self.drills = snapshot.drills
@@ -190,21 +192,21 @@ final class AppStore: ObservableObject {
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
         self.dataVersion = snapshot.dataVersion
         self.persistence = persistence
-        self.cloudKit = cloudKit
-        self.cloudSyncEnabled = (UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool) ?? (cloudKit != nil)
+        self.remoteSync = remoteSync
+        self.cloudSyncEnabled = (UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool) ?? (remoteSync != nil)
         self.eventRemindersEnabled = UserDefaults.standard.bool(forKey: "eventRemindersEnabled")
         self.reminderLeadMinutes = (UserDefaults.standard.object(forKey: "reminderLeadMinutes") as? Int) ?? 60
         self.lastSyncedRecords = SyncRecords.records(from: snapshot)
         publishWidgetData()
-        if let cloudKit {
-            cloudKit.snapshotProvider = { [weak self] in self?.snapshot ?? snapshot }
-            cloudKit.applyRemoteChanges = { [weak self] upserts, deletes in
+        if let remoteSync {
+            remoteSync.snapshotProvider = { [weak self] in self?.snapshot ?? snapshot }
+            remoteSync.applyRemoteChanges = { [weak self] upserts, deletes in
                 self?.applyRemoteChanges(upserts: upserts, deletes: deletes)
             }
-            cloudKit.onStatusChange = { [weak self] status in
+            remoteSync.onStatusChange = { [weak self] status in
                 self?.syncStatus = status
             }
-            if cloudSyncEnabled { cloudKit.start() }
+            if cloudSyncEnabled { remoteSync.start() }
         }
     }
 
@@ -218,15 +220,15 @@ final class AppStore: ObservableObject {
         isApplyingRemote = false
     }
 
-    /// Pushes local record changes to CloudKit (diffed against the last sync).
+    /// Pushes local record changes to the remote (diffed against the last sync).
     private func syncLocalChanges() {
-        guard let cloudKit, cloudSyncEnabled else { return }
+        guard let remoteSync, cloudSyncEnabled else { return }
         let current = SyncRecords.records(from: snapshot)
         defer { lastSyncedRecords = current }
         guard !isApplyingRemote else { return } // remote change already synced
         let (upserts, deletes) = SyncRecords.diff(from: lastSyncedRecords, to: current)
         if !upserts.isEmpty || !deletes.isEmpty {
-            cloudKit.push(upserts: upserts, deletes: deletes)
+            remoteSync.push(upserts: upserts, deletes: deletes)
         }
     }
 
@@ -241,14 +243,26 @@ final class AppStore: ObservableObject {
         let persistence = UserDefaultsPersistenceService(namespace: userID)
         let snapshot = Self.loadSnapshot(from: persistence)
 
-        // The CI build is unsigned and carries no iCloud entitlement, so
-        // touching CKContainer (account status on launch) traps the app before
-        // it can bootstrap. This bites both the UI-tested app (launched with
-        // -uiTesting) and the unit-test host (the app's @main runs to host the
-        // XCTest bundle). Skip CloudKit in either test context; normal runs are
-        // unaffected, and the pure sync mapping is covered by SyncRecords tests.
-        let cloudKit = AppEnvironment.isTestingOrUITesting ? nil : CloudKitSyncService(namespace: userID)
-        return AppStore(snapshot: snapshot, persistence: persistence, cloudKit: cloudKit)
+        return AppStore(snapshot: snapshot, persistence: persistence,
+                        remoteSync: Self.makeRemoteSync(namespace: userID))
+    }
+
+    /// Chooses the sync transport at launch:
+    /// - No sync at all under test (the unsigned CI build has no iCloud
+    ///   entitlement, and touching CKContainer traps the app on launch — this
+    ///   bites both the UI-tested app and the unit-test host).
+    /// - The Go backend (`APISyncService`) when `BackendBaseURL` is configured.
+    /// - CloudKit otherwise — the shipping default until the backend is set.
+    @MainActor
+    private static func makeRemoteSync(namespace: String?) -> RemoteSyncService? {
+        guard !AppEnvironment.isTestingOrUITesting else { return nil }
+        if BackendConfig.isConfigured {
+            let tokens = TokenStore()
+            if let client = APIClient(tokenProvider: { tokens.token }) {
+                return APISyncService(client: client, namespace: namespace)
+            }
+        }
+        return CloudKitSyncService(namespace: namespace)
     }
 
     private static func loadSnapshot(from persistence: PersistenceService) -> AppSnapshot {
@@ -274,7 +288,7 @@ final class AppStore: ObservableObject {
         persistence.setNamespace(userID)
         restore(Self.loadSnapshot(from: persistence), adoptVersion: true)
         lastSyncedRecords = SyncRecords.records(from: snapshot)
-        cloudKit?.setNamespace(userID)
+        remoteSync?.setNamespace(userID)
     }
 
     /// Synchronously flushes any pending background write. Call when the app is
