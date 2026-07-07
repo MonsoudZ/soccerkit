@@ -100,9 +100,9 @@ final class APISyncService: RemoteSyncService {
     private func apply(_ records: [SyncRecordDTO], deletes: [SyncKeyDTO], cursor: String?) {
         var upserts: [SyncRecord] = []
         for dto in records {
-            // record(from:) both throws and returns nil (unknown type); take only
-            // the ones that decode to a known type.
-            if let decoded = try? SyncWireCodec.record(from: dto), let decoded {
+            // record(from:) throws and returns nil for unknown types; `try?`
+            // flattens both to a single optional, so one bind takes the good ones.
+            if let decoded = try? SyncWireCodec.record(from: dto) {
                 upserts.append(decoded)
             }
         }
