@@ -279,6 +279,35 @@ enum SampleData {
             notes: "Awards and team photo. Families welcome."
         )
 
+        // A few responses recorded through the generic evaluation engine, so the
+        // form spine is demonstrably live from first launch. New scored flows
+        // add instances like these instead of another struct on an entity.
+        let formInstances: [FormInstance] = [
+            // Sofia's most recent development review (context = development).
+            FormInstance(
+                templateID: FormTemplateCatalog.ID.developmentReview,
+                context: .development,
+                subject: .athlete(players[1].id),
+                submittedAt: Calendar.current.date(byAdding: .day, value: -5, to: Date()) ?? Date(),
+                answers: [
+                    .scale("Technical", 4), .scale("Passing", 4), .scale("Tactical", 3), .scale("Attitude", 5),
+                    .text("notes", "Scanning is more consistent; first touch out of her feet has improved."),
+                ]
+            ),
+            // Ava's pre-match check-in ahead of the upcoming league game.
+            FormInstance(
+                templateID: FormTemplateCatalog.ID.preMatchCheckIn,
+                context: .preGame,
+                subject: .athlete(players[2].id),
+                contextRef: .game(leagueGame.id),
+                answers: [
+                    .scale("sleep", 5), .scale("energy", 4), .scale("freshness", 4), .scale("hydration", 4),
+                    .scale("nutrition", 5), .scale("mood", 5), .scale("composure", 4), .scale("focus", 5),
+                    .bool("warmedUp", true), .bool("hasPain", false),
+                ]
+            ),
+        ]
+
         return AppSnapshot(
             teams: [u12, u10],
             players: players,
@@ -287,7 +316,8 @@ enum SampleData {
             diagrams: [],
             games: [playedEarlier, playedHome, playedAway, leagueGame, awayGame],
             events: [tournament, teamSocial],
-            selectedTeamID: u12.id
+            selectedTeamID: u12.id,
+            formInstances: formInstances
         )
     }
 }

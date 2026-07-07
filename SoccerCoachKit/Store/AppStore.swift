@@ -38,6 +38,15 @@ final class AppStore: ObservableObject {
             persist()
         }
     }
+    /// User/org-owned evaluation templates (built-ins live in code; see
+    /// `allFormTemplates`).
+    @Published var formTemplates: [FormTemplate] {
+        didSet { persist() }
+    }
+    /// Filled-in evaluation responses — the generic engine's data.
+    @Published var formInstances: [FormInstance] {
+        didSet { persist() }
+    }
 
     /// Set when a schedule-affecting change (a game/session/event added, removed,
     /// or rescheduled) happens, so `persist()` refreshes reminders once — rather
@@ -146,6 +155,8 @@ final class AppStore: ObservableObject {
         self.diagrams = snapshot.diagrams
         self.games = snapshot.games
         self.events = snapshot.events
+        self.formTemplates = snapshot.formTemplates
+        self.formInstances = snapshot.formInstances
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
         self.dataVersion = snapshot.dataVersion
         self.persistence = persistence
@@ -295,6 +306,8 @@ final class AppStore: ObservableObject {
             games: games,
             events: events,
             selectedTeamID: selectedTeamID,
+            formTemplates: formTemplates,
+            formInstances: formInstances,
             dataVersion: dataVersion
         )
     }
@@ -382,6 +395,8 @@ final class AppStore: ObservableObject {
             diagrams = snapshot.diagrams
             games = snapshot.games
             events = snapshot.events
+            formTemplates = snapshot.formTemplates
+            formInstances = snapshot.formInstances
             selectedTeamID = teams.contains(where: { $0.id == snapshot.selectedTeamID })
                 ? snapshot.selectedTeamID
                 : (teams.first?.id ?? snapshot.selectedTeamID)

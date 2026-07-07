@@ -73,6 +73,13 @@ extension AppStore {
         registerUndo("Deleted \(team.name)")
 
         batch {
+            // Capture the players being removed so their evaluation responses go
+            // with them (form instances reference a player/team id directly).
+            let removedPlayerIDs = Set(players.filter { $0.teamID == team.id }.map(\.id))
+            formInstances.removeAll { instance in
+                (instance.subject.type == .team && instance.subject.id == team.id)
+                    || (instance.subject.type == .athlete && (instance.subject.id.map(removedPlayerIDs.contains) ?? false))
+            }
             players.removeAll { $0.teamID == team.id }
             sessions.removeAll { $0.teamID == team.id }
             games.removeAll { $0.teamID == team.id }
@@ -116,6 +123,7 @@ extension AppStore {
     func deletePlayer(_ player: Player) {
         registerUndo("Deleted \(player.name)")
         batch {
+            formInstances.removeAll { $0.subject.type == .athlete && $0.subject.id == player.id }
             players.removeAll { $0.id == player.id }
             sessions = sessions.map { session in
                 var updated = session
