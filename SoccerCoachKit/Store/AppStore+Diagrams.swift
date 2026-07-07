@@ -45,9 +45,8 @@ extension AppStore {
 
     func defaultBoardPieces(for team: Team) -> (players: [BoardPlayer], zones: [BoardZone], equipment: [BoardEquipment]) {
         let defaults = team.trainingDefaults
-        let teamRoster = players
-            .filter { $0.teamID == team.id }
-            .sorted { $0.number < $1.number }
+        // Resolve the team's roster through active memberships (sorted by number).
+        let teamRoster = players(inTeam: team.id)
         let teamPlayers = Array(teamRoster.prefix(defaults.playerCount)).enumerated().map { index, player in
             BoardPlayer(
                 id: UUID(),
