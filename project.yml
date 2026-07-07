@@ -50,6 +50,14 @@ targets:
         com.apple.developer.icloud-container-identifiers:
           - iCloud.com.monsoudzanaty.SoccerCoachKit
         aps-environment: development
+    info:
+      path: SoccerCoachKit/Info.plist
+      properties:
+        # CloudKit (CKSyncEngine) needs the remote-notification background mode
+        # to receive silent pushes for sync. Other Info.plist keys are still
+        # merged in from the INFOPLIST_KEY_* build settings below.
+        UIBackgroundModes:
+          - remote-notification
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit

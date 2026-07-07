@@ -34,6 +34,21 @@ final class CloudKitSyncService: CKSyncEngineDelegate {
     }
 
     func start() {
+        // Only spin up the engine when there's a usable iCloud account. Without
+        // this check CKSyncEngine retries relentlessly and floods the log with
+        // "Not Authenticated" — the common case in the Simulator or when the
+        // user isn't signed into iCloud. A later start() (next launch, or after
+        // sign-in) picks it up.
+        Task { [weak self] in
+            guard let self else { return }
+            let status = try? await self.container.accountStatus()
+            guard status == .available else { return }
+            self.startEngine()
+        }
+    }
+
+    private func startEngine() {
+        guard engine == nil else { return }
         let configuration = CKSyncEngine.Configuration(
             database: container.privateCloudDatabase,
             stateSerialization: loadState(),
@@ -54,7 +69,10 @@ final class CloudKitSyncService: CKSyncEngineDelegate {
         self.namespace = ns
         self.zoneID = CKRecordZone.ID(zoneName: "coach-\(ns)", ownerName: CKCurrentUserDefaultName)
         self.stateKey = "ckSyncState.\(ns)"
-        if engine != nil { start() } // rebuild for the new zone
+        if engine != nil {
+            stop()
+            start() // rebuild for the new zone
+        }
     }
 
     /// Enqueues local changes computed by `SyncRecords.diff`.

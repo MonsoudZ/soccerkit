@@ -5,6 +5,7 @@ struct SoccerCoachKitApp: App {
     @StateObject private var store = AppStore.storedOrSample
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var auth = AuthController()
+    @StateObject private var tabPreferences = TabPreferences()
 
     var body: some Scene {
         WindowGroup {
@@ -18,6 +19,7 @@ struct SoccerCoachKitApp: App {
             .environmentObject(store)
             .environmentObject(themeManager)
             .environmentObject(auth)
+            .environmentObject(tabPreferences)
             .environment(\.theme, themeManager.current)
             .tint(themeManager.current.brand)
             .task { auth.refreshCredentialState() }
