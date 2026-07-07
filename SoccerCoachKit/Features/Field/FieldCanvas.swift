@@ -22,8 +22,10 @@ struct FieldCanvas: View {
                     .position(x: fieldRect.midX, y: fieldRect.midY)
 
                 ForEach(zones) { zone in
-                    ZoneOverlay(zone: zone, fieldRect: fieldRect) { updated in
+                    ZoneOverlay(zone: zone, fieldRect: fieldRect, tool: tool) { updated in
                         updateZone(updated)
+                    } onErase: {
+                        zones.removeAll { $0.id == zone.id }
                     }
                 }
 
@@ -36,11 +38,15 @@ struct FieldCanvas: View {
                 }
 
                 ForEach($equipment) { $item in
-                    EquipmentMarker(item: $item, fieldRect: fieldRect)
+                    EquipmentMarker(item: $item, fieldRect: fieldRect, tool: tool) {
+                        equipment.removeAll { $0.id == $item.wrappedValue.id }
+                    }
                 }
 
                 ForEach($players) { $player in
-                    PlayerMarker(player: $player, fieldRect: fieldRect)
+                    PlayerMarker(player: $player, fieldRect: fieldRect, tool: tool) {
+                        players.removeAll { $0.id == $player.wrappedValue.id }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -65,16 +71,55 @@ struct FieldCanvas: View {
                     return
                 }
 
-                if tool == .line {
-                    let distance = hypot(value.translation.width, value.translation.height)
-                    if distance > 12, let draftLine {
+                let point = normalize(value.location, in: fieldRect)
+                let translation = hypot(value.translation.width, value.translation.height)
+
+                switch tool {
+                case .line:
+                    if translation > 12, let draftLine {
                         lines.append(draftLine)
                     }
                     draftLine = nil
-                } else if hypot(value.translation.width, value.translation.height) < 8 {
-                    addItem(at: normalize(value.location, in: fieldRect))
+                case .erase:
+                    // Erasing markers is handled by the markers themselves; a tap
+                    // on the open pitch removes the nearest drawn line.
+                    if translation < 8 {
+                        eraseNearestLine(to: point)
+                    }
+                default:
+                    if translation < 8 {
+                        addItem(at: point)
+                    }
                 }
             }
+    }
+
+    /// Removes the drawn line closest to `point` (normalized), within a small
+    /// tap tolerance, so lines can be erased by tapping them with the Erase tool.
+    private func eraseNearestLine(to point: CGPoint) {
+        let threshold: CGFloat = 0.04
+        var bestID: UUID?
+        var bestDistance = threshold
+        for line in lines {
+            let d = distanceFromPoint(point, toSegment: line.start, line.end)
+            if d < bestDistance {
+                bestDistance = d
+                bestID = line.id
+            }
+        }
+        if let bestID {
+            lines.removeAll { $0.id == bestID }
+        }
+    }
+
+    private func distanceFromPoint(_ p: CGPoint, toSegment a: CGPoint, _ b: CGPoint) -> CGFloat {
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        let lengthSquared = dx * dx + dy * dy
+        guard lengthSquared > 0 else { return hypot(p.x - a.x, p.y - a.y) }
+        var t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared
+        t = max(0, min(1, t))
+        return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
     }
 
     private func addItem(at point: CGPoint) {
@@ -131,7 +176,7 @@ struct FieldCanvas: View {
                 )
             )
             zoneCount += 1
-        case .line:
+        case .line, .erase:
             break
         }
     }

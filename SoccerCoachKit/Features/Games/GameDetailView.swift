@@ -29,6 +29,33 @@ struct GameDetailView: View {
                         }
                     }
 
+                    let gamePlans = store.diagrams(forGameID: game.id)
+                    if !gamePlans.isEmpty {
+                        Section {
+                            ForEach(gamePlans) { diagram in
+                                NavigationLink {
+                                    DiagramPreviewView(diagramID: diagram.id)
+                                } label: {
+                                    Label {
+                                        VStack(alignment: .leading, spacing: Spacing.xxs) {
+                                            Text(diagram.title)
+                                                .font(.headline)
+                                            Text("Updated \(diagram.updatedAt, style: .date)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    } icon: {
+                                        IconChip(symbol: "sportscourt.fill", accent: .info, size: 28)
+                                    }
+                                }
+                            }
+                        } header: {
+                            Text("Game Plan")
+                        } footer: {
+                            Text("Diagrams attached to this game from the Field board.")
+                        }
+                    }
+
                     Section {
                         if let team = game.teamScore, let opponent = game.opponentScore {
                             LabeledContent("Result") {

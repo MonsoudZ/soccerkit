@@ -6,6 +6,7 @@ enum BoardTool: String, CaseIterable, Identifiable {
     case cone = "Cone"
     case zone = "Zone"
     case line = "Line"
+    case erase = "Erase"
 
     var id: String { rawValue }
 
@@ -16,6 +17,7 @@ enum BoardTool: String, CaseIterable, Identifiable {
         case .cone: return "triangle.fill"
         case .zone: return "square.dashed"
         case .line: return "arrow.up.right"
+        case .erase: return "eraser.fill"
         }
     }
 }

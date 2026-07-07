@@ -35,19 +35,22 @@ struct TacticsDiagram: Identifiable, Hashable, Codable {
     var notes: String
     var sessionID: UUID?
     var drillID: UUID?
+    /// A scheduled game this diagram is the plan for; `nil` when unattached.
+    var gameID: UUID?
     var players: [BoardPlayer]
     var zones: [BoardZone]
     var lines: [BoardLine]
     var equipment: [BoardEquipment]
     var updatedAt: Date
 
-    init(id: UUID, teamID: UUID, title: String, notes: String, sessionID: UUID?, drillID: UUID? = nil, players: [BoardPlayer], zones: [BoardZone], lines: [BoardLine], equipment: [BoardEquipment] = [], updatedAt: Date) {
+    init(id: UUID, teamID: UUID, title: String, notes: String, sessionID: UUID?, drillID: UUID? = nil, gameID: UUID? = nil, players: [BoardPlayer], zones: [BoardZone], lines: [BoardLine], equipment: [BoardEquipment] = [], updatedAt: Date) {
         self.id = id
         self.teamID = teamID
         self.title = title
         self.notes = notes
         self.sessionID = sessionID
         self.drillID = drillID
+        self.gameID = gameID
         self.players = players
         self.zones = zones
         self.lines = lines
@@ -62,6 +65,7 @@ struct TacticsDiagram: Identifiable, Hashable, Codable {
         case notes
         case sessionID
         case drillID
+        case gameID
         case players
         case zones
         case lines
@@ -77,6 +81,7 @@ struct TacticsDiagram: Identifiable, Hashable, Codable {
         notes = try container.decode(String.self, forKey: .notes)
         sessionID = try container.decodeIfPresent(UUID.self, forKey: .sessionID)
         drillID = try container.decodeIfPresent(UUID.self, forKey: .drillID)
+        gameID = try container.decodeIfPresent(UUID.self, forKey: .gameID)
         players = try container.decode([BoardPlayer].self, forKey: .players)
         zones = try container.decode([BoardZone].self, forKey: .zones)
         lines = try container.decode([BoardLine].self, forKey: .lines)

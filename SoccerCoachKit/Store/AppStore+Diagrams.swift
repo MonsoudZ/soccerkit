@@ -18,6 +18,12 @@ extension AppStore {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
+    func diagrams(forGameID gameID: UUID) -> [TacticsDiagram] {
+        diagrams
+            .filter { $0.gameID == gameID }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
     func addDiagram(title: String, sessionID: UUID? = nil, drillID: UUID? = nil) -> TacticsDiagram {
         let defaults = defaultBoardPieces(for: selectedTeam)
         let diagram = TacticsDiagram(
@@ -127,17 +133,20 @@ extension AppStore {
     }
 
     func attachDiagram(_ diagram: TacticsDiagram, to sessionID: UUID?) {
-        attachDiagram(diagram, sessionID: sessionID, drillID: nil)
+        attachDiagram(diagram, sessionID: sessionID, drillID: nil, gameID: nil)
     }
 
     func attachDiagram(_ diagram: TacticsDiagram, toDrillID drillID: UUID?) {
-        attachDiagram(diagram, sessionID: nil, drillID: drillID)
+        attachDiagram(diagram, sessionID: nil, drillID: drillID, gameID: nil)
     }
 
-    func attachDiagram(_ diagram: TacticsDiagram, sessionID: UUID?, drillID: UUID?) {
+    /// Attaches a diagram to at most one owner — a session, a drill, or a game.
+    /// A diagram is a plan for one thing, so setting an owner clears the others.
+    func attachDiagram(_ diagram: TacticsDiagram, sessionID: UUID?, drillID: UUID?, gameID: UUID? = nil) {
         guard let index = diagrams.firstIndex(where: { $0.id == diagram.id }) else { return }
         diagrams[index].sessionID = sessionID
         diagrams[index].drillID = drillID
+        diagrams[index].gameID = gameID
         diagrams[index].updatedAt = Date()
     }
 

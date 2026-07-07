@@ -99,6 +99,12 @@ struct FieldBoardView: View {
         }
     }
 
+    /// True when the current diagram isn't attached to a game, session, or drill.
+    private var isDetached: Bool {
+        guard let diagram = viewModel.currentDiagram(in: store) else { return true }
+        return diagram.sessionID == nil && diagram.drillID == nil && diagram.gameID == nil
+    }
+
     private var boardToolbar: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
@@ -125,15 +131,34 @@ struct FieldBoardView: View {
                 .textFieldStyle(.roundedBorder)
 
             Menu {
-                Button("Game Plan") {
-                    viewModel.attachCurrentDiagram(sessionID: nil, drillID: nil, in: store)
+                Button {
+                    viewModel.attachCurrentDiagram(in: store)
+                } label: {
+                    Label("Game Plan (unattached)", systemImage: isDetached ? "checkmark" : "square.dashed")
+                }
+
+                if !store.teamGames.isEmpty {
+                    Menu("Game / Fixture") {
+                        ForEach(store.teamGames) { game in
+                            Button {
+                                viewModel.attachCurrentDiagram(gameID: game.id, in: store)
+                            } label: {
+                                Label(
+                                    "vs \(game.opponent) · \(game.date.formatted(date: .abbreviated, time: .omitted))",
+                                    systemImage: viewModel.currentDiagram(in: store)?.gameID == game.id ? "checkmark" : "soccerball"
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if !store.teamSessions.isEmpty {
                     Menu("Training Session") {
                         ForEach(store.teamSessions) { session in
-                            Button(session.title) {
-                                viewModel.attachCurrentDiagram(sessionID: session.id, drillID: nil, in: store)
+                            Button {
+                                viewModel.attachCurrentDiagram(sessionID: session.id, in: store)
+                            } label: {
+                                Label(session.title, systemImage: viewModel.currentDiagram(in: store)?.sessionID == session.id ? "checkmark" : "figure.run")
                             }
                         }
                     }
@@ -142,15 +167,30 @@ struct FieldBoardView: View {
                 if !store.teamDrills.isEmpty {
                     Menu("Drill") {
                         ForEach(store.teamDrills) { drill in
-                            Button(drill.title) {
-                                viewModel.attachCurrentDiagram(sessionID: nil, drillID: drill.id, in: store)
+                            Button {
+                                viewModel.attachCurrentDiagram(drillID: drill.id, in: store)
+                            } label: {
+                                Label(drill.title, systemImage: viewModel.currentDiagram(in: store)?.drillID == drill.id ? "checkmark" : "sportscourt")
                             }
                         }
                     }
                 }
             } label: {
-                Label(viewModel.attachmentTitle(in: store), systemImage: "paperclip")
-                    .font(.caption)
+                HStack(spacing: Spacing.sm) {
+                    Image(systemName: "paperclip")
+                    Text("Attached to:")
+                        .foregroundStyle(.secondary)
+                    Text(viewModel.attachmentTitle(in: store))
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down").font(.caption2)
+                }
+                .font(.subheadline)
+                .padding(.vertical, Spacing.sm)
+                .padding(.horizontal, Spacing.md)
+                .frame(maxWidth: .infinity)
+                .background(Color.screenBackground)
+                .clipShape(RoundedRectangle(cornerRadius: CornerRadius.small, style: .continuous))
             }
 
             Text(viewModel.helpText)

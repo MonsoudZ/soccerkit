@@ -25,14 +25,18 @@ final class FieldBoardViewModel: ObservableObject {
     }
 
     func attachmentTitle(in store: AppStore) -> String {
-        if let sessionID = currentDiagram(in: store)?.sessionID {
+        guard let diagram = currentDiagram(in: store) else { return "Game Plan" }
+
+        if let sessionID = diagram.sessionID {
             return store.sessions.first { $0.id == sessionID }?.title ?? "Training Session"
         }
-
-        if let drillID = currentDiagram(in: store)?.drillID {
+        if let drillID = diagram.drillID {
             return store.drill(for: drillID)?.title ?? "Drill"
         }
-
+        if let gameID = diagram.gameID,
+           let game = store.games.first(where: { $0.id == gameID }) {
+            return "vs \(game.opponent)"
+        }
         return "Game Plan"
     }
 
@@ -48,6 +52,8 @@ final class FieldBoardViewModel: ObservableObject {
             return "Tap to add a coaching zone. Drag zones to move them."
         case .line:
             return "Drag across the field to draw a pass, run, or movement line."
+        case .erase:
+            return "Tap any player, cone, zone, or line to remove it. (Long-press a marker for Delete too.)"
         }
     }
 
@@ -116,10 +122,10 @@ final class FieldBoardViewModel: ObservableObject {
         loadDiagram(copy)
     }
 
-    func attachCurrentDiagram(sessionID: UUID?, drillID: UUID?, in store: AppStore) {
+    func attachCurrentDiagram(sessionID: UUID? = nil, drillID: UUID? = nil, gameID: UUID? = nil, in store: AppStore) {
         saveCurrentDiagram(in: store)
         guard let currentDiagram = currentDiagram(in: store) else { return }
-        store.attachDiagram(currentDiagram, sessionID: sessionID, drillID: drillID)
+        store.attachDiagram(currentDiagram, sessionID: sessionID, drillID: drillID, gameID: gameID)
     }
 
     func resetCurrentBoard(in store: AppStore) {
