@@ -2,15 +2,11 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var tabs: TabPreferences
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var sizeClass
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @State private var sidebarSelection: AppSection? = .dashboard
-
-    /// The sections that get their own bottom tab on iPhone; the rest live under
-    /// "More". iPad shows every section in the sidebar instead.
-    private static let primaryTabs: [AppSection] = [.dashboard, .calendar, .roster, .game]
-    private static let moreSections: [AppSection] = [.games, .stats, .field, .training, .drills, .settings]
 
     var body: some View {
         root
@@ -40,7 +36,7 @@ struct ContentView: View {
 
     private var tabRoot: some View {
         TabView {
-            ForEach(Self.primaryTabs) { section in
+            ForEach(tabs.quickAccess) { section in
                 NavigationStack {
                     AppSectionDetail(section: section)
                         .navigationTitle(section.rawValue)
@@ -52,7 +48,7 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                MoreScreen(sections: Self.moreSections)
+                MoreScreen(sections: tabs.available)
             }
             .tabItem { Label("More", systemImage: "ellipsis") }
         }
@@ -108,7 +104,8 @@ struct AppSectionDetail: View {
     }
 }
 
-/// The "More" tab: team switcher plus the sections that don't get their own tab.
+/// The "More" tab: team switcher plus the sections that don't get their own tab,
+/// with a shortcut to customize which sections are quick-access tabs.
 private struct MoreScreen: View {
     let sections: [AppSection]
 
@@ -125,9 +122,27 @@ private struct MoreScreen: View {
                     }
                 }
             }
+            Section {
+                NavigationLink {
+                    TabBarEditorView()
+                } label: {
+                    Label("Customize Tabs", systemImage: "slider.horizontal.3")
+                }
+            } footer: {
+                Text("Choose which sections appear as tabs beside Home.")
+            }
         }
         .themedList()
         .navigationTitle("More")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    TabBarEditorView()
+                } label: {
+                    Label("Customize Tabs", systemImage: "slider.horizontal.3")
+                }
+            }
+        }
     }
 }
 
