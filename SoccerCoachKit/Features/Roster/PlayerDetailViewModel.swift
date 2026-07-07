@@ -6,6 +6,10 @@ final class PlayerDetailViewModel: ObservableObject {
     @Published var showingEditPlayer = false
     @Published var showingNewEntry = false
     @Published var editingEntry: DevelopmentEntry?
+    /// A template the coach chose to fill in a fresh evaluation for.
+    @Published var recordingTemplate: FormTemplate?
+    /// An existing engine-backed evaluation being edited.
+    @Published var editingInstance: FormInstance?
 
     init(playerID: UUID) {
         self.playerID = playerID

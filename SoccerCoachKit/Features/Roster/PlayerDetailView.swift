@@ -112,6 +112,43 @@ struct PlayerDetailView: View {
                     } header: {
                         Text("Development")
                     }
+
+                    Section {
+                        let instances = store.formInstances(for: .athlete(player.id))
+                        if instances.isEmpty {
+                            Text("No evaluations recorded through the form engine yet.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(instances) { instance in
+                                Button {
+                                    viewModel.editingInstance = instance
+                                } label: {
+                                    FormInstanceRow(instance: instance, template: store.template(for: instance))
+                                }
+                                .buttonStyle(.plain)
+                                .swipeActions {
+                                    Button(role: .destructive) {
+                                        store.deleteFormInstance(instance)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+
+                        Menu {
+                            ForEach(store.allFormTemplates.filter { $0.subjectType == .athlete }) { template in
+                                Button(template.name) { viewModel.recordingTemplate = template }
+                            }
+                        } label: {
+                            Label("Record Evaluation", systemImage: "square.and.pencil")
+                        }
+                    } header: {
+                        Text("Evaluations")
+                    } footer: {
+                        Text("Powered by the shared evaluation engine — the same form spine behind check-ins, tryouts, and development.")
+                    }
                 }
                 .themedList()
             } else {
@@ -150,6 +187,19 @@ struct PlayerDetailView: View {
         .sheet(item: $viewModel.editingEntry) { entry in
             NavigationStack {
                 DevelopmentEntryFormView(playerID: viewModel.playerID, entry: entry)
+            }
+        }
+        .sheet(item: $viewModel.recordingTemplate) { template in
+            NavigationStack {
+                FormRunnerView(template: template, subject: .athlete(viewModel.playerID))
+            }
+        }
+        .sheet(item: $viewModel.editingInstance) { instance in
+            NavigationStack {
+                if let template = store.template(for: instance) {
+                    FormRunnerView(template: template, subject: instance.subject,
+                                   contextRef: instance.contextRef, existing: instance)
+                }
             }
         }
     }
