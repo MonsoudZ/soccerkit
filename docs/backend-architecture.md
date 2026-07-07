@@ -324,3 +324,27 @@ Server-side entitlement enforcement means the client's premium gating becomes ad
 ## 7. What to *never* build (integrate instead)
 
 Registration / payments / league scheduling is owned by SportsEngine and GotSport. Rebuilding it is a money pit and not the moat. When a club asks: **import rosters, link out** — a `POST /v1/orgs/:id/imports` that maps their roster CSV/API into `people` + `players` + `roster_memberships`. Keep the castle to coaching, evaluation, and development — the things those platforms are bad at.
+
+---
+
+## 8. Client wire contract (what the iOS app sends)
+
+The iOS networking layer is in `SoccerCoachKit/Networking/`. The backend must speak exactly what it produces (see `SoccerCoachKitTests/SyncWireTests.swift` for round-trip fixtures):
+
+**Record envelope** (`SyncRecordDTO`):
+```json
+{ "type": "Player", "id": "<uuid>", "payload": { /* the entity's own JSON */ } }
+```
+`type` is a `SyncRecordType` raw value (`Organization`, `Person`, `UserAccount`, `OrgMembership`, `Team`, `RosterMembership`, `Player`, `FormTemplate`, `FormInstance`, `ShareGrant`, `Session`, `Drill`, `Diagram`, `Game`, `Event`, `Prefs`). Unknown types are skipped client-side, so adding a type server-side won't break older clients.
+
+**Endpoints the client calls** (`APIClient`):
+```
+POST /v1/auth/apple   {identityToken, authorizationCode?, fullName?}          → {token, personID?}
+GET  /v1/sync?since=<cursor>                                                  → {records:[…], deletes:[{type,id}], cursor}
+POST /v1/sync         {upserts:[…], deletes:[{type,id}], cursor}              → {cursor, conflicts:[…]}
+```
+Bearer JWT on `/v1/sync`. The client stores the token (`TokenStore`) and its sync cursor per namespace.
+
+**Payload caveat — dates.** Entity payloads are encoded by `SyncRecords`' `JSONEncoder` with the default date strategy: `Date` → a JSON **number** (seconds since 2001-01-01, not epoch, not RFC3339). Treat each `payload` as an **opaque JSON document** for storage/echo; only lift out the fields you query (`id`, `organization_id`, `updated_at`), and parse those dates with that offset in mind. If you'd rather standardize on RFC3339, that's a one-line change to the client encoder (`SyncRecords.encoder` + each model) — decide before building the serializers.
+
+**Activation.** This layer is inert until `BackendBaseURL` is set in Info.plist and `AppStore.storedOrSample` is switched from `CloudKitSyncService` to `APISyncService` (both satisfy the `RemoteSyncService` seam; see the integration note in `APISyncService.swift`). Until then the app stays on CloudKit + local, unchanged.

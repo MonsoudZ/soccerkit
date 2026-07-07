@@ -1,0 +1,139 @@
+import Foundation
+
+/// The seam `AppStore` drives sync through. `CloudKitSyncService` already
+/// implements this exact shape today; `APISyncService` implements it against the
+/// Go backend. When the backend is live, `storedOrSample` chooses which one to
+/// build (see the integration note at the bottom of this file) — the store code
+/// doesn't change, only which conformer it's handed.
+@MainActor
+protocol RemoteSyncService: AnyObject {
+    /// Supplies the current full snapshot (for an initial bootstrap push).
+    var snapshotProvider: (() -> AppSnapshot)? { get set }
+    /// Applies records fetched from the remote into the store, without
+    /// re-enqueuing them for upload.
+    var applyRemoteChanges: ((_ upserts: [SyncRecord], _ deletes: [SyncRecordKey]) -> Void)? { get set }
+    /// Reports sync lifecycle so the UI can surface status.
+    var onStatusChange: ((SyncStatus) -> Void)? { get set }
+
+    func start()
+    func stop()
+    func push(upserts: [SyncRecord], deletes: [SyncRecordKey])
+    func setNamespace(_ namespace: String?)
+}
+
+/// Syncs the store against the Go backend's `/v1/sync` delta endpoint. Pushes
+/// are the diffs `AppStore` already computes via `SyncRecords.diff`; pulls apply
+/// the server delta since the last cursor. Best-effort and non-blocking — every
+/// call spawns a `Task` and reports through `onStatusChange`, mirroring
+/// `CloudKitSyncService`.
+@MainActor
+final class APISyncService: RemoteSyncService {
+    var snapshotProvider: (() -> AppSnapshot)?
+    var applyRemoteChanges: ((_ upserts: [SyncRecord], _ deletes: [SyncRecordKey]) -> Void)?
+    var onStatusChange: ((SyncStatus) -> Void)?
+
+    private let client: APIClient
+    private var namespace: String
+    private var isRunning = false
+    private let defaults: UserDefaults
+    private var cursorKey: String { "apiSyncCursor.\(namespace)" }
+
+    init(client: APIClient, namespace: String?, defaults: UserDefaults = .standard) {
+        self.client = client
+        self.namespace = namespace ?? "default"
+        self.defaults = defaults
+    }
+
+    func start() {
+        isRunning = true
+        onStatusChange?(.syncing)
+        Task { await pull() }
+    }
+
+    func stop() {
+        isRunning = false
+        onStatusChange?(.off)
+    }
+
+    func setNamespace(_ namespace: String?) {
+        let ns = namespace ?? "default"
+        guard ns != self.namespace else { return }
+        self.namespace = ns
+        if isRunning { Task { await pull() } }
+    }
+
+    func push(upserts: [SyncRecord], deletes: [SyncRecordKey]) {
+        guard isRunning else { return }
+        Task { await performPush(upserts: upserts, deletes: deletes) }
+    }
+
+    // MARK: - Networking
+
+    private func pull() async {
+        do {
+            let response = try await client.pull(since: defaults.string(forKey: cursorKey))
+            apply(response.records, deletes: response.deletes, cursor: response.cursor)
+            onStatusChange?(.synced(Date()))
+        } catch {
+            onStatusChange?(.failed(Self.message(for: error)))
+        }
+    }
+
+    private func performPush(upserts: [SyncRecord], deletes: [SyncRecordKey]) async {
+        do {
+            let request = SyncPushRequest(
+                upserts: upserts.compactMap { try? SyncWireCodec.dto(from: $0) },
+                deletes: deletes.map(SyncWireCodec.keyDTO(from:)),
+                cursor: defaults.string(forKey: cursorKey)
+            )
+            let response = try await client.push(request)
+            // Adopt any records the server won a conflict on.
+            apply(response.conflicts, deletes: [], cursor: response.cursor)
+            onStatusChange?(.synced(Date()))
+        } catch {
+            onStatusChange?(.failed(Self.message(for: error)))
+        }
+    }
+
+    /// Decodes wire records/keys and hands them to the store; records of unknown
+    /// types (a newer server) are skipped rather than fatal.
+    private func apply(_ records: [SyncRecordDTO], deletes: [SyncKeyDTO], cursor: String?) {
+        var upserts: [SyncRecord] = []
+        for dto in records {
+            // record(from:) both throws and returns nil (unknown type); take only
+            // the ones that decode to a known type.
+            if let decoded = try? SyncWireCodec.record(from: dto), let decoded {
+                upserts.append(decoded)
+            }
+        }
+        let removals = deletes.compactMap(SyncWireCodec.key(from:))
+        if !upserts.isEmpty || !removals.isEmpty {
+            applyRemoteChanges?(upserts, removals)
+        }
+        if let cursor { defaults.set(cursor, forKey: cursorKey) }
+    }
+
+    private static func message(for error: Error) -> String {
+        (error as? APIError)?.userMessage ?? "Sync error"
+    }
+}
+
+// MARK: - Integration note
+//
+// To activate against the backend, in `AppStore.storedOrSample` prefer an
+// `APISyncService` when a backend is configured, falling back to CloudKit:
+//
+//     let remote: RemoteSyncService?
+//     if BackendConfig.isConfigured {
+//         let tokens = TokenStore()
+//         if let client = APIClient(tokenProvider: { tokens.token }) {
+//             remote = APISyncService(client: client, namespace: userID)
+//         } else { remote = CloudKitSyncService(namespace: userID) }
+//     } else {
+//         remote = AppEnvironment.isTestingOrUITesting ? nil : CloudKitSyncService(namespace: userID)
+//     }
+//
+// That requires `AppStore.init` to take a `RemoteSyncService?` instead of the
+// concrete `CloudKitSyncService?` (and `CloudKitSyncService` to declare
+// `: RemoteSyncService` — it already has every member). Left undone here so the
+// working CloudKit path is untouched until there's a live server to test against.

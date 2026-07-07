@@ -9,6 +9,12 @@ import SwiftUI
 final class AuthController: ObservableObject {
     @Published private(set) var userID: String?
     @Published private(set) var displayName: String?
+    /// The Apple identity token (a JWT) from the most recent sign-in, to hand to
+    /// the backend at `/v1/auth/apple` for verification. Not persisted — Apple
+    /// re-issues it on each sign-in, so it's only valid right after `handle`.
+    @Published private(set) var identityToken: String?
+    /// The one-time authorization code from the most recent sign-in.
+    @Published private(set) var authorizationCode: String?
     /// A user-facing message when a sign-in attempt fails (nil = none / cancelled).
     @Published var authError: String?
 
@@ -26,7 +32,7 @@ final class AuthController: ObservableObject {
 
     /// Configures the authorization request the Sign in with Apple button makes.
     func configure(_ request: ASAuthorizationAppleIDRequest) {
-        request.requestedScopes = [.fullName]
+        request.requestedScopes = [.fullName, .email]
     }
 
     /// Handles the button's completion, storing the identity on success and
@@ -40,6 +46,9 @@ final class AuthController: ObservableObject {
             let name = [credential.fullName?.givenName, credential.fullName?.familyName]
                 .compactMap { $0 }
                 .joined(separator: " ")
+            // Capture the tokens for the backend handshake (verified server-side).
+            identityToken = credential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
+            authorizationCode = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
             authError = nil
             completeSignIn(userID: credential.user, name: name.isEmpty ? nil : name)
         case .failure(let error):
