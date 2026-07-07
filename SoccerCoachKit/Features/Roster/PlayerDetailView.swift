@@ -19,12 +19,16 @@ struct PlayerDetailView: View {
                         LabeledContent("Position", value: player.position.rawValue)
                     }
 
+                    // The player's team comes from their active membership now
+                    // that the flat teamID is gone; their games scope the season
+                    // profile and readiness insight.
+                    let teamGames = store.teamID(ofPlayer: player.id).map { store.games(inTeam: $0) } ?? []
                     PlayerDevelopmentSection(
-                        profile: PlayerDevelopment.profile(for: player, games: store.games(inTeam: player.teamID))
+                        profile: PlayerDevelopment.profile(for: player, games: teamGames)
                     )
 
                     PlayerReadinessSection(
-                        insight: MatchInsights.insight(for: player.id, games: store.games(inTeam: player.teamID))
+                        insight: MatchInsights.insight(for: player.id, games: teamGames)
                     )
 
                     let evaluations = store.athleteEvaluations(player)
