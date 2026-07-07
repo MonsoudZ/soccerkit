@@ -1,5 +1,21 @@
 import SwiftUI
 
+/// A settings row label with a colour-coded icon tile (à la the iOS Settings
+/// app), keeping the app's IconChip language consistent on list rows.
+struct SettingsLabel: View {
+    let title: String
+    let systemImage: String
+    var tint: Color = .brand
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            IconChip(symbol: systemImage, accent: tint, size: 28)
+        }
+    }
+}
+
 /// A horizontal row of theme swatches; tapping one switches the app theme live.
 struct ThemePickerRow: View {
     @ObservedObject var themeManager: ThemeManager

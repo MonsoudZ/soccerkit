@@ -34,29 +34,29 @@ struct OnboardingView: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: Spacing.lg) {
-            Image(systemName: "soccerball.inverse")
-                .font(.system(size: 52))
-                .foregroundStyle(.tint)
+            IconChip(symbol: "soccerball.inverse", accent: .brand, size: 64)
             Text("Welcome, Coach")
                 .font(AppFont.display)
             Text("Manage your roster, run game day, plan training, and track the season — all in one place.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: Spacing.sm) {
-                featureRow("person.3.fill", "Roster, attendance & RSVPs")
-                featureRow("sportscourt.fill", "Live game day: clock, subs & score")
-                featureRow("calendar", "Schedule with a unified calendar")
+            VStack(alignment: .leading, spacing: Spacing.lg) {
+                featureRow("person.3.fill", "Roster, attendance & RSVPs", .info)
+                featureRow("sportscourt.fill", "Live game day: clock, subs & score", .positive)
+                featureRow("calendar", "Schedule with a unified calendar", .caution)
             }
-            .padding(.top, Spacing.xs)
+            .padding(.top, Spacing.sm)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func featureRow(_ symbol: String, _ text: String) -> some View {
-        Label(text, systemImage: symbol)
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+    private func featureRow(_ symbol: String, _ text: String, _ tint: Color) -> some View {
+        HStack(spacing: Spacing.lg) {
+            IconChip(symbol: symbol, accent: tint, size: 34)
+            Text(text)
+                .font(.subheadline)
+        }
     }
 
     // MARK: Setup

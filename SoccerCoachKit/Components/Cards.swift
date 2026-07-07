@@ -172,21 +172,26 @@ struct DrillCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(drill.title)
-                    .font(.headline)
+            HStack(spacing: Spacing.lg) {
+                IconChip(symbol: drill.category.symbol, accent: drill.category.color)
+
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                    Text(drill.title)
+                        .font(.headline)
+                    HStack(spacing: Spacing.md) {
+                        Text(drill.category.rawValue)
+                        Text(store.teamName(for: drill.teamID))
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                }
+
                 Spacer()
+
                 Label("\(drill.durationMinutes) min", systemImage: "timer")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            HStack(spacing: Spacing.md) {
-                Text(drill.category.rawValue)
-                Text(store.teamName(for: drill.teamID))
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
 
             TagChipsView(tags: drill.tags)
 

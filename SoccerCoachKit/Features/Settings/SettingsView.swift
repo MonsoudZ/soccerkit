@@ -53,7 +53,7 @@ struct SettingsView: View {
             Button(role: .destructive) {
                 auth.signOut()
             } label: {
-                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                SettingsLabel(title: "Sign Out", systemImage: "rectangle.portrait.and.arrow.right", tint: .critical)
             }
         } header: {
             Text("Account")
@@ -63,7 +63,7 @@ struct SettingsView: View {
     private var remindersSection: some View {
         Section {
             Toggle(isOn: $store.eventRemindersEnabled) {
-                Label("Event Reminders", systemImage: "bell.badge")
+                SettingsLabel(title: "Event Reminders", systemImage: "bell.badge", tint: .caution)
             }
             if store.eventRemindersEnabled {
                 Picker(selection: $store.reminderLeadMinutes) {
@@ -73,7 +73,7 @@ struct SettingsView: View {
                     Text("3 hours before").tag(180)
                     Text("1 day before").tag(1440)
                 } label: {
-                    Label("Remind me", systemImage: "clock")
+                    SettingsLabel(title: "Remind me", systemImage: "clock", tint: .info)
                 }
             }
         } header: {
@@ -86,7 +86,7 @@ struct SettingsView: View {
     private var syncSection: some View {
         Section {
             Toggle(isOn: $store.cloudSyncEnabled) {
-                Label("iCloud Sync", systemImage: "icloud")
+                SettingsLabel(title: "iCloud Sync", systemImage: "icloud", tint: .info)
             }
         } header: {
             Text("Sync")
@@ -110,12 +110,12 @@ struct SettingsView: View {
             Button {
                 viewModel.exportBackup(from: store)
             } label: {
-                Label("Export Backup", systemImage: "square.and.arrow.up")
+                SettingsLabel(title: "Export Backup", systemImage: "square.and.arrow.up", tint: .positive)
             }
             Button {
                 viewModel.showingImporter = true
             } label: {
-                Label("Restore from Backup", systemImage: "square.and.arrow.down")
+                SettingsLabel(title: "Restore from Backup", systemImage: "square.and.arrow.down", tint: .info)
             }
         } header: {
             Text("Backup")
@@ -129,12 +129,12 @@ struct SettingsView: View {
             Button {
                 viewModel.exportCorruptBackup(from: store)
             } label: {
-                Label("Export Unreadable Data", systemImage: "arrow.up.doc")
+                SettingsLabel(title: "Export Unreadable Data", systemImage: "arrow.up.doc", tint: .caution)
             }
             Button(role: .destructive) {
                 viewModel.showingDiscardConfirm = true
             } label: {
-                Label("Discard", systemImage: "trash")
+                SettingsLabel(title: "Discard", systemImage: "trash", tint: .critical)
             }
         } header: {
             Text("Recovery")
@@ -148,7 +148,7 @@ struct SettingsView: View {
             Button(role: .destructive) {
                 viewModel.showingResetConfirm = true
             } label: {
-                Label("Reset to Sample Data", systemImage: "arrow.counterclockwise")
+                SettingsLabel(title: "Reset to Sample Data", systemImage: "arrow.counterclockwise", tint: .critical)
             }
         } header: {
             Text("Data")
@@ -163,7 +163,7 @@ struct SettingsView: View {
             NavigationLink {
                 StyleGuideView()
             } label: {
-                Label("Style Guide", systemImage: "paintpalette")
+                SettingsLabel(title: "Style Guide", systemImage: "paintpalette", tint: .brand)
             }
         }
     }

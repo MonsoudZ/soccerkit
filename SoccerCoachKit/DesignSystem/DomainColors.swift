@@ -13,6 +13,28 @@ extension PlayerPosition {
     }
 }
 
+extension DrillCategory {
+    var color: Color {
+        switch self {
+        case .warmup: return .caution
+        case .technical: return .brand
+        case .tactical: return .info
+        case .conditioning: return .critical
+        case .scrimmage: return .positive
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .warmup: return "figure.cooldown"
+        case .technical: return "soccerball"
+        case .tactical: return "brain.head.profile"
+        case .conditioning: return "bolt.fill"
+        case .scrimmage: return "flag.checkered.2.crossed"
+        }
+    }
+}
+
 extension AttendanceStatus {
     var color: Color {
         switch self {
