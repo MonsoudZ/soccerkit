@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GameDayView: View {
     @EnvironmentObject private var store: AppStore
+    @Environment(\.theme) private var theme
     // Owned by ContentView so the live match survives leaving and returning to
     // this screen; only reset on first setup or a team change.
     @ObservedObject var viewModel: GameDayViewModel
@@ -150,15 +151,7 @@ struct GameDayView: View {
 
     private var scoreboardSection: some View {
         VStack(alignment: .leading, spacing: Spacing.lg) {
-            HStack {
-                SectionHeader("Scoreboard")
-                Spacer()
-                if viewModel.teamScore > 0 || viewModel.opponentScore > 0 {
-                    Text("\(viewModel.teamScore)–\(viewModel.opponentScore)")
-                        .font(.subheadline.weight(.bold).monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-            }
+            liveStrip
 
             HStack(alignment: .top, spacing: Spacing.md) {
                 scoreColumn(
@@ -169,16 +162,57 @@ struct GameDayView: View {
                 )
 
                 Text("–")
-                    .font(.title2.weight(.semibold))
+                    .font(.system(size: 34, weight: .semibold, design: .rounded))
                     .foregroundStyle(.secondary)
-                    .padding(.top, Spacing.xxxl)
+                    .padding(.top, Spacing.xxl)
 
                 opponentColumn
             }
 
             gameLink
         }
-        .cardStyle()
+        .padding(Spacing.xl)
+        .background(
+            LinearGradient(
+                colors: [
+                    store.selectedTeam.accentColor.opacity(0.24),
+                    store.selectedTeam.accentColor.opacity(0.06),
+                    theme.card
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .cardCorners()
+        .overlay(
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                .strokeBorder(theme.hairline, lineWidth: 0.5)
+        )
+        .shadow(color: Elevation.cardColor, radius: Elevation.cardRadius, x: 0, y: Elevation.cardYOffset)
+    }
+
+    /// A broadcast-style status strip: a LIVE/READY indicator plus the running
+    /// clock and current period.
+    private var liveStrip: some View {
+        HStack(spacing: Spacing.sm) {
+            Circle()
+                .fill(viewModel.isRunning ? Color.critical : Color.secondary)
+                .frame(width: 7, height: 7)
+            Text(viewModel.isRunning ? "LIVE" : "READY")
+                .font(.caption2.weight(.heavy))
+                .tracking(1.5)
+                .foregroundStyle(viewModel.isRunning ? Color.critical : Color.secondary)
+
+            Spacer()
+
+            Text(formatClock(viewModel.elapsedSeconds))
+                .font(.callout.weight(.bold).monospacedDigit())
+            Text("· \(viewModel.currentPeriodLabel)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(viewModel.isRunning ? "Live" : "Ready"), \(formatClock(viewModel.elapsedSeconds)) elapsed, \(viewModel.currentPeriodLabel)")
     }
 
     /// Links the live match to a scheduled game so the score writes straight
@@ -234,7 +268,7 @@ struct GameDayView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             Text("\(score)")
-                .font(.system(size: 44, weight: .heavy, design: .rounded))
+                .font(.system(size: 54, weight: .heavy, design: .rounded))
                 .foregroundStyle(tint)
                 .contentTransition(.numericText())
                 .animation(.snappy, value: score)
@@ -251,7 +285,7 @@ struct GameDayView: View {
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 120)
             Text("\(viewModel.opponentScore)")
-                .font(.system(size: 44, weight: .heavy, design: .rounded))
+                .font(.system(size: 54, weight: .heavy, design: .rounded))
                 .contentTransition(.numericText())
                 .animation(.snappy, value: viewModel.opponentScore)
             stepper(tint: .secondary, onMinus: { viewModel.scoreOpponent(-1, in: store) }, onPlus: { viewModel.scoreOpponent(1, in: store) })
