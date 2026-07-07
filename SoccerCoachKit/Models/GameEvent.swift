@@ -16,8 +16,16 @@ struct GameEvent: Identifiable, Hashable, Codable {
     var opponentScore: Int?
     /// Per-player post-game reports, keyed by player id.
     var playerReports: [UUID: GamePlayerReport]
+    /// Per-player pre-match readiness check-ins, keyed by player id.
+    var preMatchCheckIns: [UUID: PreMatchCheckIn]
+    /// Per-player post-match reflections, keyed by player id.
+    var postMatchReflections: [UUID: PostMatchReflection]
+    /// The coach's pre-match plan for the team.
+    var coachPreMatch: CoachPreMatchPlan
+    /// The coach's post-match review of the team.
+    var coachPostMatch: CoachPostMatchReview
 
-    init(id: UUID, teamID: UUID, opponent: String, date: Date, location: String = "", isHome: Bool = true, notes: String = "", rsvps: [UUID: RSVPStatus] = [:], attendance: [UUID: AttendanceStatus] = [:], teamScore: Int? = nil, opponentScore: Int? = nil, playerReports: [UUID: GamePlayerReport] = [:]) {
+    init(id: UUID, teamID: UUID, opponent: String, date: Date, location: String = "", isHome: Bool = true, notes: String = "", rsvps: [UUID: RSVPStatus] = [:], attendance: [UUID: AttendanceStatus] = [:], teamScore: Int? = nil, opponentScore: Int? = nil, playerReports: [UUID: GamePlayerReport] = [:], preMatchCheckIns: [UUID: PreMatchCheckIn] = [:], postMatchReflections: [UUID: PostMatchReflection] = [:], coachPreMatch: CoachPreMatchPlan = .init(), coachPostMatch: CoachPostMatchReview = .init()) {
         self.id = id
         self.teamID = teamID
         self.opponent = opponent
@@ -30,6 +38,10 @@ struct GameEvent: Identifiable, Hashable, Codable {
         self.teamScore = teamScore
         self.opponentScore = opponentScore
         self.playerReports = playerReports
+        self.preMatchCheckIns = preMatchCheckIns
+        self.postMatchReflections = postMatchReflections
+        self.coachPreMatch = coachPreMatch
+        self.coachPostMatch = coachPostMatch
     }
 
     enum CodingKeys: String, CodingKey {
@@ -45,6 +57,10 @@ struct GameEvent: Identifiable, Hashable, Codable {
         case teamScore
         case opponentScore
         case playerReports
+        case preMatchCheckIns
+        case postMatchReflections
+        case coachPreMatch
+        case coachPostMatch
     }
 
     init(from decoder: Decoder) throws {
@@ -61,6 +77,10 @@ struct GameEvent: Identifiable, Hashable, Codable {
         teamScore = try container.decodeIfPresent(Int.self, forKey: .teamScore)
         opponentScore = try container.decodeIfPresent(Int.self, forKey: .opponentScore)
         playerReports = try container.decodeIfPresent([UUID: GamePlayerReport].self, forKey: .playerReports) ?? [:]
+        preMatchCheckIns = try container.decodeIfPresent([UUID: PreMatchCheckIn].self, forKey: .preMatchCheckIns) ?? [:]
+        postMatchReflections = try container.decodeIfPresent([UUID: PostMatchReflection].self, forKey: .postMatchReflections) ?? [:]
+        coachPreMatch = try container.decodeIfPresent(CoachPreMatchPlan.self, forKey: .coachPreMatch) ?? .init()
+        coachPostMatch = try container.decodeIfPresent(CoachPostMatchReview.self, forKey: .coachPostMatch) ?? .init()
     }
 
     /// Win/Loss/Draw once a score is recorded.

@@ -183,7 +183,13 @@ enum SampleData {
                 players[2].id: GamePlayerReport(minutes: 60, goals: 2, assists: 0, effort: 5, developmentFocus: "Movement in the box"),
                 players[1].id: GamePlayerReport(minutes: 55, goals: 1, assists: 1, effort: 4),
                 players[3].id: GamePlayerReport(minutes: 50, goals: 0, assists: 1, effort: 4)
-            ]
+            ],
+            // Ava was fresh and slept well before her best game.
+            preMatchCheckIns: [
+                players[2].id: PreMatchCheckIn(sleep: 5, energy: 5, freshness: 4, hydration: 4, nutrition: 5, mood: 5, composure: 4, focus: 5, warmedUp: true, hasPain: false)
+            ],
+            coachPreMatch: CoachPreMatchPlan(objective: "Control midfield tempo", keyMatchup: "Their #8 vs our press", focusPoints: "Quick switches, win second balls", watchFor: "Their pace on the counter"),
+            coachPostMatch: CoachPostMatchReview(teamPerformance: 5, whatWorked: "Pressing traps in wide areas", whatToAdjust: "Tighter marking on set pieces", standoutPlayer: "Ava Patel")
         )
 
         let playedAway = GameEvent(
@@ -203,6 +209,34 @@ enum SampleData {
             playerReports: [
                 players[1].id: GamePlayerReport(minutes: 58, goals: 1, assists: 0, effort: 4),
                 players[2].id: GamePlayerReport(minutes: 62, goals: 1, assists: 1, effort: 5)
+            ],
+            preMatchCheckIns: [
+                players[2].id: PreMatchCheckIn(sleep: 4, energy: 4, freshness: 4, hydration: 4, nutrition: 4, mood: 4, composure: 4, focus: 4, warmedUp: true, hasPain: false)
+            ]
+        )
+
+        // An earlier game Ava played poorly after a bad night's sleep — this is
+        // what makes the readiness insight ("sleep is the biggest difference")
+        // show up on her profile.
+        let playedEarlier = GameEvent(
+            id: UUID(uuidString: "F19C4A70-1B2C-4E55-9A10-6B7C8D9E0009")!,
+            teamID: u12.id,
+            opponent: "Riverside Rovers",
+            date: Calendar.current.date(byAdding: .day, value: -17, to: Date()) ?? Date(),
+            location: "Central Park Field 3",
+            isHome: true,
+            notes: "Flat performance — struggled to get going.",
+            attendance: [
+                players[0].id: .present, players[1].id: .present, players[2].id: .present,
+                players[3].id: .present, players[4].id: .present
+            ],
+            teamScore: 0,
+            opponentScore: 2,
+            playerReports: [
+                players[2].id: GamePlayerReport(minutes: 55, goals: 0, assists: 0, effort: 2, developmentFocus: "Sharper first step")
+            ],
+            preMatchCheckIns: [
+                players[2].id: PreMatchCheckIn(sleep: 2, energy: 2, freshness: 3, hydration: 3, nutrition: 2, mood: 3, composure: 3, focus: 2, warmedUp: true, hasPain: false, note: "Up late the night before.")
             ]
         )
 
@@ -239,7 +273,7 @@ enum SampleData {
             drills: [rondo, finishing, pressureCover, game],
             sessions: [session, secondSession],
             diagrams: [],
-            games: [playedHome, playedAway, leagueGame, awayGame],
+            games: [playedEarlier, playedHome, playedAway, leagueGame, awayGame],
             events: [tournament, teamSocial],
             selectedTeamID: u12.id
         )

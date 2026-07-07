@@ -29,6 +29,31 @@ struct GameDetailView: View {
                         }
                     }
 
+                    Section {
+                        NavigationLink {
+                            MatchQuestionnaireView(game: game, phase: .pre)
+                        } label: {
+                            Label {
+                                summaryLabel("Pre-Match Check-In", filled: preMatchFilled(game))
+                            } icon: {
+                                IconChip(symbol: "checklist", accent: .info, size: 28)
+                            }
+                        }
+                        NavigationLink {
+                            MatchQuestionnaireView(game: game, phase: .post)
+                        } label: {
+                            Label {
+                                summaryLabel("Post-Match Reflection", filled: postMatchFilled(game))
+                            } icon: {
+                                IconChip(symbol: "text.bubble", accent: .brand, size: 28)
+                            }
+                        }
+                    } header: {
+                        Text("Questionnaires")
+                    } footer: {
+                        Text("Player readiness and reflections, plus your game plan and review. Patterns show up on each player's profile.")
+                    }
+
                     let gamePlans = store.diagrams(forGameID: game.id)
                     if !gamePlans.isEmpty {
                         Section {
@@ -142,6 +167,25 @@ struct GameDetailView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func summaryLabel(_ title: String, filled: Int) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xxs) {
+            Text(title)
+            Text(filled == 0 ? "Not started" : "\(filled) recorded")
+                .font(.caption)
+                .foregroundStyle(filled == 0 ? .secondary : Color.positive)
+        }
+    }
+
+    /// How many players have a pre-match check-in, plus the coach plan (0/1).
+    private func preMatchFilled(_ game: GameEvent) -> Int {
+        game.preMatchCheckIns.values.filter { !$0.isEmpty }.count + (game.coachPreMatch.isEmpty ? 0 : 1)
+    }
+
+    private func postMatchFilled(_ game: GameEvent) -> Int {
+        game.postMatchReflections.values.filter { !$0.isEmpty }.count + (game.coachPostMatch.isEmpty ? 0 : 1)
     }
 }
 

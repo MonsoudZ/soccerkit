@@ -23,6 +23,10 @@ struct PlayerDetailView: View {
                         profile: PlayerDevelopment.profile(for: player, games: store.games(inTeam: player.teamID))
                     )
 
+                    PlayerReadinessSection(
+                        insight: MatchInsights.insight(for: player.id, games: store.games(inTeam: player.teamID))
+                    )
+
                     Section("Parent / Guardian") {
                         LabeledContent("Guardian", value: player.guardian.isEmpty ? "—" : player.guardian)
                         ContactRow(label: "Phone", value: player.guardianPhone, kind: .phone)
