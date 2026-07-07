@@ -216,7 +216,12 @@ final class AppStore: ObservableObject {
         let persistence = UserDefaultsPersistenceService(namespace: userID)
         let snapshot = Self.loadSnapshot(from: persistence)
 
-        let cloudKit = CloudKitSyncService(namespace: userID)
+        // Under UI testing the CI build is unsigned and carries no iCloud
+        // entitlement, so touching CKContainer (account status on launch) traps
+        // the app before it can bootstrap — which is exactly what made the smoke
+        // tests fail. Skip CloudKit there; the smoke tests exercise the UI, not
+        // sync, and normal runs are unaffected.
+        let cloudKit = AppEnvironment.isUITesting ? nil : CloudKitSyncService(namespace: userID)
         return AppStore(snapshot: snapshot, persistence: persistence, cloudKit: cloudKit)
     }
 
