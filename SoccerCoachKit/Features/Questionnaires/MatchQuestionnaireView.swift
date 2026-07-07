@@ -9,7 +9,10 @@ struct MatchQuestionnaireView: View {
     @StateObject private var viewModel: MatchQuestionnaireViewModel
     @State private var phase: Phase
 
-    enum Phase: String, CaseIterable { case pre = "Pre-Match", post = "Post-Match" }
+    enum Phase: String, CaseIterable, Identifiable {
+        case pre = "Pre-Match", post = "Post-Match"
+        var id: String { rawValue }
+    }
 
     init(game: GameEvent, phase: Phase = .pre) {
         _viewModel = StateObject(wrappedValue: MatchQuestionnaireViewModel(game: game))

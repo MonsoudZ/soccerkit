@@ -7,7 +7,15 @@ struct GameDayView: View {
     // this screen; only reset on first setup or a team change.
     @ObservedObject var viewModel: GameDayViewModel
 
+    @State private var activeQuestionnaire: MatchQuestionnaireView.Phase?
+
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    /// The scheduled game this live match is linked to, if any.
+    private var linkedGame: GameEvent? {
+        guard let id = viewModel.linkedGameID else { return nil }
+        return store.games.first { $0.id == id }
+    }
 
     var body: some View {
         ScrollView {
@@ -31,6 +39,8 @@ struct GameDayView: View {
                 )
 
                 scoreboardSection
+
+                matchCheckInSection
 
                 quickSubSection
                 lineupSection
@@ -74,6 +84,54 @@ struct GameDayView: View {
         } message: {
             Text(viewModel.activePreAlertText)
         }
+        .sheet(item: $activeQuestionnaire) { phase in
+            if let game = linkedGame {
+                NavigationStack {
+                    MatchQuestionnaireView(game: game, phase: phase)
+                }
+            }
+        }
+    }
+
+    /// On-the-day access to the pre/post-match questionnaires — but only once the
+    /// live match is linked to a scheduled game (that's what the answers save to).
+    private var matchCheckInSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
+            SectionHeader("Match Check-In")
+
+            if linkedGame != nil {
+                HStack(spacing: Spacing.lg) {
+                    checkInButton("Pre-Match", systemImage: "checklist", tint: .info) {
+                        activeQuestionnaire = .pre
+                    }
+                    checkInButton("Post-Match", systemImage: "text.bubble", tint: .brand) {
+                        activeQuestionnaire = .post
+                    }
+                }
+            } else {
+                Label("Link this match to a scheduled game in the scoreboard above to record readiness check-ins and reflections.", systemImage: "link")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .surfaceStyle()
+            }
+        }
+    }
+
+    private func checkInButton(_ title: String, systemImage: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                IconChip(symbol: systemImage, accent: tint)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .surfaceStyle()
+        }
+        .buttonStyle(.plain)
     }
 
     private var lineupSection: some View {
