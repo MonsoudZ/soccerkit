@@ -12,6 +12,8 @@ enum SyncRecordType: String, CaseIterable {
     case game = "Game"
     case event = "Event"
     case rosterMembership = "RosterMembership"
+    case person = "Person"
+    case userAccount = "UserAccount"
     case formTemplate = "FormTemplate"
     case formInstance = "FormInstance"
     case prefs = "Prefs"
@@ -54,6 +56,8 @@ enum SyncRecords {
         records += encode(snapshot.games, as: .game)
         records += encode(snapshot.events, as: .event)
         records += encode(snapshot.memberships, as: .rosterMembership)
+        records += encode(snapshot.people, as: .person)
+        records += encode(snapshot.userAccounts, as: .userAccount)
         records += encode(snapshot.formTemplates, as: .formTemplate)
         records += encode(snapshot.formInstances, as: .formInstance)
         if let data = try? encoder.encode(Prefs(selectedTeamID: snapshot.selectedTeamID)) {
@@ -78,6 +82,8 @@ enum SyncRecords {
         case .game: upsert(record.payload, into: &snapshot.games)
         case .event: upsert(record.payload, into: &snapshot.events)
         case .rosterMembership: upsert(record.payload, into: &snapshot.memberships)
+        case .person: upsert(record.payload, into: &snapshot.people)
+        case .userAccount: upsert(record.payload, into: &snapshot.userAccounts)
         case .formTemplate: upsert(record.payload, into: &snapshot.formTemplates)
         case .formInstance: upsert(record.payload, into: &snapshot.formInstances)
         case .prefs:
@@ -99,6 +105,8 @@ enum SyncRecords {
         case .game: snapshot.games.removeAll { $0.id == uuid }
         case .event: snapshot.events.removeAll { $0.id == uuid }
         case .rosterMembership: snapshot.memberships.removeAll { $0.id == uuid }
+        case .person: snapshot.people.removeAll { $0.id == uuid }
+        case .userAccount: snapshot.userAccounts.removeAll { $0.id == uuid }
         case .formTemplate: snapshot.formTemplates.removeAll { $0.id == uuid }
         case .formInstance: snapshot.formInstances.removeAll { $0.id == uuid }
         case .prefs: break

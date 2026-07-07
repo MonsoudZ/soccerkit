@@ -2,6 +2,9 @@ import Foundation
 
 struct Player: Identifiable, Hashable, Codable {
     let id: UUID
+    /// The human this player is. Defaults to the player's own id at migration
+    /// (a 1:1 link); identity/contact/medical live canonically on that `Person`.
+    var personID: UUID
     var name: String
     var number: Int
     var position: PlayerPosition
@@ -31,6 +34,7 @@ struct Player: Identifiable, Hashable, Codable {
 
     init(
         id: UUID,
+        personID: UUID? = nil,
         teamID: UUID? = nil,
         name: String,
         number: Int,
@@ -50,6 +54,7 @@ struct Player: Identifiable, Hashable, Codable {
         developmentLog: [DevelopmentEntry] = []
     ) {
         self.id = id
+        self.personID = personID ?? id
         self.legacyTeamID = teamID
         self.name = name
         self.number = number
@@ -78,6 +83,7 @@ struct Player: Identifiable, Hashable, Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
+        case personID
         // Decoded (not encoded) so a pre-RosterMembership snapshot's team link
         // is migrated rather than lost.
         case teamID
@@ -102,6 +108,8 @@ struct Player: Identifiable, Hashable, Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
+        // Pre-Person blobs have no personID; fall back to the 1:1 default.
+        personID = try container.decodeIfPresent(UUID.self, forKey: .personID) ?? id
         legacyTeamID = try container.decodeIfPresent(UUID.self, forKey: .teamID)
         name = try container.decode(String.self, forKey: .name)
         number = try container.decode(Int.self, forKey: .number)
@@ -127,6 +135,7 @@ struct Player: Identifiable, Hashable, Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encode(personID, forKey: .personID)
         try container.encode(name, forKey: .name)
         try container.encode(number, forKey: .number)
         try container.encode(position, forKey: .position)

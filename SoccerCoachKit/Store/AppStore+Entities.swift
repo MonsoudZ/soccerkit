@@ -83,7 +83,13 @@ extension AppStore {
                 (instance.subject.type == .team && instance.subject.id == team.id)
                     || (instance.subject.type == .athlete && (instance.subject.id.map(orphanedIDs.contains) ?? false))
             }
+            // The People backing the players being removed, so their identity
+            // rows go too — unless another surviving player shares the Person.
+            let orphanedPersonIDs = Set(players.filter { orphanedIDs.contains($0.id) }.map(\.personID))
             players.removeAll { orphanedIDs.contains($0.id) }
+            people.removeAll { person in
+                orphanedPersonIDs.contains(person.id) && !players.contains { $0.personID == person.id }
+            }
             sessions.removeAll { $0.teamID == team.id }
             games.removeAll { $0.teamID == team.id }
             events.removeAll { $0.teamID == team.id }
@@ -105,12 +111,16 @@ extension AppStore {
         batch {
             players.append(player)
             memberships.append(RosterMembership(playerID: player.id, teamID: teamID, joinedOn: Date(), status: .active))
+            syncPerson(from: player)
         }
     }
 
     func updatePlayer(_ player: Player) {
         guard let index = players.firstIndex(where: { $0.id == player.id }) else { return }
-        players[index] = player
+        batch {
+            players[index] = player
+            syncPerson(from: player)
+        }
     }
 
     /// Adds a new development entry or replaces the existing one with the same id.
@@ -134,6 +144,7 @@ extension AppStore {
             memberships.removeAll { $0.playerID == player.id }
             formInstances.removeAll { $0.subject.type == .athlete && $0.subject.id == player.id }
             players.removeAll { $0.id == player.id }
+            removePersonIfOrphaned(personID: player.personID, excludingPlayer: player.id)
             sessions = sessions.map { session in
                 var updated = session
                 updated.attendance.removeValue(forKey: player.id)

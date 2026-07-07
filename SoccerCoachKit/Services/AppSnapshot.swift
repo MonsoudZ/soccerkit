@@ -27,6 +27,12 @@ struct AppSnapshot: Codable {
     /// is migrated into memberships at construction, so old data never loses its
     /// roster links.
     var memberships: [RosterMembership]
+    /// Humans — the identity/contact/medical that's true regardless of team. A
+    /// `Person` is synthesized per player at load, so this is never empty once
+    /// there are players, and old snapshots migrate losslessly.
+    var people: [Person]
+    /// Authenticatable identities, optional per Person. Empty until sign-in.
+    var userAccounts: [UserAccount]
     /// User/org-owned evaluation templates. Built-in templates live in code
     /// (`FormTemplateCatalog`) and are intentionally not persisted here, so they
     /// always match the app version. Empty until a coach saves a custom form.
@@ -36,7 +42,7 @@ struct AppSnapshot: Codable {
     /// instead of onto a per-entity dictionary.
     var formInstances: [FormInstance]
 
-    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, memberships: [RosterMembership] = [], formTemplates: [FormTemplate] = [], formInstances: [FormInstance] = [], schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
+    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, memberships: [RosterMembership] = [], people: [Person] = [], userAccounts: [UserAccount] = [], formTemplates: [FormTemplate] = [], formInstances: [FormInstance] = [], schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
         self.schemaVersion = schemaVersion
         self.dataVersion = dataVersion
         self.teams = teams
@@ -48,6 +54,8 @@ struct AppSnapshot: Codable {
         self.events = events
         self.selectedTeamID = selectedTeamID
         self.memberships = Self.migratingMemberships(players: players, existing: memberships)
+        self.people = Self.migratingPeople(players: players, existing: people)
+        self.userAccounts = userAccounts
         self.formTemplates = formTemplates
         self.formInstances = formInstances
     }
@@ -71,6 +79,36 @@ struct AppSnapshot: Codable {
         formInstances = try container.decodeIfPresent([FormInstance].self, forKey: .formInstances) ?? []
         let storedMemberships = try container.decodeIfPresent([RosterMembership].self, forKey: .memberships) ?? []
         memberships = Self.migratingMemberships(players: players, existing: storedMemberships)
+        let storedPeople = try container.decodeIfPresent([Person].self, forKey: .people) ?? []
+        people = Self.migratingPeople(players: players, existing: storedPeople)
+        userAccounts = try container.decodeIfPresent([UserAccount].self, forKey: .userAccounts) ?? []
+    }
+
+    /// Ensures every player has a backing `Person`: keeps the ones already
+    /// present and synthesizes one (from the player's identity/contact/medical)
+    /// for any player whose `personID` isn't represented yet. Idempotent, so it's
+    /// a no-op once people exist.
+    private static func migratingPeople(players: [Player], existing: [Person]) -> [Person] {
+        var people = existing
+        var represented = Set(existing.map(\.id))
+        for player in players where !represented.contains(player.personID) {
+            people.append(Person(
+                id: player.personID,
+                name: player.name,
+                guardian: player.guardian,
+                guardianPhone: player.guardianPhone,
+                guardianEmail: player.guardianEmail,
+                secondaryContactName: player.secondaryContactName,
+                secondaryContactPhone: player.secondaryContactPhone,
+                emergencyContactName: player.emergencyContactName,
+                emergencyContactPhone: player.emergencyContactPhone,
+                emergencyContactRelation: player.emergencyContactRelation,
+                allergies: player.allergies,
+                medicalNotes: player.medicalNotes
+            ))
+            represented.insert(player.personID)
+        }
+        return people
     }
 
     /// Ensures every player has a roster membership: keeps the ones already

@@ -42,6 +42,14 @@ final class AppStore: ObservableObject {
     @Published var memberships: [RosterMembership] {
         didSet { persist() }
     }
+    /// Humans (identity/contact/medical), kept in sync with players by the store.
+    @Published var people: [Person] {
+        didSet { persist() }
+    }
+    /// Authenticatable identities, optional per Person.
+    @Published var userAccounts: [UserAccount] {
+        didSet { persist() }
+    }
     /// User/org-owned evaluation templates (built-ins live in code; see
     /// `allFormTemplates`).
     @Published var formTemplates: [FormTemplate] {
@@ -160,6 +168,8 @@ final class AppStore: ObservableObject {
         self.games = snapshot.games
         self.events = snapshot.events
         self.memberships = snapshot.memberships
+        self.people = snapshot.people
+        self.userAccounts = snapshot.userAccounts
         self.formTemplates = snapshot.formTemplates
         self.formInstances = snapshot.formInstances
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
@@ -318,6 +328,8 @@ final class AppStore: ObservableObject {
             events: events,
             selectedTeamID: selectedTeamID,
             memberships: memberships,
+            people: people,
+            userAccounts: userAccounts,
             formTemplates: formTemplates,
             formInstances: formInstances,
             dataVersion: dataVersion
@@ -408,6 +420,8 @@ final class AppStore: ObservableObject {
             games = snapshot.games
             events = snapshot.events
             memberships = snapshot.memberships
+            people = snapshot.people
+            userAccounts = snapshot.userAccounts
             formTemplates = snapshot.formTemplates
             formInstances = snapshot.formInstances
             selectedTeamID = teams.contains(where: { $0.id == snapshot.selectedTeamID })
