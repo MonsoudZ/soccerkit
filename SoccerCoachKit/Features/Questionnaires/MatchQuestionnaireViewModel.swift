@@ -20,17 +20,11 @@ final class MatchQuestionnaireViewModel: ObservableObject {
     }
 
     func preBinding<Value>(_ keyPath: WritableKeyPath<PreMatchCheckIn, Value>, for playerID: UUID) -> Binding<Value> {
-        Binding(
-            get: { self.preCheckIns[playerID, default: PreMatchCheckIn()][keyPath: keyPath] },
-            set: { self.preCheckIns[playerID, default: PreMatchCheckIn()][keyPath: keyPath] = $0 }
-        )
+        entryBinding(\.preCheckIns, key: playerID, default: PreMatchCheckIn(), keyPath)
     }
 
     func postBinding<Value>(_ keyPath: WritableKeyPath<PostMatchReflection, Value>, for playerID: UUID) -> Binding<Value> {
-        Binding(
-            get: { self.postReflections[playerID, default: PostMatchReflection()][keyPath: keyPath] },
-            set: { self.postReflections[playerID, default: PostMatchReflection()][keyPath: keyPath] = $0 }
-        )
+        entryBinding(\.postReflections, key: playerID, default: PostMatchReflection(), keyPath)
     }
 
     /// A short "X/8 rated" style progress hint for a player's pre-match row.

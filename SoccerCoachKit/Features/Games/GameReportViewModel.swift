@@ -22,14 +22,7 @@ final class GameReportViewModel: ObservableObject {
     // MARK: - Per-field bindings
 
     func binding<Value>(_ keyPath: WritableKeyPath<GamePlayerReport, Value>, for playerID: UUID) -> Binding<Value> {
-        Binding(
-            get: { self.reports[playerID, default: GamePlayerReport()][keyPath: keyPath] },
-            set: { newValue in
-                var report = self.reports[playerID] ?? GamePlayerReport()
-                report[keyPath: keyPath] = newValue
-                self.reports[playerID] = report
-            }
-        )
+        entryBinding(\.reports, key: playerID, default: GamePlayerReport(), keyPath)
     }
 
     // MARK: - Save

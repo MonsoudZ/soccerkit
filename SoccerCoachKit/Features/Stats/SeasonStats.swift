@@ -73,9 +73,7 @@ enum SeasonStats {
                 }
             }
 
-            let averageEffort = effortSamples.isEmpty
-                ? 0
-                : Double(effortSamples.reduce(0, +)) / Double(effortSamples.count)
+            let averageEffort = effortSamples.average ?? 0
 
             return PlayerSeasonStats(player: player, goals: goals, assists: assists,
                                      gamesPlayed: gamesPlayed, averageEffort: averageEffort)

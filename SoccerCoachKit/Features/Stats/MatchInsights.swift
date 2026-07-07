@@ -76,13 +76,13 @@ enum MatchInsights {
         let labels = Dictionary(uniqueKeysWithValues: PreMatchCheckIn().scales.map { ($0.key, $0.label) })
         var comparisons: [FactorComparison] = []
         for (key, strongValues) in strong {
-            guard let weakValues = weak[key], !strongValues.isEmpty, !weakValues.isEmpty else { continue }
+            guard let strongAvg = strongValues.average, let weakAvg = weak[key]?.average else { continue }
             comparisons.append(
                 FactorComparison(
                     key: key,
                     label: labels[key] ?? key,
-                    strongAverage: mean(strongValues),
-                    weakAverage: mean(weakValues)
+                    strongAverage: strongAvg,
+                    weakAverage: weakAvg
                 )
             )
         }
@@ -102,9 +102,5 @@ enum MatchInsights {
         for scale in checkIn.scales where scale.value > 0 {
             bucket[scale.key, default: []].append(scale.value)
         }
-    }
-
-    private static func mean(_ values: [Int]) -> Double {
-        values.isEmpty ? 0 : Double(values.reduce(0, +)) / Double(values.count)
     }
 }
