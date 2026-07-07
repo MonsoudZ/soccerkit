@@ -216,12 +216,13 @@ final class AppStore: ObservableObject {
         let persistence = UserDefaultsPersistenceService(namespace: userID)
         let snapshot = Self.loadSnapshot(from: persistence)
 
-        // Under UI testing the CI build is unsigned and carries no iCloud
-        // entitlement, so touching CKContainer (account status on launch) traps
-        // the app before it can bootstrap — which is exactly what made the smoke
-        // tests fail. Skip CloudKit there; the smoke tests exercise the UI, not
-        // sync, and normal runs are unaffected.
-        let cloudKit = AppEnvironment.isUITesting ? nil : CloudKitSyncService(namespace: userID)
+        // The CI build is unsigned and carries no iCloud entitlement, so
+        // touching CKContainer (account status on launch) traps the app before
+        // it can bootstrap. This bites both the UI-tested app (launched with
+        // -uiTesting) and the unit-test host (the app's @main runs to host the
+        // XCTest bundle). Skip CloudKit in either test context; normal runs are
+        // unaffected, and the pure sync mapping is covered by SyncRecords tests.
+        let cloudKit = AppEnvironment.isTestingOrUITesting ? nil : CloudKitSyncService(namespace: userID)
         return AppStore(snapshot: snapshot, persistence: persistence, cloudKit: cloudKit)
     }
 
