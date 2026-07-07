@@ -34,9 +34,10 @@ struct SoccerCoachKitApp: App {
                 // Load the newly-signed-in coach's data (and stash the previous
                 // coach's), so accounts never see each other's data.
                 store.switchUser(to: auth.userID)
-                // Record the Apple identity as a UserAccount in that partition.
+                // Establish the coach as owner of their personal org: a Person,
+                // a linked UserAccount, and an admin+director+coach membership.
                 if let userID = auth.userID {
-                    store.linkUserAccount(appleUserID: userID, displayName: auth.displayName)
+                    store.ensureOwner(appleUserID: userID, displayName: auth.displayName)
                 }
             }
         }

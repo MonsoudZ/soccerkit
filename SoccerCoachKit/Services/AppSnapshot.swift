@@ -33,6 +33,11 @@ struct AppSnapshot: Codable {
     var people: [Person]
     /// Authenticatable identities, optional per Person. Empty until sign-in.
     var userAccounts: [UserAccount]
+    /// Tenant boundaries. The personal org is ensured present at load, so every
+    /// team belongs to one.
+    var organizations: [Organization]
+    /// `(person, org, roles)` joins — the role model, never a column on a user.
+    var orgMemberships: [OrgMembership]
     /// User/org-owned evaluation templates. Built-in templates live in code
     /// (`FormTemplateCatalog`) and are intentionally not persisted here, so they
     /// always match the app version. Empty until a coach saves a custom form.
@@ -42,7 +47,7 @@ struct AppSnapshot: Codable {
     /// instead of onto a per-entity dictionary.
     var formInstances: [FormInstance]
 
-    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, memberships: [RosterMembership] = [], people: [Person] = [], userAccounts: [UserAccount] = [], formTemplates: [FormTemplate] = [], formInstances: [FormInstance] = [], schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
+    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, memberships: [RosterMembership] = [], people: [Person] = [], userAccounts: [UserAccount] = [], organizations: [Organization] = [], orgMemberships: [OrgMembership] = [], formTemplates: [FormTemplate] = [], formInstances: [FormInstance] = [], schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
         self.schemaVersion = schemaVersion
         self.dataVersion = dataVersion
         self.teams = teams
@@ -56,6 +61,8 @@ struct AppSnapshot: Codable {
         self.memberships = Self.migratingMemberships(players: players, existing: memberships)
         self.people = Self.migratingPeople(players: players, existing: people)
         self.userAccounts = userAccounts
+        self.organizations = Self.ensuringPersonalOrg(existing: organizations)
+        self.orgMemberships = orgMemberships
         self.formTemplates = formTemplates
         self.formInstances = formInstances
     }
@@ -82,6 +89,16 @@ struct AppSnapshot: Codable {
         let storedPeople = try container.decodeIfPresent([Person].self, forKey: .people) ?? []
         people = Self.migratingPeople(players: players, existing: storedPeople)
         userAccounts = try container.decodeIfPresent([UserAccount].self, forKey: .userAccounts) ?? []
+        let storedOrgs = try container.decodeIfPresent([Organization].self, forKey: .organizations) ?? []
+        organizations = Self.ensuringPersonalOrg(existing: storedOrgs)
+        orgMemberships = try container.decodeIfPresent([OrgMembership].self, forKey: .orgMemberships) ?? []
+    }
+
+    /// Guarantees the personal organization exists (teams default to owning it),
+    /// so a pre-org snapshot gains its tenant boundary on load. Idempotent.
+    private static func ensuringPersonalOrg(existing: [Organization]) -> [Organization] {
+        guard !existing.contains(where: { $0.id == Organization.personalID }) else { return existing }
+        return [Organization.personal] + existing
     }
 
     /// Ensures every player has a backing `Person`: keeps the ones already

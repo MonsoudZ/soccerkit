@@ -50,6 +50,14 @@ final class AppStore: ObservableObject {
     @Published var userAccounts: [UserAccount] {
         didSet { persist() }
     }
+    /// Tenant boundaries (the personal org is always present).
+    @Published var organizations: [Organization] {
+        didSet { persist() }
+    }
+    /// `(person, org, roles)` joins — the role model.
+    @Published var orgMemberships: [OrgMembership] {
+        didSet { persist() }
+    }
     /// User/org-owned evaluation templates (built-ins live in code; see
     /// `allFormTemplates`).
     @Published var formTemplates: [FormTemplate] {
@@ -170,6 +178,8 @@ final class AppStore: ObservableObject {
         self.memberships = snapshot.memberships
         self.people = snapshot.people
         self.userAccounts = snapshot.userAccounts
+        self.organizations = snapshot.organizations
+        self.orgMemberships = snapshot.orgMemberships
         self.formTemplates = snapshot.formTemplates
         self.formInstances = snapshot.formInstances
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
@@ -330,6 +340,8 @@ final class AppStore: ObservableObject {
             memberships: memberships,
             people: people,
             userAccounts: userAccounts,
+            organizations: organizations,
+            orgMemberships: orgMemberships,
             formTemplates: formTemplates,
             formInstances: formInstances,
             dataVersion: dataVersion
@@ -422,6 +434,8 @@ final class AppStore: ObservableObject {
             memberships = snapshot.memberships
             people = snapshot.people
             userAccounts = snapshot.userAccounts
+            organizations = snapshot.organizations
+            orgMemberships = snapshot.orgMemberships
             formTemplates = snapshot.formTemplates
             formInstances = snapshot.formInstances
             selectedTeamID = teams.contains(where: { $0.id == snapshot.selectedTeamID })

@@ -14,6 +14,8 @@ enum SyncRecordType: String, CaseIterable {
     case rosterMembership = "RosterMembership"
     case person = "Person"
     case userAccount = "UserAccount"
+    case organization = "Organization"
+    case orgMembership = "OrgMembership"
     case formTemplate = "FormTemplate"
     case formInstance = "FormInstance"
     case prefs = "Prefs"
@@ -58,6 +60,8 @@ enum SyncRecords {
         records += encode(snapshot.memberships, as: .rosterMembership)
         records += encode(snapshot.people, as: .person)
         records += encode(snapshot.userAccounts, as: .userAccount)
+        records += encode(snapshot.organizations, as: .organization)
+        records += encode(snapshot.orgMemberships, as: .orgMembership)
         records += encode(snapshot.formTemplates, as: .formTemplate)
         records += encode(snapshot.formInstances, as: .formInstance)
         if let data = try? encoder.encode(Prefs(selectedTeamID: snapshot.selectedTeamID)) {
@@ -84,6 +88,8 @@ enum SyncRecords {
         case .rosterMembership: upsert(record.payload, into: &snapshot.memberships)
         case .person: upsert(record.payload, into: &snapshot.people)
         case .userAccount: upsert(record.payload, into: &snapshot.userAccounts)
+        case .organization: upsert(record.payload, into: &snapshot.organizations)
+        case .orgMembership: upsert(record.payload, into: &snapshot.orgMemberships)
         case .formTemplate: upsert(record.payload, into: &snapshot.formTemplates)
         case .formInstance: upsert(record.payload, into: &snapshot.formInstances)
         case .prefs:
@@ -107,6 +113,8 @@ enum SyncRecords {
         case .rosterMembership: snapshot.memberships.removeAll { $0.id == uuid }
         case .person: snapshot.people.removeAll { $0.id == uuid }
         case .userAccount: snapshot.userAccounts.removeAll { $0.id == uuid }
+        case .organization: snapshot.organizations.removeAll { $0.id == uuid }
+        case .orgMembership: snapshot.orgMemberships.removeAll { $0.id == uuid }
         case .formTemplate: snapshot.formTemplates.removeAll { $0.id == uuid }
         case .formInstance: snapshot.formInstances.removeAll { $0.id == uuid }
         case .prefs: break

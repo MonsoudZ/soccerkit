@@ -12,6 +12,9 @@ struct Team: Identifiable, Hashable, Codable {
     /// Team-wide minimum minutes each player should get, unless a player
     /// overrides it. Zero disables the goal.
     var defaultMinimumMinutes: Int
+    /// The organization that owns this team. Defaults to the personal org, so
+    /// "org is never optional" holds without changing any construction site.
+    var organizationID: UUID
 
     init(
         id: UUID,
@@ -21,7 +24,8 @@ struct Team: Identifiable, Hashable, Codable {
         accentName: String,
         trainingDefaults: TrainingBoardDefaults = .standard,
         periodFormat: PeriodFormat? = nil,
-        defaultMinimumMinutes: Int? = nil
+        defaultMinimumMinutes: Int? = nil,
+        organizationID: UUID? = nil
     ) {
         self.id = id
         self.name = name
@@ -31,6 +35,7 @@ struct Team: Identifiable, Hashable, Codable {
         self.trainingDefaults = trainingDefaults
         self.periodFormat = periodFormat ?? .default(for: ageGroup)
         self.defaultMinimumMinutes = defaultMinimumMinutes ?? ageGroup.defaultGameMinutes / 2
+        self.organizationID = organizationID ?? Organization.personalID
     }
 
     enum CodingKeys: String, CodingKey {
@@ -42,6 +47,7 @@ struct Team: Identifiable, Hashable, Codable {
         case trainingDefaults
         case periodFormat
         case defaultMinimumMinutes
+        case organizationID
     }
 
     init(from decoder: Decoder) throws {
@@ -54,6 +60,8 @@ struct Team: Identifiable, Hashable, Codable {
         trainingDefaults = try container.decodeIfPresent(TrainingBoardDefaults.self, forKey: .trainingDefaults) ?? .standard
         periodFormat = try container.decodeIfPresent(PeriodFormat.self, forKey: .periodFormat) ?? .default(for: ageGroup)
         defaultMinimumMinutes = try container.decodeIfPresent(Int.self, forKey: .defaultMinimumMinutes) ?? ageGroup.defaultGameMinutes / 2
+        // Pre-org blobs default to the personal organization.
+        organizationID = try container.decodeIfPresent(UUID.self, forKey: .organizationID) ?? Organization.personalID
     }
 }
 
