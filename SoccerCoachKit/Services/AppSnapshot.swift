@@ -38,6 +38,9 @@ struct AppSnapshot: Codable {
     var organizations: [Organization]
     /// `(person, org, roles)` joins — the role model, never a column on a user.
     var orgMemberships: [OrgMembership]
+    /// Polymorphic, scoped sharing grants — the whole "share with other coaches /
+    /// club library" feature as one table. Empty until anything is shared.
+    var shareGrants: [ShareGrant]
     /// User/org-owned evaluation templates. Built-in templates live in code
     /// (`FormTemplateCatalog`) and are intentionally not persisted here, so they
     /// always match the app version. Empty until a coach saves a custom form.
@@ -47,7 +50,7 @@ struct AppSnapshot: Codable {
     /// instead of onto a per-entity dictionary.
     var formInstances: [FormInstance]
 
-    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, memberships: [RosterMembership] = [], people: [Person] = [], userAccounts: [UserAccount] = [], organizations: [Organization] = [], orgMemberships: [OrgMembership] = [], formTemplates: [FormTemplate] = [], formInstances: [FormInstance] = [], schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
+    init(teams: [Team], players: [Player], drills: [Drill], sessions: [TrainingSession], diagrams: [TacticsDiagram], games: [GameEvent], events: [TeamEvent], selectedTeamID: UUID, memberships: [RosterMembership] = [], people: [Person] = [], userAccounts: [UserAccount] = [], organizations: [Organization] = [], orgMemberships: [OrgMembership] = [], shareGrants: [ShareGrant] = [], formTemplates: [FormTemplate] = [], formInstances: [FormInstance] = [], schemaVersion: Int = AppSnapshot.currentSchemaVersion, dataVersion: Int = 0) {
         self.schemaVersion = schemaVersion
         self.dataVersion = dataVersion
         self.teams = teams
@@ -63,6 +66,7 @@ struct AppSnapshot: Codable {
         self.userAccounts = userAccounts
         self.organizations = Self.ensuringPersonalOrg(existing: organizations)
         self.orgMemberships = orgMemberships
+        self.shareGrants = shareGrants
         self.formTemplates = formTemplates
         self.formInstances = formInstances
     }
@@ -92,6 +96,7 @@ struct AppSnapshot: Codable {
         let storedOrgs = try container.decodeIfPresent([Organization].self, forKey: .organizations) ?? []
         organizations = Self.ensuringPersonalOrg(existing: storedOrgs)
         orgMemberships = try container.decodeIfPresent([OrgMembership].self, forKey: .orgMemberships) ?? []
+        shareGrants = try container.decodeIfPresent([ShareGrant].self, forKey: .shareGrants) ?? []
     }
 
     /// Guarantees the personal organization exists (teams default to owning it),

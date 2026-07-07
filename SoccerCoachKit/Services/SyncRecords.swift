@@ -16,6 +16,7 @@ enum SyncRecordType: String, CaseIterable {
     case userAccount = "UserAccount"
     case organization = "Organization"
     case orgMembership = "OrgMembership"
+    case shareGrant = "ShareGrant"
     case formTemplate = "FormTemplate"
     case formInstance = "FormInstance"
     case prefs = "Prefs"
@@ -62,6 +63,7 @@ enum SyncRecords {
         records += encode(snapshot.userAccounts, as: .userAccount)
         records += encode(snapshot.organizations, as: .organization)
         records += encode(snapshot.orgMemberships, as: .orgMembership)
+        records += encode(snapshot.shareGrants, as: .shareGrant)
         records += encode(snapshot.formTemplates, as: .formTemplate)
         records += encode(snapshot.formInstances, as: .formInstance)
         if let data = try? encoder.encode(Prefs(selectedTeamID: snapshot.selectedTeamID)) {
@@ -90,6 +92,7 @@ enum SyncRecords {
         case .userAccount: upsert(record.payload, into: &snapshot.userAccounts)
         case .organization: upsert(record.payload, into: &snapshot.organizations)
         case .orgMembership: upsert(record.payload, into: &snapshot.orgMemberships)
+        case .shareGrant: upsert(record.payload, into: &snapshot.shareGrants)
         case .formTemplate: upsert(record.payload, into: &snapshot.formTemplates)
         case .formInstance: upsert(record.payload, into: &snapshot.formInstances)
         case .prefs:
@@ -115,6 +118,7 @@ enum SyncRecords {
         case .userAccount: snapshot.userAccounts.removeAll { $0.id == uuid }
         case .organization: snapshot.organizations.removeAll { $0.id == uuid }
         case .orgMembership: snapshot.orgMemberships.removeAll { $0.id == uuid }
+        case .shareGrant: snapshot.shareGrants.removeAll { $0.id == uuid }
         case .formTemplate: snapshot.formTemplates.removeAll { $0.id == uuid }
         case .formInstance: snapshot.formInstances.removeAll { $0.id == uuid }
         case .prefs: break

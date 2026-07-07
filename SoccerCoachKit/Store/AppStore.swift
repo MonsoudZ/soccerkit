@@ -58,6 +58,10 @@ final class AppStore: ObservableObject {
     @Published var orgMemberships: [OrgMembership] {
         didSet { persist() }
     }
+    /// Polymorphic, scoped sharing grants.
+    @Published var shareGrants: [ShareGrant] {
+        didSet { persist() }
+    }
     /// User/org-owned evaluation templates (built-ins live in code; see
     /// `allFormTemplates`).
     @Published var formTemplates: [FormTemplate] {
@@ -180,6 +184,7 @@ final class AppStore: ObservableObject {
         self.userAccounts = snapshot.userAccounts
         self.organizations = snapshot.organizations
         self.orgMemberships = snapshot.orgMemberships
+        self.shareGrants = snapshot.shareGrants
         self.formTemplates = snapshot.formTemplates
         self.formInstances = snapshot.formInstances
         self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
@@ -342,6 +347,7 @@ final class AppStore: ObservableObject {
             userAccounts: userAccounts,
             organizations: organizations,
             orgMemberships: orgMemberships,
+            shareGrants: shareGrants,
             formTemplates: formTemplates,
             formInstances: formInstances,
             dataVersion: dataVersion
@@ -436,6 +442,7 @@ final class AppStore: ObservableObject {
             userAccounts = snapshot.userAccounts
             organizations = snapshot.organizations
             orgMemberships = snapshot.orgMemberships
+            shareGrants = snapshot.shareGrants
             formTemplates = snapshot.formTemplates
             formInstances = snapshot.formInstances
             selectedTeamID = teams.contains(where: { $0.id == snapshot.selectedTeamID })
