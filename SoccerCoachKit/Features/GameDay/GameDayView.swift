@@ -56,7 +56,9 @@ struct GameDayView: View {
         .screenBackground()
         .onAppear {
             viewModel.prepareIfNeeded(with: store)
-            viewModel.requestNotificationAuthorization()
+            if !AppEnvironment.isUITesting {
+                viewModel.requestNotificationAuthorization()
+            }
         }
         .onChange(of: store.selectedTeamID) { _ in
             viewModel.reset(with: store)

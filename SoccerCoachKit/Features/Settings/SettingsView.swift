@@ -88,6 +88,30 @@ struct SettingsView: View {
             Toggle(isOn: $store.cloudSyncEnabled) {
                 SettingsLabel(title: "iCloud Sync", systemImage: "icloud", tint: .info)
             }
+
+            if store.cloudSyncEnabled {
+                LabeledContent {
+                    Label(store.syncStatus.label, systemImage: store.syncStatus.systemImage)
+                        .foregroundStyle(store.syncStatus.tint)
+                        .font(.subheadline.weight(.medium))
+                } label: {
+                    Text("Status")
+                }
+
+                if let detail = store.syncStatus.detail {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if store.syncStatus.isFailed || store.syncStatus == .unavailable {
+                    Button {
+                        store.retrySync()
+                    } label: {
+                        Label("Retry Sync", systemImage: "arrow.clockwise")
+                    }
+                }
+            }
         } header: {
             Text("Sync")
         } footer: {

@@ -73,8 +73,18 @@ final class AppStore: ObservableObject {
                 syncLocalChanges()
             } else {
                 cloudKit?.stop()
+                syncStatus = .off
             }
         }
+    }
+
+    /// Where CloudKit sync stands, surfaced in Settings so sync isn't silent.
+    @Published private(set) var syncStatus: SyncStatus = .off
+
+    /// Re-attempts sync after a failure or once an iCloud account is available.
+    func retrySync() {
+        guard cloudSyncEnabled else { return }
+        cloudKit?.start()
     }
 
     private let scheduleNotifier = ScheduleNotifier()
@@ -149,6 +159,9 @@ final class AppStore: ObservableObject {
             cloudKit.snapshotProvider = { [weak self] in self?.snapshot ?? snapshot }
             cloudKit.applyRemoteChanges = { [weak self] upserts, deletes in
                 self?.applyRemoteChanges(upserts: upserts, deletes: deletes)
+            }
+            cloudKit.onStatusChange = { [weak self] status in
+                self?.syncStatus = status
             }
             if cloudSyncEnabled { cloudKit.start() }
         }

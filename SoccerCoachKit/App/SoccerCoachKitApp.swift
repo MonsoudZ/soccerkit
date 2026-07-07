@@ -7,10 +7,17 @@ struct SoccerCoachKitApp: App {
     @StateObject private var auth = AuthController()
     @StateObject private var tabPreferences = TabPreferences()
 
+    init() {
+        if AppEnvironment.isUITesting {
+            // Skip the first-run cover so UI tests land on the main UI.
+            UserDefaults.standard.set(true, forKey: "hasOnboarded")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
-                if auth.isSignedIn {
+                if auth.isSignedIn || AppEnvironment.isUITesting {
                     ContentView()
                 } else {
                     LoginView()

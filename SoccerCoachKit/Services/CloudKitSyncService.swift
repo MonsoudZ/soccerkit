@@ -23,6 +23,8 @@ final class CloudKitSyncService: CKSyncEngineDelegate {
     /// Applies fetched upserts/deletions into the store in one batch (the store
     /// must suppress re-enqueuing while applying these).
     var applyRemoteChanges: ((_ upserts: [SyncRecord], _ deletes: [SyncRecordKey]) -> Void)?
+    /// Reports sync lifecycle changes so the UI can surface status (Settings).
+    var onStatusChange: ((SyncStatus) -> Void)?
 
     private let defaults = UserDefaults.standard
 
@@ -42,8 +44,12 @@ final class CloudKitSyncService: CKSyncEngineDelegate {
         Task { [weak self] in
             guard let self else { return }
             let status = try? await self.container.accountStatus()
-            guard status == .available else { return }
+            guard status == .available else {
+                self.onStatusChange?(.unavailable)
+                return
+            }
             self.startEngine()
+            self.onStatusChange?(.syncing)
         }
     }
 
@@ -99,6 +105,7 @@ final class CloudKitSyncService: CKSyncEngineDelegate {
             if !upserts.isEmpty || !deletes.isEmpty {
                 applyRemoteChanges?(upserts, deletes)
             }
+            onStatusChange?(.synced(Date()))
 
         case .sentRecordZoneChanges(let sent):
             // Server-wins: adopt the server's version of any conflicted record.
@@ -106,6 +113,20 @@ final class CloudKitSyncService: CKSyncEngineDelegate {
                 failure.error.serverRecord.flatMap { syncRecord(from: $0) }
             }
             if !serverWins.isEmpty { applyRemoteChanges?(serverWins, []) }
+            // A save failure that isn't a resolvable conflict is a real error.
+            let hardError = sent.failedRecordSaves.first { $0.error.serverRecord == nil }
+            if let hardError {
+                onStatusChange?(.failed(hardError.error.localizedDescription))
+            } else {
+                onStatusChange?(.synced(Date()))
+            }
+
+        case .accountChange(let change):
+            // Signed out of iCloud → sync can't continue.
+            if case .signOut = change.changeType {
+                stop()
+                onStatusChange?(.unavailable)
+            }
 
         default:
             break

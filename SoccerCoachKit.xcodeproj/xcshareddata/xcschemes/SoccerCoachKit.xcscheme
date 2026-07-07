@@ -50,6 +50,17 @@
                ReferencedContainer = "container:SoccerCoachKit.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "9E58A4D208649E643EA3EAC7"
+               BuildableName = "SoccerCoachKitUITests.xctest"
+               BlueprintName = "SoccerCoachKitUITests"
+               ReferencedContainer = "container:SoccerCoachKit.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

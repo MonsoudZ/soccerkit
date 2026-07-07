@@ -23,6 +23,7 @@ schemes:
       config: Debug
       targets:
         - SoccerCoachKitTests
+        - SoccerCoachKitUITests
     profile:
       config: Release
     analyze:
@@ -87,6 +88,18 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKitTests
+        GENERATE_INFOPLIST_FILE: "YES"
+  SoccerCoachKitUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: SoccerCoachKitUITests
+    dependencies:
+      - target: SoccerCoachKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKitUITests
         GENERATE_INFOPLIST_FILE: "YES"
   GameWidget:
     type: app-extension
