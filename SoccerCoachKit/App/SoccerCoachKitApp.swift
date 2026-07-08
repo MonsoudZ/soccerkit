@@ -38,6 +38,13 @@ struct SoccerCoachKitApp: App {
                 // a linked UserAccount, and an admin+director+coach membership.
                 if let userID = auth.userID {
                     store.ensureOwner(appleUserID: userID, displayName: auth.displayName)
+                    // Exchange the fresh Apple identity token for a backend
+                    // session token, then (re)start authenticated sync.
+                    store.authenticateBackend(
+                        identityToken: auth.identityToken,
+                        authorizationCode: auth.authorizationCode,
+                        fullName: auth.displayName
+                    )
                 }
             }
         }
