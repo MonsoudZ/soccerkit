@@ -291,6 +291,37 @@ final class AppStore: ObservableObject {
         remoteSync?.setNamespace(userID)
     }
 
+    /// Completes the Sign in with Apple → backend handshake: exchanges the fresh
+    /// Apple identity token for a backend session token (persisted in
+    /// `TokenStore`), then (re)starts sync so the first pull carries it.
+    ///
+    /// No-op unless the Go backend is configured (`BackendBaseURL`) — CloudKit
+    /// builds never call the API. Only a live sign-in produces an identity token;
+    /// a returning coach already has a stored session token, so this isn't needed
+    /// on relaunch. Failures surface via `syncStatus` (the coach can retry).
+    func authenticateBackend(identityToken: String?, authorizationCode: String?, fullName: String?) {
+        guard BackendConfig.isConfigured,
+              let identityToken, !identityToken.isEmpty,
+              let client = APIClient(tokenProvider: { TokenStore().token })
+        else { return }
+
+        let request = AppleAuthRequest(
+            identityToken: identityToken,
+            authorizationCode: authorizationCode,
+            fullName: fullName
+        )
+        Task {
+            do {
+                let response = try await client.authenticateApple(request)
+                TokenStore().token = response.token
+                // Authenticated now — (re)start sync so its pull carries the token.
+                if cloudSyncEnabled { remoteSync?.start() }
+            } catch {
+                syncStatus = .failed((error as? APIError)?.userMessage ?? "Couldn't sign in to sync")
+            }
+        }
+    }
+
     /// Synchronously flushes any pending background write. Call when the app is
     /// about to suspend so the latest state is durable before termination.
     func flushPendingWrites() {
