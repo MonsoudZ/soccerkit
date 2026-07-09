@@ -311,13 +311,29 @@ final class AppStore: ObservableObject {
             fullName: fullName
         )
         Task {
-            do {
-                let response = try await client.authenticateApple(request)
-                TokenStore().token = response.token
-                // Authenticated now — (re)start sync so its pull carries the token.
-                if cloudSyncEnabled { remoteSync?.start() }
-            } catch {
-                syncStatus = .failed((error as? APIError)?.userMessage ?? "Couldn't sign in to sync")
+            // The identity token is short-lived and produced once, so a transient
+            // failure (e.g. a loopback blip as the Sign in with Apple sheet tears
+            // down) must not lose the sign-in. Retry transport errors with a short
+            // backoff before giving up; auth/HTTP failures are terminal.
+            let maxAttempts = 4
+            for attempt in 1...maxAttempts {
+                do {
+                    let response = try await client.authenticateApple(request)
+                    TokenStore().token = response.token
+                    // Authenticated now — (re)start sync so its pull carries the token.
+                    if cloudSyncEnabled { remoteSync?.start() }
+                    return
+                } catch let error as APIError {
+                    if case .transport = error, attempt < maxAttempts {
+                        try? await Task.sleep(nanoseconds: UInt64(attempt) * 500_000_000)
+                        continue
+                    }
+                    syncStatus = .failed(error.userMessage)
+                    return
+                } catch {
+                    syncStatus = .failed("Couldn't sign in to sync")
+                    return
+                }
             }
         }
     }
