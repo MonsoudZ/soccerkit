@@ -1,0 +1,12 @@
+// Copy this file to `Config/Local.xcconfig` (same folder; gitignored) to point
+// local development at your Go backend. It is never committed, so it can't ship
+// and won't collide between machines/sessions.
+//
+// The app appends /v1/... itself, so include main's /api prefix here.
+//   simulator -> the Mac's loopback (reliable; no mDNS / LAN-IP flakiness)
+//   device    -> the Mac's bonjour name or LAN IP (reachable over the network)
+//
+// NB: xcconfig treats "//" as a comment, so the scheme's slashes are written as
+// "/$()/" — $() expands to empty, so the resolved value is a normal http:// URL.
+BACKEND_BASE_URL[sdk=iphonesimulator*] = http:/$()/127.0.0.1:3000/api
+BACKEND_BASE_URL[sdk=iphoneos*] = http:/$()/MacBook-Air.local:3000/api

@@ -30,3 +30,6 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 build-signed/
+
+# Local dev backend override (per-machine; never committed)
+Config/Local.xcconfig
