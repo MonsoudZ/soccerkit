@@ -1,0 +1,10 @@
+// Dev backend base URL, injected into Info.plist as $(BACKEND_BASE_URL).
+//
+// Empty by default so the shipping app stays UNCONFIGURED (runs on CloudKit +
+// local) and the unit tests see an inert backend — the "inert until configured"
+// contract. No dev host is ever baked into a committed/production build.
+//
+// To connect local dev to your Go backend, copy Config/Local.xcconfig.example to
+// Config/Local.xcconfig (gitignored) and set the per-SDK values there.
+BACKEND_BASE_URL =
+#include? "Local.xcconfig"

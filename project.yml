@@ -51,6 +51,12 @@ targets:
         com.apple.developer.icloud-container-identifiers:
           - iCloud.com.monsoudzanaty.SoccerCoachKit
         aps-environment: development
+    # BACKEND_BASE_URL defaults to empty (app stays unconfigured → CloudKit, and
+    # no dev host ever ships). Config/Local.xcconfig (gitignored) overrides it for
+    # local dev, per-SDK. See Config/Local.xcconfig.example.
+    configFiles:
+      Debug: Config/Backend.xcconfig
+      Release: Config/Backend.xcconfig
     info:
       path: SoccerCoachKit/Info.plist
       properties:
@@ -87,12 +93,6 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        # Dev backend host, resolved per SDK so nobody edits BackendBaseURL by hand:
-        #   device    -> the Mac's bonjour name (reachable over the LAN; survives DHCP)
-        #   simulator -> the Mac's loopback (no mDNS / LAN-IP path, so no flaky -1004)
-        # Point these at staging/production hosts for those builds as needed.
-        BACKEND_BASE_URL: http://MacBook-Air.local:3000/api
-        "BACKEND_BASE_URL[sdk=iphonesimulator*]": http://127.0.0.1:3000/api
   SoccerCoachKitTests:
     type: bundle.unit-test
     platform: iOS
