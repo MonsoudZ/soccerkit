@@ -59,6 +59,16 @@ targets:
         # merged in from the INFOPLIST_KEY_* build settings below.
         UIBackgroundModes:
           - remote-notification
+        # Go backend base URL. The app appends /v1/... itself, so this is the
+        # host (plus main's /api prefix). Resolved per-SDK from the
+        # BACKEND_BASE_URL build setting below (see the target `settings`), so the
+        # simulator and a physical device each get the right host automatically —
+        # no hand-editing this value per environment.
+        BackendBaseURL: "$(BACKEND_BASE_URL)"
+        # Allow cleartext HTTP to LAN/.local hosts (dev backend over the local
+        # network). Covers .local names and private-range IP literals.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.monsoudzanaty.SoccerCoachKit
@@ -77,6 +87,12 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        # Dev backend host, resolved per SDK so nobody edits BackendBaseURL by hand:
+        #   device    -> the Mac's bonjour name (reachable over the LAN; survives DHCP)
+        #   simulator -> the Mac's loopback (no mDNS / LAN-IP path, so no flaky -1004)
+        # Point these at staging/production hosts for those builds as needed.
+        BACKEND_BASE_URL: http://MacBook-Air.local:3000/api
+        "BACKEND_BASE_URL[sdk=iphonesimulator*]": http://127.0.0.1:3000/api
   SoccerCoachKitTests:
     type: bundle.unit-test
     platform: iOS
