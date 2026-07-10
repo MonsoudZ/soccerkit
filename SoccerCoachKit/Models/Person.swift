@@ -43,6 +43,18 @@ struct Person: Identifiable, Hashable, Codable {
         self.medicalNotes = medicalNotes
     }
 
+    /// Namespace for deriving the coach's Person id from their Apple user id.
+    /// MUST match the backend's coachPersonNamespace verbatim, so the account
+    /// Person and the synced Person are one identity across every device.
+    static let coachIDNamespace = UUID(uuidString: "2b6f0cc9-04e9-4c8e-8f1a-7c3d5e2a9b40")!
+
+    /// The coach's stable Person id, derived from their Apple user id (which
+    /// equals the backend's identity-token `sub`). Deterministic — never random —
+    /// so the same coach maps to the same Person on the server and every device.
+    static func coachID(forAppleUserID appleUserID: String) -> UUID {
+        UUID.v5(namespace: coachIDNamespace, name: appleUserID)
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, name, guardian, guardianPhone, guardianEmail, secondaryContactName,
              secondaryContactPhone, emergencyContactName, emergencyContactPhone,
