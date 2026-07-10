@@ -42,7 +42,11 @@ extension AppStore {
 
             let trimmedName = displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
             let accountIndex = userAccounts.firstIndex { $0.appleUserID == appleUserID }
-            let ownerPersonID = accountIndex.flatMap { userAccounts[$0].personID } ?? UUID()
+            // Deterministic coach id derived from the Apple user id, so the local
+            // owner Person matches the backend's account Person (and syncs as one
+            // identity). Falls back to any id already linked to the account.
+            let ownerPersonID = accountIndex.flatMap { userAccounts[$0].personID }
+                ?? Person.coachID(forAppleUserID: appleUserID)
 
             // Owner Person.
             if let personIndex = people.firstIndex(where: { $0.id == ownerPersonID }) {
