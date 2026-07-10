@@ -54,6 +54,17 @@ brew install xcodegen
 xcodegen generate
 ```
 
+### Connecting to the Go backend (local dev)
+
+By default the app is **unconfigured** — `BackendBaseURL` is empty, so it runs on CloudKit + local (and the "inert until configured" tests hold). To point local dev at the [Go backend](https://github.com/MonsoudZ/soccerkit-api), create your own gitignored override — **don't** hardcode a URL in `project.yml`, which would ship the dev host and break CI:
+
+```sh
+cp Config/Local.xcconfig.example Config/Local.xcconfig   # gitignored; per-machine
+xcodegen generate
+```
+
+`Config/Local.xcconfig` sets `BACKEND_BASE_URL` per SDK — simulator → `http://127.0.0.1:3000/api`, device → the Mac's bonjour name / LAN IP. Because it's gitignored, it never ships and never collides between machines or sessions.
+
 Run the tests from the command line:
 
 ```sh
