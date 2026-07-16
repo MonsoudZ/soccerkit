@@ -57,8 +57,8 @@ final class GameDayViewModel: ObservableObject {
     @Published var linkedGameID: UUID?
 
     /// `now` is injectable purely for testing; production uses a monotonic
-    /// source. `nonisolated` so the app-wide `AppStore` can own an instance.
-    nonisolated init(now: @escaping () -> TimeInterval = GameDayViewModel.monotonicNow) {
+    /// source.
+    init(now: @escaping () -> TimeInterval = GameDayViewModel.monotonicNow) {
         self.now = now
     }
 

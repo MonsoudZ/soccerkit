@@ -82,12 +82,17 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
     }
 
     /// Enqueues local changes computed by `SyncRecords.diff`.
-    func push(upserts: [SyncRecord], deletes: [SyncRecordKey]) {
-        guard let engine else { return }
+    func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void) {
+        // No engine yet means nothing was enqueued, so report failure and let the
+        // caller keep the records for the next diff (they were previously dropped).
+        guard let engine else { completion(false); return }
         var changes: [CKSyncEngine.PendingRecordZoneChange] = []
         changes += upserts.map { .saveRecord(recordID($0.type, $0.id)) }
         changes += deletes.map { .deleteRecord(recordID($0.type, $0.id)) }
         engine.state.add(pendingRecordZoneChanges: changes)
+        // CKSyncEngine has durably enqueued these and owns retry from here, so the
+        // handoff itself is the success signal.
+        completion(true)
     }
 
     // MARK: - CKSyncEngineDelegate

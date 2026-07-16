@@ -169,7 +169,10 @@ final class AppStore: ObservableObject {
     /// iPhone, where the detail view is torn down on section changes. It is not
     /// `@Published`, so its per-second clock updates don't re-render the rest of
     /// the app; `GameDayView` observes it directly.
-    let gameDay = GameDayViewModel()
+    /// Built in `init` rather than as a default value: a property default
+    /// expression is a nonisolated context in the Swift 5 language mode, so it
+    /// can't call the `@MainActor` view model's initializer.
+    let gameDay: GameDayViewModel
 
     init(snapshot: AppSnapshot,
          persistence: PersistenceService = UserDefaultsPersistenceService(),
@@ -197,6 +200,7 @@ final class AppStore: ObservableObject {
         self.eventRemindersEnabled = UserDefaults.standard.bool(forKey: "eventRemindersEnabled")
         self.reminderLeadMinutes = (UserDefaults.standard.object(forKey: "reminderLeadMinutes") as? Int) ?? 60
         self.lastSyncedRecords = SyncRecords.records(from: snapshot)
+        self.gameDay = GameDayViewModel()
         publishWidgetData()
         if let remoteSync {
             remoteSync.snapshotProvider = { [weak self] in self?.snapshot ?? snapshot }
@@ -220,15 +224,37 @@ final class AppStore: ObservableObject {
         isApplyingRemote = false
     }
 
+    /// Monotonic tag for in-flight pushes, so a late completion can't move the
+    /// sync baseline backward past a newer push that already advanced it.
+    private var pushGeneration = 0
+
     /// Pushes local record changes to the remote (diffed against the last sync).
     private func syncLocalChanges() {
         guard let remoteSync, cloudSyncEnabled else { return }
         let current = SyncRecords.records(from: snapshot)
-        defer { lastSyncedRecords = current }
-        guard !isApplyingRemote else { return } // remote change already synced
+
+        // Every baseline change — here or in an in-flight push's completion —
+        // supersedes older ones, so a late completion can't move the baseline
+        // backward past newer state.
+        pushGeneration += 1
+        let generation = pushGeneration
+
+        // A change we just applied from the remote is already in sync; adopt it as
+        // the baseline so it isn't echoed back, and stop.
+        guard !isApplyingRemote else { lastSyncedRecords = current; return }
+
         let (upserts, deletes) = SyncRecords.diff(from: lastSyncedRecords, to: current)
-        if !upserts.isEmpty || !deletes.isEmpty {
-            remoteSync.push(upserts: upserts, deletes: deletes)
+        guard !upserts.isEmpty || !deletes.isEmpty else { lastSyncedRecords = current; return }
+
+        // Advance the baseline only once the push actually lands. This used to run
+        // in a `defer` — before the fire-and-forget push had even started — so a
+        // push that failed (dropped connection, 401, or the server's owner-scope
+        // 403) was erased from the next diff and lost for good. Leaving the
+        // baseline put on failure means the records reappear in the next diff and
+        // retry on the next local edit.
+        remoteSync.push(upserts: upserts, deletes: deletes) { [weak self] landed in
+            guard let self, landed, generation == self.pushGeneration else { return }
+            self.lastSyncedRecords = current
         }
     }
 
