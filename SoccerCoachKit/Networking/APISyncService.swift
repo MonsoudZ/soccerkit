@@ -17,7 +17,11 @@ protocol RemoteSyncService: AnyObject {
 
     func start()
     func stop()
-    func push(upserts: [SyncRecord], deletes: [SyncRecordKey])
+    /// Pushes local changes to the remote. `completion(true)` means the batch was
+    /// durably accepted (CloudKit) or acknowledged by the server (API); the caller
+    /// advances its sync baseline only then. `completion(false)` means the batch
+    /// did not land, so the caller keeps the records for the next diff.
+    func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void)
     func setNamespace(_ namespace: String?)
 }
 
@@ -62,9 +66,12 @@ final class APISyncService: RemoteSyncService {
         if isRunning { Task { await pull() } }
     }
 
-    func push(upserts: [SyncRecord], deletes: [SyncRecordKey]) {
-        guard isRunning else { return }
-        Task { await performPush(upserts: upserts, deletes: deletes) }
+    func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void) {
+        guard isRunning else { completion(false); return }
+        Task {
+            let ok = await performPush(upserts: upserts, deletes: deletes)
+            completion(ok)
+        }
     }
 
     // MARK: - Networking
@@ -79,7 +86,9 @@ final class APISyncService: RemoteSyncService {
         }
     }
 
-    private func performPush(upserts: [SyncRecord], deletes: [SyncRecordKey]) async {
+    /// Returns whether the batch was acknowledged by the server, so the caller can
+    /// hold its sync baseline until a push actually lands.
+    private func performPush(upserts: [SyncRecord], deletes: [SyncRecordKey]) async -> Bool {
         do {
             let request = SyncPushRequest(
                 upserts: upserts.compactMap { try? SyncWireCodec.dto(from: $0) },
@@ -90,8 +99,10 @@ final class APISyncService: RemoteSyncService {
             // Adopt any records the server won a conflict on.
             apply(response.conflicts, deletes: [], cursor: response.cursor)
             onStatusChange?(.synced(Date()))
+            return true
         } catch {
             onStatusChange?(.failed(Self.message(for: error)))
+            return false
         }
     }
 
