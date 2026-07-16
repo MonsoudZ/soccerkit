@@ -285,7 +285,7 @@ final class AppStore: ObservableObject {
         if BackendConfig.isConfigured {
             let tokens = TokenStore()
             if let client = APIClient(tokenProvider: { tokens.token }) {
-                return APISyncService(client: client, namespace: namespace)
+                return APISyncService(client: client, namespace: namespace, tokenStore: tokens)
             }
         }
         return CloudKitSyncService(namespace: namespace)
@@ -345,7 +345,11 @@ final class AppStore: ObservableObject {
             for attempt in 1...maxAttempts {
                 do {
                     let response = try await client.authenticateApple(request)
-                    TokenStore().token = response.token
+                    let tokens = TokenStore()
+                    tokens.token = response.token
+                    // Persist the refresh token so an expired access token rotates
+                    // instead of forcing another Sign in with Apple.
+                    tokens.refreshToken = response.refreshToken
                     // Authenticated now — (re)start sync so its pull carries the token.
                     if cloudSyncEnabled { remoteSync?.start() }
                     return
