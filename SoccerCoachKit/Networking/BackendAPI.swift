@@ -17,23 +17,41 @@ enum BackendConfig {
     static var isConfigured: Bool { baseURL != nil }
 }
 
-/// Stores the backend session token (JWT) the app got from `/v1/auth/apple`.
+/// Stores the backend session tokens the app got from `/v1/auth/apple`: the
+/// short-lived access JWT sent as the bearer on every call, and the long-lived
+/// refresh token used to mint a new access token when it expires (so the coach
+/// isn't forced to sign in with Apple again every time the JWT lapses).
 ///
-/// Backed by `UserDefaults` to match the rest of the app's storage; a bearer
-/// token really belongs in the Keychain, so swap this implementation before
+/// Backed by `UserDefaults` to match the rest of the app's storage; bearer
+/// tokens really belong in the Keychain, so swap this implementation before
 /// shipping (the interface stays the same).
 final class TokenStore {
     private let defaults: UserDefaults
-    private let key = "backendAuthToken"
+    private let accessKey = "backendAuthToken"
+    private let refreshKey = "backendRefreshToken"
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     var token: String? {
-        get { defaults.string(forKey: key) }
-        set {
-            if let newValue { defaults.set(newValue, forKey: key) }
-            else { defaults.removeObject(forKey: key) }
-        }
+        get { defaults.string(forKey: accessKey) }
+        set { store(newValue, forKey: accessKey) }
+    }
+
+    var refreshToken: String? {
+        get { defaults.string(forKey: refreshKey) }
+        set { store(newValue, forKey: refreshKey) }
+    }
+
+    /// Drops both tokens — the session is over (sign-out, or a refresh that the
+    /// server rejected, so there's nothing left to retry with).
+    func clear() {
+        token = nil
+        refreshToken = nil
+    }
+
+    private func store(_ value: String?, forKey key: String) {
+        if let value { defaults.set(value, forKey: key) }
+        else { defaults.removeObject(forKey: key) }
     }
 }
 
@@ -68,8 +86,24 @@ struct AppleAuthRequest: Codable {
 
 struct AuthResponse: Codable {
     var token: String
+    /// The long-lived refresh token, used to rotate an expired access token
+    /// without a fresh Sign in with Apple. The server started returning this; the
+    /// client persists it (older builds silently dropped it).
+    var refreshToken: String?
     /// The Person the account maps to, if the server has linked one.
     var personID: String?
+}
+
+/// `POST /v1/auth/refresh` — trade a valid refresh token for a new access token.
+/// The endpoint rotates: it revokes the presented refresh token and returns a
+/// fresh one, so the client must store the new `refreshToken` from the response.
+struct RefreshRequest: Codable {
+    var refreshToken: String
+}
+
+struct RefreshResponse: Codable {
+    var accessToken: String
+    var refreshToken: String
 }
 
 // MARK: - Client
@@ -103,6 +137,13 @@ struct APIClient {
 
     func authenticateApple(_ body: AppleAuthRequest) async throws -> AuthResponse {
         try await send(path: "/v1/auth/apple", method: "POST", body: body, authenticated: false)
+    }
+
+    /// Rotates the session: the refresh token is passed in the body (not the
+    /// bearer header), so this call is unauthenticated by the access token.
+    func refresh(_ refreshToken: String) async throws -> RefreshResponse {
+        try await send(path: "/v1/auth/refresh", method: "POST",
+                       body: RefreshRequest(refreshToken: refreshToken), authenticated: false)
     }
 
     func pull(since cursor: String?) async throws -> SyncPullResponse {
