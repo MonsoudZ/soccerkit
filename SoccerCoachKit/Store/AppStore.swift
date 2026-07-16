@@ -177,7 +177,8 @@ final class AppStore: ObservableObject {
     init(snapshot: AppSnapshot,
          persistence: PersistenceService = UserDefaultsPersistenceService(),
          remoteSync: RemoteSyncService? = nil) {
-        self.teams = snapshot.teams
+        let resolvedTeams = Self.atLeastOneTeam(snapshot.teams)
+        self.teams = resolvedTeams
         self.players = snapshot.players
         self.drills = snapshot.drills
         self.sessions = snapshot.sessions
@@ -192,7 +193,7 @@ final class AppStore: ObservableObject {
         self.shareGrants = snapshot.shareGrants
         self.formTemplates = snapshot.formTemplates
         self.formInstances = snapshot.formInstances
-        self.selectedTeamID = snapshot.teams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (snapshot.teams.first?.id ?? snapshot.selectedTeamID)
+        self.selectedTeamID = resolvedTeams.contains(where: { $0.id == snapshot.selectedTeamID }) ? snapshot.selectedTeamID : (resolvedTeams.first?.id ?? snapshot.selectedTeamID)
         self.dataVersion = snapshot.dataVersion
         self.persistence = persistence
         self.remoteSync = remoteSync
@@ -376,6 +377,9 @@ final class AppStore: ObservableObject {
 
     // MARK: - Derived collections
 
+    /// The current team. `teams[0]` is a safe fallback because `teams` is never
+    /// empty — every path that assigns it goes through `atLeastOneTeam`, and
+    /// `deleteTeam` won't remove the last one.
     var selectedTeam: Team {
         teams.first(where: { $0.id == selectedTeamID }) ?? teams[0]
     }
@@ -515,13 +519,30 @@ final class AppStore: ObservableObject {
     /// own `dataVersion` (loading remote/other-user data); the default bumps the
     /// version (a local replacement like import/reset/onboarding, which should
     /// win over older remote data).
+    /// The app assumes there is always a current team: `selectedTeam` is
+    /// non-optional and read throughout the UI. Locally that holds — `deleteTeam`
+    /// refuses to remove the last team (`canDeleteTeam`) — but a remote sync can
+    /// still empty `teams` when two devices hold different sets: this device has
+    /// only team X, another device (which also has Y, so its delete is allowed)
+    /// deletes X, and the tombstone syncs here. Rather than let `teams` go empty
+    /// and trap the next `selectedTeam` read, recover into a valid state.
+    private static func atLeastOneTeam(_ teams: [Team]) -> [Team] {
+        teams.isEmpty ? [recoveryTeam()] : teams
+    }
+
+    private static func recoveryTeam() -> Team {
+        Team(id: UUID(), name: "My Team", ageGroup: .u10,
+             season: "\(Calendar.current.component(.year, from: Date()))",
+             accentName: TeamAccent.teal.rawValue)
+    }
+
     private func restore(_ snapshot: AppSnapshot, adoptVersion: Bool = false) {
         // restore starts its own batch; calling it mid-batch would defer the
         // consuming persist and let `adoptingVersion` leak into a later edit.
         assert(!isBatchingPersist, "restore must not be called within a batch")
         if adoptVersion { adoptingVersion = snapshot.dataVersion }
         batch {
-            teams = snapshot.teams
+            teams = Self.atLeastOneTeam(snapshot.teams)
             players = snapshot.players
             drills = snapshot.drills
             sessions = snapshot.sessions
