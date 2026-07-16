@@ -184,11 +184,14 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section("About") {
             LabeledContent("Version", value: appVersion)
+            #if DEBUG
+            // Developer-only design-system reference; not shipped in release.
             NavigationLink {
                 StyleGuideView()
             } label: {
                 SettingsLabel(title: "Style Guide", systemImage: "paintpalette", tint: .brand)
             }
+            #endif
         }
     }
 

@@ -1,8 +1,10 @@
+#if DEBUG
 import SwiftUI
 
 /// A live gallery of the design system — colors, type, spacing, radii, and
 /// components — rendered from the same tokens the app uses. Doubles as visual
-/// documentation and a regression check when tokens change.
+/// documentation and a regression check when tokens change. Developer tooling —
+/// compiled only in DEBUG so it isn't in the release binary.
 struct StyleGuideView: View {
     var body: some View {
         ScrollView {
@@ -145,3 +147,4 @@ struct StyleGuideView: View {
             .clipShape(Capsule())
     }
 }
+#endif
