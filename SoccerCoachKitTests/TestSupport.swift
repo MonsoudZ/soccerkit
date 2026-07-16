@@ -25,6 +25,14 @@ final class InMemoryPersistence: PersistenceService {
     func clearCorruptBackup() { backedUp = nil }
 }
 
+/// In-memory `TokenStorage` so token tests are isolated from the shared system
+/// keychain (and from each other).
+final class InMemoryTokenStorage: TokenStorage {
+    private var values: [String: String] = [:]
+    func string(forKey key: String) -> String? { values[key] }
+    func set(_ value: String?, forKey key: String) { values[key] = value }
+}
+
 /// A controllable monotonic clock for `GameDayViewModel` tests.
 final class TestClock {
     var seconds: TimeInterval = 0

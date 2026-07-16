@@ -22,24 +22,23 @@ enum BackendConfig {
 /// refresh token used to mint a new access token when it expires (so the coach
 /// isn't forced to sign in with Apple again every time the JWT lapses).
 ///
-/// Backed by `UserDefaults` to match the rest of the app's storage; bearer
-/// tokens really belong in the Keychain, so swap this implementation before
-/// shipping (the interface stays the same).
+/// Persisted in the Keychain (via `TokenStorage`) — these are bearer credentials,
+/// not preferences.
 final class TokenStore {
-    private let defaults: UserDefaults
+    private let storage: TokenStorage
     private let accessKey = "backendAuthToken"
     private let refreshKey = "backendRefreshToken"
 
-    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    init(storage: TokenStorage = KeychainTokenStorage()) { self.storage = storage }
 
     var token: String? {
-        get { defaults.string(forKey: accessKey) }
-        set { store(newValue, forKey: accessKey) }
+        get { storage.string(forKey: accessKey) }
+        set { storage.set(newValue, forKey: accessKey) }
     }
 
     var refreshToken: String? {
-        get { defaults.string(forKey: refreshKey) }
-        set { store(newValue, forKey: refreshKey) }
+        get { storage.string(forKey: refreshKey) }
+        set { storage.set(newValue, forKey: refreshKey) }
     }
 
     /// Drops both tokens — the session is over (sign-out, or a refresh that the
@@ -47,11 +46,6 @@ final class TokenStore {
     func clear() {
         token = nil
         refreshToken = nil
-    }
-
-    private func store(_ value: String?, forKey key: String) {
-        if let value { defaults.set(value, forKey: key) }
-        else { defaults.removeObject(forKey: key) }
     }
 }
 
