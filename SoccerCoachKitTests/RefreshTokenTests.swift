@@ -39,7 +39,7 @@ final class RefreshTokenTests: XCTestCase {
         config.protocolClasses = [StubURLProtocol.self]
         let session = URLSession(configuration: config)
         let defaults = UserDefaults(suiteName: "refresh-tests-\(UUID().uuidString)")!
-        let tokens = TokenStore(defaults: defaults)
+        let tokens = TokenStore(storage: InMemoryTokenStorage())
         let client = APIClient(baseURL: URL(string: "http://backend.test")!,
                                session: session, tokenProvider: { tokens.token })
         let service = APISyncService(client: client, namespace: "test",
