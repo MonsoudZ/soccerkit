@@ -2,9 +2,10 @@ import AuthenticationServices
 import SwiftUI
 
 /// Owns Sign in with Apple state. The Apple user identifier is stable and not
-/// secret, so it's kept in `UserDefaults`; the app has no backend, so this is
-/// purely a local identity + gate. On launch the stored credential is
-/// re-validated with Apple and cleared if the user revoked access.
+/// secret, so it's kept in `UserDefaults`. When a backend is configured, the
+/// captured identity token is handed to `AppStore.authenticateBackend` for the
+/// session exchange; otherwise it's a local identity gate. On launch the stored
+/// credential is re-validated with Apple and cleared if the user revoked access.
 @MainActor
 final class AuthController: ObservableObject {
     @Published private(set) var userID: String?

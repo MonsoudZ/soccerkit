@@ -33,7 +33,6 @@ extension Color {
     // MARK: Brand
     /// App brand tint (chrome/accents where no team accent applies).
     static let brand = Color(light: 0x4F46E5, dark: 0x8B8CF7)   // indigo
-    static let brandSoft = Color(light: 0xEEF0FE, dark: 0x24263A)
 
     // MARK: Semantic status
     static let positive = Color(light: 0x15803D, dark: 0x4ADE80)

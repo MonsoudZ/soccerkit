@@ -3,12 +3,14 @@ import Foundation
 /// Converters from today's hand-written evaluation structs into generic
 /// `FormInstance`s over the seeded catalog templates.
 ///
-/// These are deliberately **inert**: nothing in the live app calls them yet, so
-/// this ships the engine without rewriting a single existing flow. They exist to
-/// prove the path (and are exercised by tests): when you flip a flow over to the
-/// engine, you migrate its stored dictionaries with the matching function here,
-/// then delete the struct. That is the "going-forward discipline, not a big-bang
-/// rewrite" the plan calls for.
+/// These are used for **read-time projection only**: `EvaluationReadModel` maps
+/// the legacy game-day dictionaries and development log through them so the
+/// trends read from a single shape. They do **not** migrate stored data — the
+/// hand-written structs remain the write path, so both representations coexist
+/// (which is why the same evaluation can be counted twice; see the note in
+/// `EvaluationReadModel`). To finish the migration, flip a flow's write path to
+/// the engine, backfill its stored dictionaries with the matching function here,
+/// then delete the struct.
 ///
 /// Convention: a scale recorded as `0` means "not asked" in the old structs, so
 /// it becomes an *absent* answer (nil), not a `0` — which is what keeps the

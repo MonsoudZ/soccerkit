@@ -1,9 +1,9 @@
 import Foundation
 
-/// The seam `AppStore` drives sync through. `CloudKitSyncService` already
-/// implements this exact shape today; `APISyncService` implements it against the
-/// Go backend. When the backend is live, `storedOrSample` chooses which one to
-/// build (see the integration note at the bottom of this file) — the store code
+/// The seam `AppStore` drives sync through. `CloudKitSyncService` and
+/// `APISyncService` both implement it — the former against CloudKit, the latter
+/// against the Go backend. `AppStore.makeRemoteSync` picks which one to build
+/// (the API service when a backend is configured, else CloudKit); the store code
 /// doesn't change, only which conformer it's handed.
 @MainActor
 protocol RemoteSyncService: AnyObject {
@@ -178,23 +178,3 @@ final class APISyncService: RemoteSyncService {
         (error as? APIError)?.userMessage ?? "Sync error"
     }
 }
-
-// MARK: - Integration note
-//
-// To activate against the backend, in `AppStore.storedOrSample` prefer an
-// `APISyncService` when a backend is configured, falling back to CloudKit:
-//
-//     let remote: RemoteSyncService?
-//     if BackendConfig.isConfigured {
-//         let tokens = TokenStore()
-//         if let client = APIClient(tokenProvider: { tokens.token }) {
-//             remote = APISyncService(client: client, namespace: userID)
-//         } else { remote = CloudKitSyncService(namespace: userID) }
-//     } else {
-//         remote = AppEnvironment.isTestingOrUITesting ? nil : CloudKitSyncService(namespace: userID)
-//     }
-//
-// That requires `AppStore.init` to take a `RemoteSyncService?` instead of the
-// concrete `CloudKitSyncService?` (and `CloudKitSyncService` to declare
-// `: RemoteSyncService` — it already has every member). Left undone here so the
-// working CloudKit path is untouched until there's a live server to test against.
