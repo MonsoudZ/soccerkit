@@ -515,6 +515,25 @@ final class AppStore: ObservableObject {
         return true
     }
 
+    /// Permanently deletes the account: the remote data (the CloudKit zone, or
+    /// the server account via `DELETE /me`), then the on-device partition and the
+    /// session tokens. Returns `false` — leaving local data untouched — if the
+    /// remote deletion fails, so the app never claims an account was deleted while
+    /// its server data survives. The caller signs the user out on success (which
+    /// reloads a clean guest namespace); no local mutation must happen in between,
+    /// or `persist()` would resurrect the just-purged partition.
+    func deleteAccount() async -> Bool {
+        if let remoteSync {
+            let purged = await withCheckedContinuation { continuation in
+                remoteSync.purge { continuation.resume(returning: $0) }
+            }
+            guard purged else { return false }
+        }
+        TokenStore().clear()
+        persistence.purge()
+        return true
+    }
+
     /// Replaces all state with `snapshot`. `adoptVersion` keeps the snapshot's
     /// own `dataVersion` (loading remote/other-user data); the default bumps the
     /// version (a local replacement like import/reset/onboarding, which should

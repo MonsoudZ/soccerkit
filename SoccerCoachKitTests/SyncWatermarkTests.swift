@@ -15,12 +15,20 @@ final class MockRemoteSync: RemoteSyncService {
     /// What each push's completion reports. `true` = the batch landed.
     var result = true
 
+    /// What `purge` reports, and whether it was called.
+    var purgeResult = true
+    private(set) var purgeCalled = false
+
     func start() {}
     func stop() {}
     func setNamespace(_ namespace: String?) {}
     func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void) {
         pushedUpserts.append(upserts)
         completion(result)
+    }
+    func purge(completion: @escaping (Bool) -> Void) {
+        purgeCalled = true
+        completion(purgeResult)
     }
 }
 

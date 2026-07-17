@@ -23,6 +23,10 @@ final class InMemoryPersistence: PersistenceService {
     func flushPendingSync() {}
     func corruptBackup() -> Data? { backedUp }
     func clearCorruptBackup() { backedUp = nil }
+    func purge() {
+        storedByNamespace[namespace] = nil
+        backedUp = nil
+    }
 }
 
 /// In-memory `TokenStorage` so token tests are isolated from the shared system

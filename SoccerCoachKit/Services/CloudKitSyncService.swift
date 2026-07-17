@@ -68,6 +68,28 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
 
     func stop() { engine = nil }
 
+    func purge(completion: @escaping (Bool) -> Void) {
+        Task { [weak self] in
+            guard let self else { completion(false); return }
+            do {
+                // Delete the coach's private-database zone (all their records) and
+                // drop the local sync state so nothing re-materialises the data.
+                try await self.container.privateCloudDatabase.deleteRecordZone(withID: self.zoneID)
+                self.engine = nil
+                self.defaults.removeObject(forKey: self.stateKey)
+                completion(true)
+            } catch let error as CKError where error.code == .zoneNotFound {
+                // Nothing to delete (never synced) — treat as success.
+                self.engine = nil
+                self.defaults.removeObject(forKey: self.stateKey)
+                completion(true)
+            } catch {
+                self.onStatusChange?(.failed("Couldn't delete iCloud data"))
+                completion(false)
+            }
+        }
+    }
+
     /// Re-points sync at a different coach's zone (per-Apple-ID isolation).
     func setNamespace(_ namespace: String?) {
         let ns = namespace ?? "default"

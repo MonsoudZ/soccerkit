@@ -7,6 +7,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var showingImporter = false
     @Published var showingResetConfirm = false
     @Published var showingDiscardConfirm = false
+    @Published var showingDeleteAccountConfirm = false
+    @Published var isDeletingAccount = false
     @Published var alertText: String?
 
     func exportBackup(from store: AppStore) {
@@ -15,6 +17,29 @@ final class SettingsViewModel: ObservableObject {
             return
         }
         share(data, name: "SoccerCoachKit-backup.json")
+    }
+
+    /// Data-portability export (the same complete JSON as a backup, framed for
+    /// "get a copy of my data").
+    func exportMyData(from store: AppStore) {
+        guard let data = store.exportData() else {
+            alertText = "Couldn't export your data."
+            return
+        }
+        share(data, name: "SoccerCoachKit-my-data.json")
+    }
+
+    /// Deletes the account everywhere, then signs out. Requires connectivity: if
+    /// the remote deletion fails, nothing local is wiped and the coach can retry,
+    /// so the app never reports success while server data survives.
+    func deleteAccount(store: AppStore, auth: AuthController) async {
+        isDeletingAccount = true
+        defer { isDeletingAccount = false }
+        guard await store.deleteAccount() else {
+            alertText = "Couldn't delete your account. Check your connection and try again."
+            return
+        }
+        auth.signOut()
     }
 
     func exportCorruptBackup(from store: AppStore) {

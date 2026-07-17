@@ -23,6 +23,10 @@ protocol RemoteSyncService: AnyObject {
     /// did not land, so the caller keeps the records for the next diff.
     func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void)
     func setNamespace(_ namespace: String?)
+    /// Permanently deletes this account's remote data (the CloudKit zone, or the
+    /// server account via `DELETE /me`). `completion(true)` only when the remote
+    /// confirms; on `false` the caller must not claim the account was deleted.
+    func purge(completion: @escaping (Bool) -> Void)
 }
 
 /// Syncs the store against the Go backend's `/v1/sync` delta endpoint. Pushes
@@ -77,6 +81,21 @@ final class APISyncService: RemoteSyncService {
         Task {
             let ok = await performPush(upserts: upserts, deletes: deletes)
             completion(ok)
+        }
+    }
+
+    func purge(completion: @escaping (Bool) -> Void) {
+        Task {
+            do {
+                try await client.deleteAccount()
+                tokenStore.clear()
+                defaults.removeObject(forKey: cursorKey)
+                isRunning = false
+                completion(true)
+            } catch {
+                onStatusChange?(.failed(Self.message(for: error)))
+                completion(false)
+            }
         }
     }
 

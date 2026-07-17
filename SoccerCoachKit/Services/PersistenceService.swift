@@ -36,6 +36,10 @@ protocol PersistenceService {
     /// exported for recovery.
     func corruptBackup() -> Data?
     func clearCorruptBackup()
+    /// Permanently removes the current namespace's stored snapshot and any
+    /// corrupt backup — for account deletion. Drops any pending write first so it
+    /// can't resurrect the data after the wipe.
+    func purge()
 }
 
 /// Default persistence backed by `UserDefaults`, storing a JSON-encoded
@@ -107,6 +111,16 @@ final class UserDefaultsPersistenceService: PersistenceService {
     func corruptBackup() -> Data? { defaults.data(forKey: backupKey) }
 
     func clearCorruptBackup() { defaults.removeObject(forKey: backupKey) }
+
+    func purge() {
+        // Drop any pending write so `drain()` can't re-persist the snapshot after
+        // the keys are removed.
+        lock.lock()
+        pending = nil
+        lock.unlock()
+        defaults.removeObject(forKey: storageKey)
+        defaults.removeObject(forKey: backupKey)
+    }
 
     // MARK: - Background writing
 
