@@ -11,7 +11,7 @@ final class EvaluationReadModelTests: XCTestCase {
                guardian: "", notes: "", developmentLog: dev)
     }
 
-    func testProjectionUnifiesLegacyDictionariesAndStoredInstances() {
+    func testProjectionUnifiesLegacyAndCustomStoredButNotBuiltInDuplicates() {
         let team = UUID()
         let p = player(team, 1, dev: [DevelopmentEntry(notes: "note", ratings: ["Passing": 4])])
         let game = GameEvent(
@@ -19,16 +19,26 @@ final class EvaluationReadModelTests: XCTestCase {
             playerReports: [p.id: GamePlayerReport(minutes: 60, effort: 4)],
             preMatchCheckIns: [p.id: PreMatchCheckIn(sleep: 4, energy: 4)]
         )
-        let stored = [FormInstance(templateID: FormTemplateCatalog.ID.developmentReview, context: .development,
-                                   subject: .athlete(p.id), answers: [.scale("Tactical", 3)])]
+        let customTemplateID = UUID() // not one of the built-ins
+        let stored = [
+            // A custom-template instance — unified with the legacy sources.
+            FormInstance(templateID: customTemplateID, context: .development,
+                         subject: .athlete(p.id), answers: [.scale("Tactical", 3)]),
+            // A built-in duplicate of the game-day check-in — the legacy dictionary
+            // is authoritative, so this must NOT be counted a second time.
+            FormInstance(templateID: FormTemplateCatalog.ID.preMatchCheckIn, context: .preGame,
+                         subject: .athlete(p.id), answers: [.scale("sleep", 5)]),
+        ]
 
         let instances = EvaluationReadModel.athleteInstances(
             playerID: p.id, developmentLog: p.developmentLog, games: [game], stored: stored)
 
-        // 1 stored + (pre-match + report) from the game + 1 development entry = 4.
+        // custom stored + (pre-match + report from the game) + 1 development entry = 4.
+        // The built-in stored pre-match check-in is dropped (legacy owns it).
         XCTAssertEqual(instances.count, 4)
-        XCTAssertEqual(instances.filter { $0.context == .preGame }.count, 1)
-        XCTAssertEqual(instances.filter { $0.context == .development }.count, 2, "stored + legacy log")
+        XCTAssertEqual(instances.filter { $0.context == .preGame }.count, 1,
+                       "only the legacy check-in counts, not the stored built-in duplicate")
+        XCTAssertEqual(instances.filter { $0.context == .development }.count, 2, "custom stored + legacy log")
     }
 
     func testReadinessTrendMatchesCheckInReadinessOldestFirst() {
@@ -104,8 +114,10 @@ final class EvaluationReadStoreTests: XCTestCase {
             id: UUID(), teamID: store.teamID(ofPlayer: player.id)!, opponent: "Legacy FC", date: Date(),
             preMatchCheckIns: [player.id: PreMatchCheckIn(sleep: 3, energy: 3)]
         ))
-        // An engine-recorded development review.
-        store.saveFormInstance(FormInstance(templateID: FormTemplateCatalog.ID.developmentReview,
+        // An engine-recorded instance of a custom (non-built-in) template — these
+        // unify with legacy data; built-in templates come only from the legacy
+        // source, so they can't double-count.
+        store.saveFormInstance(FormInstance(templateID: UUID(),
                                             context: .development, subject: .athlete(player.id),
                                             answers: [.scale("Passing", 4)]))
 

@@ -23,18 +23,31 @@ struct SquadReadinessEntry: Identifiable {
 /// aggregates it with `FormEngine`. This is the doc's payoff — "the readiness
 /// mean, the effort trend … all become one query shape over FormAnswer."
 ///
-/// Crucially it unifies data the app still writes to `GameEvent`'s per-player
-/// dictionaries (projected on the fly via `FormMigration`, never persisted) with
-/// instances recorded through the engine, so the trends are rich today without
-/// changing any write path.
+/// The app writes built-in evaluations through the legacy game-day/development
+/// flows; this projects those dictionaries into the `FormInstance` shape on the
+/// fly (via `FormMigration`, never persisted) so the trends read from one query.
+/// Stored engine instances contribute only custom templates — the built-in
+/// concepts come solely from the legacy source, so a concept is never counted
+/// twice (see `athleteInstances`).
 enum EvaluationReadModel {
 
     // MARK: - Projection
 
     /// Every evaluation about an athlete, from all sources, as instances.
+    ///
+    /// Built-in concepts (pre-match check-in, post-match reflection, game report,
+    /// development) are written through the legacy game-day/development flows and
+    /// projected below. A *stored* instance of a built-in template would be a
+    /// second copy of that same concept — the double-count this once produced —
+    /// so stored instances contribute only non-built-in (custom) templates; the
+    /// legacy source is authoritative for the built-ins.
     static func athleteInstances(playerID: UUID, developmentLog: [DevelopmentEntry],
                                  games: [GameEvent], stored: [FormInstance]) -> [FormInstance] {
-        var result = stored.filter { $0.subject.type == .athlete && $0.subject.id == playerID }
+        let builtInIDs = Set(FormTemplateCatalog.builtIns.map(\.id))
+        var result = stored.filter {
+            $0.subject.type == .athlete && $0.subject.id == playerID
+                && !builtInIDs.contains($0.templateID)
+        }
 
         for game in games {
             if let checkIn = game.preMatchCheckIns[playerID], !checkIn.isEmpty {
