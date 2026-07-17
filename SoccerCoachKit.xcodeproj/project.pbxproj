@@ -153,6 +153,7 @@
 		C0CC8E8F0567CD991BD5C7EE /* AppSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32C75C924C9B0748E97D82E /* AppSection.swift */; };
 		C20829A9194A3DC9050695C3 /* DictionaryBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BFFFFE7D915EF6FFFDA3C98 /* DictionaryBinding.swift */; };
 		C2D91C49DE3A2841CB1530A2 /* SoccerPitch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3BB6118FA14C8B546853F6 /* SoccerPitch.swift */; };
+		C38773F008DFC33693D1A7DF /* AccountDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 204016A9F87AE22F92864DE2 /* AccountDeletionTests.swift */; };
 		C3A3BB75712049727A4B62D6 /* PlayerDevelopmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3EA1E90398B9B1BEA9961EB /* PlayerDevelopmentTests.swift */; };
 		C51EA0456041D32ADA0970A5 /* DrillDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F23F6656017B3E14C43726E /* DrillDetailViewModel.swift */; };
 		CA897C825C9BD87BBE5D5864 /* GamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA1AFAA7ABAA48702F0576A /* GamesView.swift */; };
@@ -267,6 +268,7 @@
 		18F209475463E82123C49198 /* Permissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Permissions.swift; sourceTree = "<group>"; };
 		1C7BEBC129C0E4C75C954741 /* CoachIdentityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachIdentityTests.swift; sourceTree = "<group>"; };
 		1F0F4579D32F4101FDDBBB4C /* NextFixtureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextFixtureView.swift; sourceTree = "<group>"; };
+		204016A9F87AE22F92864DE2 /* AccountDeletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletionTests.swift; sourceTree = "<group>"; };
 		246916B0B3E5075E85F457D2 /* FormEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormEngineTests.swift; sourceTree = "<group>"; };
 		25B01D4D77B5396A712DE244 /* BoardMarkers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardMarkers.swift; sourceTree = "<group>"; };
 		28168C76EF304F6869DAF765 /* PlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDetailView.swift; sourceTree = "<group>"; };
@@ -512,6 +514,7 @@
 			isa = PBXGroup;
 			children = (
 				7B1BCB72D4DB7B29E5D30F84 /* AccessibilityTests.swift */,
+				204016A9F87AE22F92864DE2 /* AccountDeletionTests.swift */,
 				BABA0AFD881189BE337305F6 /* AccountPartitionTests.swift */,
 				7B92027CEAFF183FF2B07A6D /* AppStoreTests.swift */,
 				6420E11FEE914E4CE04BCE8F /* AuthTests.swift */,
@@ -1248,6 +1251,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D379A5442BDC80F3868C603E /* AccessibilityTests.swift in Sources */,
+				C38773F008DFC33693D1A7DF /* AccountDeletionTests.swift in Sources */,
 				A0267286E44B613AFAD715DC /* AccountPartitionTests.swift in Sources */,
 				1EF16B2E10AF151C19DAAA66 /* AppStoreTests.swift in Sources */,
 				49F926A64C41345BF7FA44E4 /* AuthTests.swift in Sources */,

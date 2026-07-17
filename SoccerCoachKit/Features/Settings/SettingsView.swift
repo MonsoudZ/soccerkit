@@ -38,6 +38,14 @@ struct SettingsView: View {
         } message: {
             Text("The set-aside backup will be permanently removed.")
         }
+        .confirmationDialog("Delete your account?", isPresented: $viewModel.showingDeleteAccountConfirm, titleVisibility: .visible) {
+            Button("Delete Account", role: .destructive) {
+                Task { await viewModel.deleteAccount(store: store, auth: auth) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes your account and all your data — teams, players, evaluations, and everything synced — everywhere. This can't be undone.")
+        }
         .alert("Settings", isPresented: alertBinding) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -50,13 +58,26 @@ struct SettingsView: View {
     private var accountSection: some View {
         Section {
             LabeledContent("Signed in", value: auth.displayName ?? "Apple ID")
+            Button {
+                viewModel.exportMyData(from: store)
+            } label: {
+                SettingsLabel(title: "Export My Data", systemImage: "square.and.arrow.up", tint: .info)
+            }
             Button(role: .destructive) {
                 auth.signOut()
             } label: {
                 SettingsLabel(title: "Sign Out", systemImage: "rectangle.portrait.and.arrow.right", tint: .critical)
             }
+            Button(role: .destructive) {
+                viewModel.showingDeleteAccountConfirm = true
+            } label: {
+                SettingsLabel(title: "Delete Account", systemImage: "trash", tint: .critical)
+            }
+            .disabled(viewModel.isDeletingAccount)
         } header: {
             Text("Account")
+        } footer: {
+            Text("Deleting your account permanently removes all your data everywhere. Export a copy first if you want to keep it.")
         }
     }
 

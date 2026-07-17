@@ -149,6 +149,13 @@ struct APIClient {
         try await send(path: "/v1/sync", method: "POST", body: body)
     }
 
+    /// Permanently deletes the authenticated account and all its data server-side
+    /// (`DELETE /v1/me`). Authenticated; the server identifies the account from
+    /// the bearer token.
+    func deleteAccount() async throws {
+        try await sendNoContent(path: "/v1/me", method: "DELETE")
+    }
+
     // MARK: - Core
 
     private func send<Body: Encodable, Response: Decodable>(
@@ -186,6 +193,33 @@ struct APIClient {
             return try JSONDecoder().decode(Response.self, from: data)
         } catch {
             throw APIError.decoding(error)
+        }
+    }
+
+    /// A request with no response body to decode (e.g. a `204` from a delete).
+    /// Authenticated by default; throws on any non-2xx.
+    private func sendNoContent(path: String, method: String, authenticated: Bool = true) async throws {
+        guard let url = URL(string: baseURL.absoluteString.trimmingTrailingSlash() + path) else {
+            throw APIError.notConfigured
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if authenticated, let token = tokenProvider() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.transport(error)
+        }
+
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw status == 401 ? APIError.unauthorized : APIError.http(status: status, body: data)
         }
     }
 }
