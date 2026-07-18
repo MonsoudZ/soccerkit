@@ -60,10 +60,10 @@ struct DrillLibraryView: View {
                 }
             }
         }
-        .onChange(of: viewModel.scope) { _ in
+        .onChange(of: viewModel.scope) {
             viewModel.normalizeTagSelection(in: store)
         }
-        .onChange(of: viewModel.selectedTag) { _ in
+        .onChange(of: viewModel.selectedTag) {
             viewModel.normalizeTagSelection(in: store)
         }
         .listStyle(.insetGrouped)

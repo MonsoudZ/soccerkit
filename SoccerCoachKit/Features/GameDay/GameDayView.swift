@@ -60,10 +60,10 @@ struct GameDayView: View {
                 viewModel.requestNotificationAuthorization()
             }
         }
-        .onChange(of: store.selectedTeamID) { _ in
+        .onChange(of: store.selectedTeamID) {
             viewModel.reset(with: store)
         }
-        .onChange(of: store.roster) { _ in
+        .onChange(of: store.roster) {
             viewModel.syncRoster(with: store)
         }
         .onReceive(ticker) { _ in

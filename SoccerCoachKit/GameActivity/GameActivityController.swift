@@ -145,13 +145,13 @@ final class GameActivityController {
     /// Ends and dismisses the activity.
     func end() {
         pushToken = nil
-        guard #available(iOS 16.1, *),
+        guard #available(iOS 16.2, *),
               let activity = current as? Activity<GameActivityAttributes> else {
             current = nil
             return
         }
         current = nil
-        Task { await activity.end(dismissalPolicy: .immediate) }
+        Task { await activity.end(nil, dismissalPolicy: .immediate) }
     }
 
     @available(iOS 16.1, *)

@@ -11,7 +11,7 @@ struct ContentView: View {
     var body: some View {
         root
             .undoBanner()
-            .onChange(of: scenePhase) { _ in
+            .onChange(of: scenePhase) {
                 if scenePhase == .active {
                     store.refreshEventReminders()
                 } else {
