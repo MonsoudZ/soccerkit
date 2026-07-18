@@ -35,7 +35,7 @@ struct SessionFormView: View {
                             Text(drill.title).tag(Optional(drill.id))
                         }
                     }
-                    .onChange(of: viewModel.selectedDrillID) { _ in
+                    .onChange(of: viewModel.selectedDrillID) {
                         viewModel.handleDrillSelectionChange(in: store)
                     }
 

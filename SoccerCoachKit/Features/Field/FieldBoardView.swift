@@ -24,11 +24,11 @@ struct FieldBoardView: View {
         }
         .screenBackground()
         .onAppear { viewModel.ensureDiagramLoaded(in: store) }
-        .onChange(of: store.selectedTeamID) { _ in
+        .onChange(of: store.selectedTeamID) {
             viewModel.selectedDiagramID = nil
             viewModel.ensureDiagramLoaded(in: store)
         }
-        .onChange(of: viewModel.selectedDiagramID) { _ in
+        .onChange(of: viewModel.selectedDiagramID) {
             viewModel.loadSelectedDiagram(in: store)
         }
         .toolbar {
