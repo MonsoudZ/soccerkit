@@ -9,7 +9,6 @@ import Foundation
 /// Runtime behaviour requires a signed build + iCloud account + the CloudKit
 /// container and must be validated on-device; the pure record mapping lives in
 /// `SyncRecords` and is unit-tested.
-@available(iOS 17.0, *)
 @MainActor
 final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
     private let container: CKContainer
