@@ -1375,6 +1375,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 98F4432A351D7FB5E4CEB645 /* Backend.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = SoccerCoachKit/SoccerCoachKit.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -1536,6 +1537,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 98F4432A351D7FB5E4CEB645 /* Backend.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = SoccerCoachKit/SoccerCoachKit.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";

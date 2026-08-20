@@ -50,7 +50,11 @@ targets:
           - CloudKit
         com.apple.developer.icloud-container-identifiers:
           - iCloud.com.monsoudzanaty.SoccerCoachKit
-        aps-environment: development
+        # Resolved per build configuration from APS_ENVIRONMENT below:
+        # development for Debug, production for Release/archive. Hardcoding
+        # `development` here would ship a sandbox APNs entitlement, which the
+        # CloudKit sync engine's silent pushes depend on.
+        aps-environment: $(APS_ENVIRONMENT)
     # BACKEND_BASE_URL defaults to empty (app stays unconfigured → CloudKit, and
     # no dev host ever ships). Config/Local.xcconfig (gitignored) overrides it for
     # local dev, per-SDK. See Config/Local.xcconfig.example.
@@ -93,6 +97,16 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+      configs:
+        # APNs entitlement environment. `development` targets the APNs sandbox
+        # (Xcode-installed builds); `production` targets the live gateway, which
+        # is what TestFlight and App Store builds run against. Getting this wrong
+        # is silent: pushes simply never arrive, so CloudKit sync stops
+        # converging in the field while working fine on a dev device.
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
   SoccerCoachKitTests:
     type: bundle.unit-test
     platform: iOS

@@ -10,7 +10,7 @@ provisioned and how to build the app signed for a device.
 | **App Group** | Home Screen / Lock Screen widget + Live Activity data sharing | `com.apple.security.application-groups` → `group.com.monsoudzanaty.SoccerCoachKit` (app **and** widget) |
 | **Sign in with Apple** | The login gate | `com.apple.developer.applesignin` (app) |
 | **iCloud (CloudKit)** | Cross-device, record-level data sync | `com.apple.developer.icloud-services` → `CloudKit` + `com.apple.developer.icloud-container-identifiers` → `iCloud.com.monsoudzanaty.SoccerCoachKit` (app) |
-| **Push Notifications** | CloudKit sync + remote Live Activity updates | `aps-environment: development` (app) |
+| **Push Notifications** | CloudKit sync + remote Live Activity updates | `aps-environment` (app) — `development` in Debug, `production` in Release; see [APNs environment](#apns-environment) |
 | **Live Activities** | Game Day live score/clock | Info.plist `NSSupportsLiveActivities` (no portal capability) |
 
 Entitlements live in `SoccerCoachKit/SoccerCoachKit.entitlements` and
@@ -72,14 +72,46 @@ Note: App Group sharing and Sign in with Apple only work end-to-end on a
 **signed** build (device or signed simulator run from Xcode), not an unsigned
 CLI build.
 
+### APNs environment
+
+`aps-environment` selects which APNs gateway the build is entitled to talk to,
+and the two are not interchangeable: a token minted against the sandbox is
+rejected by the production gateway and vice versa. Because it lives in the
+entitlements — not in code — getting it wrong fails *silently*: pushes simply
+never arrive. For CloudKit that means `CKSyncEngine` stops being told there are
+changes to fetch, so a TestFlight build looks fine on the device that made an
+edit and never converges on any other one.
+
+So it is resolved per build configuration rather than hardcoded:
+
+| Configuration | `APS_ENVIRONMENT` | Used by |
+|---|---|---|
+| Debug | `development` | Xcode-installed builds (sandbox APNs) |
+| Release | `production` | Archive → TestFlight / App Store (live APNs) |
+
+`SoccerCoachKit.entitlements` holds `$(APS_ENVIRONMENT)`; the value comes from
+the app target's per-config `settings.configs` in `project.yml`. Entitlements
+files are expanded for `$(...)` build settings at signing time, the same way
+`$(AppIdentifierPrefix)` is, so there is one entitlements file and no pair to
+keep in sync.
+
+Xcode's export step also rewrites `aps-environment` to `production` for App
+Store and Ad Hoc exports, so the common archive path was already covered. Making
+it explicit means the entitlement is correct in the built product itself — which
+is what any export path that isn't Xcode's Organizer (a CI `-exportArchive`, a
+re-sign, a manual-signing setup) actually ships.
+
+Note that a Release build **installed to a device** now needs a distribution
+profile, since an automatic *development* profile carries
+`aps-environment: development` and won't match. Day-to-day device builds are
+Debug (the scheme's Run action), so this only affects archives — which is where
+you want it.
+
 ## Optional: remote Live Activity updates (Push)
 
 The Game Day Live Activity works with local updates out of the box. To also push
 `content-state` updates from a server (the token path in
-`GameActivityController`), add the Push Notifications capability:
-
-1. In `project.yml`, add to the app target's `entitlements.properties`:
-   `aps-environment: development`
-2. `xcodegen generate` and build with `-allowProvisioningUpdates` (Xcode enables
-   Push on the App ID). You'll also need an APNs-capable backend to send the
-   pushes.
+`GameActivityController`), no entitlement change is needed — the app already
+carries `aps-environment` for CloudKit sync (above). Build with
+`-allowProvisioningUpdates` so Xcode enables Push on the App ID, and point an
+APNs-capable backend at the tokens.
