@@ -103,7 +103,7 @@ struct SettingsView: View {
             if auth.isSignedIn {
                 Text("Deleting your account permanently removes all your data everywhere. Export a copy first if you want to keep it.")
             } else {
-                Text("Everything works without an account — it just stays on this device. Sign in to back it up and sync across your devices; the teams you've already made come with you.")
+                Text("You don't need an account. Signing in ties your teams to your Apple ID, so they stay separate from anyone else using this device, and the teams you've already made come with you. Backup and cross-device sync are handled by iCloud Sync below, signed in or not.")
             }
         }
     }

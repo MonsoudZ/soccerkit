@@ -1,9 +1,10 @@
 import AuthenticationServices
 import SwiftUI
 
-/// The first-run gate. Signing in with Apple is what makes a coach's data follow
-/// them between devices — it is not what makes the app work, so it can also be
-/// skipped.
+/// The first-run gate. Signing in with Apple is what ties a coach's data to their
+/// Apple ID — keeping it apart from anyone else using the device — not what makes
+/// the app work, so it can also be skipped. (Backup and cross-device sync are
+/// iCloud's job either way, under Settings → Sync.)
 struct LoginView: View {
     @EnvironmentObject private var auth: AuthController
     @Environment(\.colorScheme) private var colorScheme
@@ -50,7 +51,7 @@ struct LoginView: View {
                 .font(.subheadline)
                 .padding(.top, Spacing.xs)
 
-                Text("Signing in keeps your teams backed up and in sync across your devices. Without it everything still works — it just stays on this device, and it comes with you if you sign in later.")
+                Text("You don't need an account. Signing in ties your teams to your Apple ID, so they stay separate from anyone else who uses this device — and whatever you set up now comes with you if you sign in later.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

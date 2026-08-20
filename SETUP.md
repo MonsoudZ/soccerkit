@@ -8,7 +8,7 @@ provisioned and how to build the app signed for a device.
 | Capability | Used by | Entitlement |
 |---|---|---|
 | **App Group** | Home Screen / Lock Screen widget + Live Activity data sharing | `com.apple.security.application-groups` → `group.com.monsoudzanaty.SoccerCoachKit` (app **and** widget) |
-| **Sign in with Apple** | The login gate | `com.apple.developer.applesignin` (app) |
+| **Sign in with Apple** | Optional sign-in — ties data to an Apple ID and gives each coach an isolated CloudKit zone. The app is fully usable without it. | `com.apple.developer.applesignin` (app) |
 | **iCloud (CloudKit)** | Cross-device, record-level data sync | `com.apple.developer.icloud-services` → `CloudKit` + `com.apple.developer.icloud-container-identifiers` → `iCloud.com.monsoudzanaty.SoccerCoachKit` (app) |
 | **Push Notifications** | CloudKit sync + remote Live Activity updates | `aps-environment` (app) — `development` in Debug, `production` in Release; see [APNs environment](#apns-environment) |
 | **Live Activities** | Game Day live score/clock | Info.plist `NSSupportsLiveActivities` (no portal capability) |
