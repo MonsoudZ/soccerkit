@@ -441,10 +441,36 @@ final class AppStore: ObservableObject {
     /// user changes: the outgoing coach's data is saved under their partition and
     /// the incoming coach's data (or a fresh sample) is loaded — so a different
     /// account never sees the previous coach's roster, and no one loses data.
-    func switchUser(to userID: String?) {
+    /// `carryingLocalData` is set only when the sign-in upgraded a guest session
+    /// — the same person getting an account, whose roster is theirs and should
+    /// follow them rather than be stranded in the signed-out partition where it
+    /// would look exactly like data loss.
+    ///
+    /// It has to be told, not inferred: a guest upgrading and a second coach
+    /// signing in on a shared device are the same transition from here (signed-out
+    /// partition to a named one), and guessing wrong would hand one coach
+    /// another's roster. `AuthController` is what actually knows which happened.
+    func switchUser(to userID: String?, carryingLocalData: Bool = false) {
+        let carried = (carryingLocalData && userID != nil && !isShowingSeedData) ? snapshot : nil
+
         persistence.setNamespace(userID)
-        restore(Self.loadSnapshot(from: persistence), adoptVersion: true)
-        lastSyncedRecords = SyncRecords.records(from: snapshot)
+        var loaded = Self.loadSnapshot(from: persistence)
+        // Only into an account that has nothing of its own. `loadSnapshot` seeds
+        // the sample for a coach it hasn't seen, so a placeholder here means the
+        // account is empty — never overwrite a real season with a guest one.
+        let adoptedGuestData = carried != nil && SampleData.isPlaceholder(loaded)
+        if adoptedGuestData, let carried { loaded = carried }
+
+        // Recompute before the restore, so the persist it triggers sees the truth.
+        // A coach signing into a fresh account gets the seed, and without this the
+        // store would treat that demo data as theirs: push it into their account,
+        // and merge their season into it when it arrives.
+        isShowingSeedData = SampleData.isPlaceholder(loaded)
+        restore(loaded, adoptVersion: true)
+        // Carried data has never been near this account's server, so the baseline
+        // starts empty and the whole thing uploads. Data actually loaded from the
+        // account's own storage is already its baseline.
+        lastSyncedRecords = adoptedGuestData ? [] : SyncRecords.records(from: snapshot)
         remoteSync?.setNamespace(userID)
         // A live match is partitioned per coach the same way the snapshot is, so
         // a shared device never shows one coach the other's game in progress.

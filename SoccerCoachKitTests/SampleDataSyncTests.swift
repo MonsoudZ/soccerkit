@@ -138,4 +138,18 @@ final class SampleDataSyncTests: XCTestCase {
         XCTAssertEqual(store.teams.first?.name, "New FC")
         XCTAssertTrue(allPushedDeletes.isEmpty, "Nothing was on the server to delete")
     }
+    /// Signing into a fresh account lands on the seed too, and the store has to
+    /// know that — otherwise the demo data becomes "theirs" through a different
+    /// door than first launch, and their season merges into it on arrival.
+    func testSigningIntoAFreshAccountLandsOnAPlaceholderToo() {
+        let store = seededStore()
+        store.addTeam(name: "Adopted", ageGroup: .u10, season: "2026")
+        XCTAssertFalse(store.isShowingSeedData, "Precondition: the seed was adopted")
+
+        store.switchUser(to: "brand.new.coach")
+
+        XCTAssertTrue(store.isShowingSeedData,
+                      "A coach with no data yet is looking at a placeholder, not their season")
+    }
+
 }

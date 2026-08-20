@@ -1,7 +1,9 @@
 import AuthenticationServices
 import SwiftUI
 
-/// The sign-in gate shown until the coach authenticates with Apple.
+/// The first-run gate. Signing in with Apple is what makes a coach's data follow
+/// them between devices — it is not what makes the app work, so it can also be
+/// skipped.
 struct LoginView: View {
     @EnvironmentObject private var auth: AuthController
     @Environment(\.colorScheme) private var colorScheme
@@ -16,7 +18,7 @@ struct LoginView: View {
                     .foregroundStyle(.tint)
                 Text("SoccerCoachKit")
                     .font(AppFont.display)
-                Text("Your roster, game day, training, and season — signed in and ready.")
+                Text("Your roster, game day, training, and season — all in one place.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -42,7 +44,13 @@ struct LoginView: View {
                         .multilineTextAlignment(.center)
                 }
 
-                Text("We only use your Apple ID to sign you in. Your team data stays on your device.")
+                Button("Continue without an account") {
+                    auth.continueAsGuest()
+                }
+                .font(.subheadline)
+                .padding(.top, Spacing.xs)
+
+                Text("Signing in keeps your teams backed up and in sync across your devices. Without it everything still works — it just stays on this device, and it comes with you if you sign in later.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

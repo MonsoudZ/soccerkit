@@ -19,16 +19,43 @@ final class AuthController: ObservableObject {
     /// A user-facing message when a sign-in attempt fails (nil = none / cancelled).
     @Published var authError: String?
 
+    /// Whether the coach chose to use the app without an account.
+    ///
+    /// Sign in with Apple is how data follows a coach between devices, but it is
+    /// not what makes the app useful — a coach on a touchline wanting to track
+    /// minutes should not be stopped by an account wall, and the App Store
+    /// guidelines don't allow requiring one for functionality that doesn't need
+    /// it. Persisted, so the wall doesn't reappear on the next launch.
+    @Published private(set) var isGuest: Bool
+
     var isSignedIn: Bool { userID != nil }
+    /// Whether the app should be usable at all: signed in, or deliberately not.
+    var hasAccess: Bool { isSignedIn || isGuest }
+
+    /// Whether the most recent sign-in upgraded a guest session. Read by the app
+    /// when it hands the change to `AppStore.switchUser`, which cannot tell an
+    /// upgrade from a second coach signing in on a shared device.
+    private(set) var upgradedFromGuest = false
 
     private let defaults: UserDefaults
     private static let userIDKey = "appleUserID"
     private static let nameKey = "appleUserName"
+    private static let guestKey = "continuedAsGuest"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         userID = defaults.string(forKey: Self.userIDKey)
         displayName = defaults.string(forKey: Self.nameKey)
+        isGuest = defaults.bool(forKey: Self.guestKey)
+    }
+
+    /// Takes the coach past the sign-in gate without an account. Their work is
+    /// kept in the signed-out partition and follows them into their account if
+    /// they sign in later (see `AppStore.switchUser`).
+    func continueAsGuest() {
+        guard !isSignedIn else { return }
+        isGuest = true
+        defaults.set(true, forKey: Self.guestKey)
     }
 
     /// Configures the authorization request the Sign in with Apple button makes.
@@ -63,6 +90,11 @@ final class AuthController: ObservableObject {
     /// live `ASAuthorizationAppleIDCredential`.
     func completeSignIn(userID: String, name: String?) {
         self.userID = userID
+        upgradedFromGuest = isGuest
+        // No longer a guest: they have an account, so signing out should return
+        // them to the gate rather than silently back into the guest partition.
+        isGuest = false
+        defaults.removeObject(forKey: Self.guestKey)
         defaults.set(userID, forKey: Self.userIDKey)
         if let name, !name.isEmpty {
             displayName = name
@@ -83,7 +115,10 @@ final class AuthController: ObservableObject {
     func signOut() {
         userID = nil
         displayName = nil
+        isGuest = false
+        upgradedFromGuest = false
         defaults.removeObject(forKey: Self.userIDKey)
         defaults.removeObject(forKey: Self.nameKey)
+        defaults.removeObject(forKey: Self.guestKey)
     }
 }

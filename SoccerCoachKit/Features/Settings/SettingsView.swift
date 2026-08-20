@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -5,6 +6,7 @@ struct SettingsView: View {
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var auth: AuthController
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var viewModel = SettingsViewModel()
 
     var body: some View {
@@ -57,27 +59,52 @@ struct SettingsView: View {
 
     private var accountSection: some View {
         Section {
-            LabeledContent("Signed in", value: auth.displayName ?? "Apple ID")
+            if auth.isSignedIn {
+                LabeledContent("Signed in", value: auth.displayName ?? "Apple ID")
+            } else {
+                // Without this a guest could never sign in, and the choice they
+                // made on first launch would be permanent.
+                LabeledContent("Account", value: "Not signed in")
+                SignInWithAppleButton(.signIn) { request in
+                    auth.configure(request)
+                } onCompletion: { result in
+                    auth.handle(result)
+                }
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: CornerRadius.small, style: .continuous))
+                if let authError = auth.authError {
+                    Label(authError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(Color.critical)
+                }
+            }
             Button {
                 viewModel.exportMyData(from: store)
             } label: {
                 SettingsLabel(title: "Export My Data", systemImage: "square.and.arrow.up", tint: .info)
             }
-            Button(role: .destructive) {
-                auth.signOut()
-            } label: {
-                SettingsLabel(title: "Sign Out", systemImage: "rectangle.portrait.and.arrow.right", tint: .critical)
+            if auth.isSignedIn {
+                Button(role: .destructive) {
+                    auth.signOut()
+                } label: {
+                    SettingsLabel(title: "Sign Out", systemImage: "rectangle.portrait.and.arrow.right", tint: .critical)
+                }
+                Button(role: .destructive) {
+                    viewModel.showingDeleteAccountConfirm = true
+                } label: {
+                    SettingsLabel(title: "Delete Account", systemImage: "trash", tint: .critical)
+                }
+                .disabled(viewModel.isDeletingAccount)
             }
-            Button(role: .destructive) {
-                viewModel.showingDeleteAccountConfirm = true
-            } label: {
-                SettingsLabel(title: "Delete Account", systemImage: "trash", tint: .critical)
-            }
-            .disabled(viewModel.isDeletingAccount)
         } header: {
             Text("Account")
         } footer: {
-            Text("Deleting your account permanently removes all your data everywhere. Export a copy first if you want to keep it.")
+            if auth.isSignedIn {
+                Text("Deleting your account permanently removes all your data everywhere. Export a copy first if you want to keep it.")
+            } else {
+                Text("Everything works without an account — it just stays on this device. Sign in to back it up and sync across your devices; the teams you've already made come with you.")
+            }
         }
     }
 

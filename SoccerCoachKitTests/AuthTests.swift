@@ -48,4 +48,62 @@ final class AuthTests: XCTestCase {
 
         XCTAssertEqual(auth.displayName, "First Last")
     }
+    // MARK: - Guest access
+
+    func testGuestAccessOpensTheAppWithoutAnAccount() {
+        let auth = AuthController(defaults: isolatedDefaults())
+        XCTAssertFalse(auth.hasAccess, "The gate is closed on first launch")
+
+        auth.continueAsGuest()
+
+        XCTAssertTrue(auth.hasAccess, "The app is usable")
+        XCTAssertFalse(auth.isSignedIn, "...but there is still no account")
+        XCTAssertNil(auth.userID)
+    }
+
+    func testGuestChoiceSurvivesRelaunch() {
+        let defaults = isolatedDefaults()
+        AuthController(defaults: defaults).continueAsGuest()
+
+        let relaunched = AuthController(defaults: defaults)
+        XCTAssertTrue(relaunched.isGuest, "The gate does not come back every launch")
+        XCTAssertTrue(relaunched.hasAccess)
+    }
+
+    func testSigningInEndsGuestMode() {
+        let defaults = isolatedDefaults()
+        let auth = AuthController(defaults: defaults)
+        auth.continueAsGuest()
+
+        auth.completeSignIn(userID: "abc123", name: "Alex Coach")
+
+        XCTAssertFalse(auth.isGuest, "They have an account now")
+        XCTAssertTrue(auth.isSignedIn)
+        XCTAssertFalse(AuthController(defaults: defaults).isGuest, "...and that sticks")
+    }
+
+    /// Signing out returns to the gate rather than silently dropping them back
+    /// into the guest partition, which would show a different set of teams with
+    /// no explanation.
+    func testSigningOutReturnsToTheGate() {
+        let auth = AuthController(defaults: isolatedDefaults())
+        auth.continueAsGuest()
+        auth.completeSignIn(userID: "abc123", name: nil)
+
+        auth.signOut()
+
+        XCTAssertFalse(auth.hasAccess)
+        XCTAssertFalse(auth.isGuest)
+    }
+
+    func testContinueAsGuestIsIgnoredOnceSignedIn() {
+        let auth = AuthController(defaults: isolatedDefaults())
+        auth.completeSignIn(userID: "abc123", name: nil)
+
+        auth.continueAsGuest()
+
+        XCTAssertFalse(auth.isGuest, "An account holder is never also a guest")
+        XCTAssertTrue(auth.isSignedIn)
+    }
+
 }

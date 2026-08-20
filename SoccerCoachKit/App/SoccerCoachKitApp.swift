@@ -17,7 +17,7 @@ struct SoccerCoachKitApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if auth.isSignedIn || AppEnvironment.isUITesting {
+                if auth.hasAccess || AppEnvironment.isUITesting {
                     ContentView()
                 } else {
                     LoginView()
@@ -33,7 +33,10 @@ struct SoccerCoachKitApp: App {
             .onChange(of: auth.userID) {
                 // Load the newly-signed-in coach's data (and stash the previous
                 // coach's), so accounts never see each other's data.
-                store.switchUser(to: auth.userID)
+                // `upgradedFromGuest` distinguishes a guest getting an account
+                // (their roster follows them) from a second coach signing in on a
+                // shared device (it must not).
+                store.switchUser(to: auth.userID, carryingLocalData: auth.upgradedFromGuest)
                 // Establish the coach as owner of their personal org: a Person,
                 // a linked UserAccount, and an admin+director+coach membership.
                 if let userID = auth.userID {
