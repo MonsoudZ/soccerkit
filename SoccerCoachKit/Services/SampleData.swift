@@ -2,6 +2,34 @@ import Foundation
 
 /// Seed data used on first launch, for previews, and by "Reset to sample data".
 enum SampleData {
+    /// Every record identity the seed contains. The ids are fixed literals, so
+    /// this is stable across launches and across devices even though the seed
+    /// rebuilds its date-relative content each time it is read.
+    private static let recordKeys: Set<SyncRecordKey> = keys(of: snapshot)
+
+    /// Whether `candidate` is still the untouched seed rather than a coach's own
+    /// data.
+    ///
+    /// This is the distinction the sync layer needs and could not otherwise make:
+    /// the seed looks exactly like real data, so a device showing it would merge
+    /// the coach's synced season *into* the demo team, and then treat the demo
+    /// records as a sync baseline they never belonged to. Identity is the test —
+    /// the moment anything is added or removed, the seed has become the coach's
+    /// and is theirs to keep and sync.
+    static func isPlaceholder(_ candidate: AppSnapshot) -> Bool {
+        // Cheap rejection first. This runs on every store construction, and a
+        // snapshot that isn't the seed almost always differs in its teams alone —
+        // so answering from those avoids encoding a whole season's records.
+        guard Set(candidate.teams.map(\.id)) == teamIDs else { return false }
+        return keys(of: candidate) == recordKeys
+    }
+
+    private static let teamIDs: Set<UUID> = Set(snapshot.teams.map(\.id))
+
+    private static func keys(of snapshot: AppSnapshot) -> Set<SyncRecordKey> {
+        Set(SyncRecords.records(from: snapshot).map { SyncRecordKey($0.type, $0.id) })
+    }
+
     static var snapshot: AppSnapshot {
         let u12 = Team(
             id: UUID(uuidString: "B78D1E06-3270-498F-A763-28C26EF5A001")!,

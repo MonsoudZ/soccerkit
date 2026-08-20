@@ -67,8 +67,10 @@ final class UndoAndOnboardingTests: XCTestCase {
 
     // MARK: - Onboarding
 
-    func testStartFreshReplacesEverythingWithOneTeam() {
-        let store = TestData.store(TestData.snapshot(playerCount: 5))
+    /// The case onboarding is actually for: a new coach looking at the sample
+    /// seed picks their own team instead.
+    func testStartFreshReplacesTheSampleSeedWithOneTeam() {
+        let store = TestData.store(SampleData.snapshot)
 
         store.startFresh(name: "Falcons", ageGroup: .u12, season: "2026", accent: .blue)
 
@@ -81,9 +83,25 @@ final class UndoAndOnboardingTests: XCTestCase {
         XCTAssertEqual(store.selectedTeamID, store.teams.first?.id)
     }
 
+    /// But once there is real data, "Create My Team" adds to it rather than
+    /// replacing it. `hasOnboarded` is per-device, so a coach adding a second
+    /// device runs onboarding again with their synced season already loaded —
+    /// and replacing here would push a delete for every record they own.
+    func testStartFreshAddsToRealDataInsteadOfReplacingIt() {
+        let store = TestData.store(TestData.snapshot(playerCount: 5))
+        let existingTeam = store.teams[0].id
+
+        store.startFresh(name: "Falcons", ageGroup: .u12, season: "2026", accent: .blue)
+
+        XCTAssertEqual(store.teams.count, 2)
+        XCTAssertTrue(store.teams.contains { $0.id == existingTeam }, "The existing season survives")
+        XCTAssertEqual(store.players.count, 5, "...players and all")
+        XCTAssertEqual(store.selectedTeam.name, "Falcons", "The new team is selected")
+    }
+
     func testStartFreshBlankNameFallsBack() {
         let store = TestData.store()
         store.startFresh(name: "   ", ageGroup: .u8, season: "2026", accent: .teal)
-        XCTAssertEqual(store.teams.first?.name, "My Team")
+        XCTAssertEqual(store.selectedTeam.name, "My Team")
     }
 }

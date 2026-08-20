@@ -12,6 +12,8 @@ final class MockRemoteSync: RemoteSyncService {
 
     /// The upserts of every push, in order.
     var pushedUpserts: [[SyncRecord]] = []
+    /// The deletes of every push, in order.
+    var pushedDeletes: [[SyncRecordKey]] = []
     /// What each push's completion reports. `true` = the batch landed.
     var result = true
 
@@ -24,6 +26,7 @@ final class MockRemoteSync: RemoteSyncService {
     func setNamespace(_ namespace: String?) {}
     func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void) {
         pushedUpserts.append(upserts)
+        pushedDeletes.append(deletes)
         completion(result)
     }
     func purge(completion: @escaping (Bool) -> Void) {

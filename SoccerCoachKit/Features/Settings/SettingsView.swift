@@ -30,7 +30,7 @@ struct SettingsView: View {
             Button("Reset", role: .destructive) { store.resetToSampleData() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This permanently replaces all of your data with the sample team.")
+            Text("This replaces the data on this device with the sample team. Anything synced to iCloud stays in your account and downloads again.")
         }
         .confirmationDialog("Discard unreadable data?", isPresented: $viewModel.showingDiscardConfirm, titleVisibility: .visible) {
             Button("Discard", role: .destructive) { store.clearCorruptBackup() }

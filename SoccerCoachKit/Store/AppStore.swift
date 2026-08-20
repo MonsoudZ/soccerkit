@@ -96,6 +96,18 @@ final class AppStore: ObservableObject {
     private var lastSyncedRecords: [SyncRecord] = []
     /// True while applying a remote change, so it isn't re-uploaded.
     private var isApplyingRemote = false
+    /// True while the app is showing the sample seed rather than the coach's own
+    /// data — a placeholder that happens to look exactly like real data.
+    ///
+    /// Sync has to know the difference. A returning coach's second device seeds
+    /// the sample before their season has downloaded, and without this the two
+    /// merge: the demo team lands beside their real one, and the demo records
+    /// become part of the sync baseline. A later "Reset" or onboarding "Create My
+    /// Team" then diffs against that baseline and pushes a delete for every
+    /// record they own. So while this is set, nothing is pushed, and the first
+    /// records to arrive from the server replace the seed instead of merging
+    /// into it.
+    private(set) var isShowingSeedData: Bool
 
     /// Whether iCloud (CloudKit) sync is on, so the coach's data follows them
     /// across devices with record-level merge.
@@ -205,6 +217,7 @@ final class AppStore: ObservableObject {
         self.eventRemindersEnabled = UserDefaults.standard.bool(forKey: "eventRemindersEnabled")
         self.reminderLeadMinutes = (UserDefaults.standard.object(forKey: "reminderLeadMinutes") as? Int) ?? 60
         self.lastSyncedRecords = SyncRecords.records(from: snapshot)
+        self.isShowingSeedData = SampleData.isPlaceholder(snapshot)
         self.gameDay = GameDayViewModel(stateStore: gameDayState)
         publishWidgetData()
         if let remoteSync {
@@ -221,7 +234,18 @@ final class AppStore: ObservableObject {
 
     /// Applies record-level changes fetched from CloudKit, without re-uploading them.
     private func applyRemoteChanges(upserts: [SyncRecord], deletes: [SyncRecordKey]) {
-        var updated = snapshot
+        var updated: AppSnapshot
+        if isShowingSeedData, !upserts.isEmpty {
+            // The coach's own data replaces the seed outright. Upserting into it
+            // would leave the demo team sitting beside their real season with no
+            // way to tell which is which.
+            updated = AppSnapshot(teams: [], players: [], drills: [], sessions: [],
+                                  diagrams: [], games: [], events: [],
+                                  selectedTeamID: selectedTeamID, dataVersion: dataVersion)
+            isShowingSeedData = false
+        } else {
+            updated = snapshot
+        }
         for record in upserts { SyncRecords.apply(record, to: &updated) }
         for key in deletes { SyncRecords.delete(type: key.type, id: key.id, from: &updated) }
         isApplyingRemote = true
@@ -236,6 +260,10 @@ final class AppStore: ObservableObject {
     /// Pushes local record changes to the remote (diffed against the last sync).
     private func syncLocalChanges() {
         guard let remoteSync, cloudSyncEnabled else { return }
+        // The seed is a placeholder, not the coach's data: pushing it would put a
+        // demo team in their account, and diffing against it would raise deletes
+        // for records it never contained.
+        guard !isShowingSeedData else { return }
         let current = SyncRecords.records(from: snapshot)
 
         // Every baseline change — here or in an in-flight push's completion —
@@ -408,7 +436,12 @@ final class AppStore: ObservableObject {
 
     // MARK: - Sample data
 
+    /// Puts the device back to the sample seed. Set *before* the restore, so the
+    /// persist it triggers doesn't push a delete for every record the coach has
+    /// synced — this clears the device, not their account. Anything already
+    /// synced downloads again on the next fetch.
     func resetToSampleData() {
+        isShowingSeedData = true
         restore(SampleData.snapshot)
     }
 
@@ -473,6 +506,13 @@ final class AppStore: ObservableObject {
         }
         persistence.save(snapshot)
         publishWidgetData()
+        // Adding or removing anything makes the seed the coach's own data. None
+        // of it was ever pushed, so the baseline starts empty and the whole
+        // adopted snapshot uploads — not just the edit that adopted it.
+        if isShowingSeedData, !SampleData.isPlaceholder(snapshot) {
+            isShowingSeedData = false
+            lastSyncedRecords = []
+        }
         syncLocalChanges()
         // Reschedule reminders only when the schedule itself changed (and once
         // per batch), not on every attendance/score mutation.
@@ -596,8 +636,10 @@ final class AppStore: ObservableObject {
 
     // MARK: - Onboarding
 
-    /// Replaces all data with a single freshly-created team. Used by onboarding
-    /// when a coach chooses to start clean instead of exploring the sample data.
+    /// Gives the coach their own freshly-created team instead of the sample one.
+    /// Used by onboarding when they choose to start clean rather than explore the
+    /// seed. Replaces the snapshot only while it is still the seed; once real
+    /// data is present the team is added to it (see below).
     func startFresh(name: String, ageGroup: AgeGroup, season: String, accent: TeamAccent) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let team = Team(
@@ -608,6 +650,19 @@ final class AppStore: ObservableObject {
             accentName: accent.rawValue,
             trainingDefaults: .standard
         )
+        // "Create My Team" means "give me my own team instead of the sample one",
+        // not "delete my season". `hasOnboarded` is a per-device flag, so a coach
+        // adding a second device runs onboarding again — and by the time they tap
+        // it, their real data may already have synced down behind the sheet.
+        // Replacing the snapshot then would push a delete for every record they
+        // own, so once there's real data here the team is simply added to it.
+        guard isShowingSeedData else {
+            batch {
+                teams.append(team)
+                selectedTeamID = team.id
+            }
+            return
+        }
         restore(AppSnapshot(teams: [team], players: [], drills: [], sessions: [],
                             diagrams: [], games: [], events: [], selectedTeamID: team.id))
     }
