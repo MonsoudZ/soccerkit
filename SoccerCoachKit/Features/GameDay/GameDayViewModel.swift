@@ -1,8 +1,15 @@
 import Foundation
 
-/// Owns the ephemeral game-day state: the clock, lineup, substitutions, and
-/// per-player status. It is seeded from the store's roster/age-group settings
-/// via `reset(with:)` on appear and whenever the selected team changes.
+/// Owns the live game-day state: the clock, lineup, substitutions, and
+/// per-player status. It is seeded from the store's roster/age-group settings by
+/// `prepareIfNeeded(with:)` when the view appears, and re-seeded by
+/// `reset(with:)` whenever the selected team changes.
+///
+/// The state is durable, not ephemeral: every transition is written to a
+/// `GameDayStateStore` and `restoreSavedMatch()` reinstates it at launch, so a
+/// crash or an iOS eviction at halftime doesn't lose a match the coach has no
+/// way to reconstruct. The roster and team rules aren't persisted — they're
+/// re-derived from the store on the next `syncRoster`.
 @MainActor
 final class GameDayViewModel: ObservableObject {
     // Configuration snapshot sourced from the store.
@@ -38,7 +45,7 @@ final class GameDayViewModel: ObservableObject {
     @Published var reminders: [SubReminder] = []
     @Published var subLog: [SubLogEntry] = []
     @Published var playerStatuses: [UUID: GamePlayerStatus] = [:]
-    @Published var newReminderMinute = 15
+    @Published var newReminderMinute = 15 { didSet { saveState() } }
     @Published var selectedOutPlayerID: UUID?
     @Published var selectedInPlayerID: UUID?
     @Published var activeReminder: SubReminder?
@@ -46,20 +53,161 @@ final class GameDayViewModel: ObservableObject {
     @Published var activePreAlert: SubReminder?
     @Published var showPreAlert = false
     /// How many minutes before a reminder's minute the early heads-up fires.
-    @Published var subAlertLeadMinutes = 1
-    @Published var formation: LineupFormation = .balanced
+    @Published var subAlertLeadMinutes = 1 { didSet { saveState() } }
+    @Published var formation: LineupFormation = .balanced { didSet { saveState() } }
 
     // Live scoreboard (surfaced on the Game Day screen and the Live Activity).
     @Published var teamScore = 0
     @Published var opponentScore = 0
-    @Published var opponentName = "Opponent"
+    @Published var opponentName = "Opponent" { didSet { saveState() } }
     /// The scheduled game this live match writes its score into, if any.
     @Published var linkedGameID: UUID?
 
+    /// Where the match is kept so it survives the app being killed. Defaults to
+    /// an isolated in-memory store: only the running app should reach for the
+    /// `UserDefaults` one (`AppStore` passes it), so a test or a preview can
+    /// never resume a match something else left behind.
+    private let stateStore: GameDayStateStore
+    /// Wall-clock source, injectable for testing. Distinct from `now` — that one
+    /// is monotonic and drives the live clock; this one only ever crosses a
+    /// process boundary, where a monotonic reading would be meaningless.
+    private let wallClock: () -> Date
+    /// Set while state is being applied wholesale, so the writes that does don't
+    /// save over the very snapshot being read.
+    private var isApplyingSavedState = false
+
+    /// How long a saved match stays restorable. Past this, the coach is opening
+    /// the app for something else entirely and a resumed clock would be noise,
+    /// so the match is dropped rather than resurrected.
+    static let staleAfter: TimeInterval = 12 * 60 * 60
+
     /// `now` is injectable purely for testing; production uses a monotonic
     /// source.
-    init(now: @escaping () -> TimeInterval = GameDayViewModel.monotonicNow) {
+    init(now: @escaping () -> TimeInterval = GameDayViewModel.monotonicNow,
+         stateStore: GameDayStateStore = InMemoryGameDayStateStore(),
+         wallClock: @escaping () -> Date = Date.init) {
         self.now = now
+        self.stateStore = stateStore
+        self.wallClock = wallClock
+        restoreSavedMatch()
+    }
+
+    // MARK: - Surviving termination
+
+    /// Reinstates the match saved by a previous launch, if there is one worth
+    /// reinstating. Before this the whole match — clock, per-player minutes, sub
+    /// log, score — lived only in memory, so an eviction or crash at halftime
+    /// lost a record the coach couldn't reconstruct.
+    func restoreSavedMatch() {
+        guard let saved = stateStore.load(), saved.hasMatchInProgress else { return }
+        guard wallClock().timeIntervalSince(saved.savedAt) < Self.staleAfter else {
+            stateStore.clear()
+            return
+        }
+        apply(saved)
+
+        // The match kept running while the app was gone, exactly as it does while
+        // the app is backgrounded or the phone is locked. Bank that interval the
+        // way `settle` banks a live one, then re-anchor to the monotonic clock so
+        // everything from here on is immune to wall-clock changes again.
+        if let runningSince = saved.runningSince {
+            let missed = max(0, wallClock().timeIntervalSince(runningSince))
+            accumulatedElapsed += missed
+            for id in starterIDs where playerStatuses[id, default: .available] == .available {
+                accumulatedPlaying[id, default: 0] += missed
+            }
+            runAnchor = now()
+            isRunning = true
+            // Deliberately not re-saved: the stored `runningSince` still marks
+            // the true start of this interval, so if the app dies again before
+            // any edit, the next launch credits the whole gap rather than only
+            // the part since this one.
+        }
+    }
+
+    /// Moves to a different coach's partition. The outgoing match is saved under
+    /// the old namespace and the in-memory one blanked, so a shared device never
+    /// shows one coach the other's live match.
+    func switchUser(to namespace: String?) {
+        saveState()
+        stateStore.setNamespace(namespace)
+        apply(.empty(at: wallClock()))
+        restoreSavedMatch()
+    }
+
+    /// Flushes the match before the app suspends. Every state transition already
+    /// saves, so this is insurance against a transition that doesn't — not the
+    /// mechanism the restore depends on.
+    func saveBeforeSuspending() { saveState() }
+
+    private func apply(_ saved: GameDaySnapshot) {
+        isApplyingSavedState = true
+        defer { isApplyingSavedState = false }
+
+        teamID = saved.teamID
+        accumulatedElapsed = saved.accumulatedElapsed
+        accumulatedPlaying = saved.accumulatedPlaying
+        accumulatedPlayingAtPeriodStart = saved.accumulatedPlayingAtPeriodStart
+        elapsedAtPeriodStart = saved.elapsedAtPeriodStart
+        starterIDs = saved.starterIDs
+        playerStatuses = saved.playerStatuses
+        currentPeriod = saved.currentPeriod
+        formation = saved.formation
+        reminders = saved.reminders
+        subLog = saved.subLog
+        subAlertLeadMinutes = saved.subAlertLeadMinutes
+        newReminderMinute = saved.newReminderMinute
+        teamScore = saved.teamScore
+        opponentScore = saved.opponentScore
+        opponentName = saved.opponentName
+        linkedGameID = saved.linkedGameID
+        if saved.runningSince == nil {
+            runAnchor = nil
+            isRunning = false
+        }
+    }
+
+    /// Persists the match. Called on every state transition — but deliberately
+    /// *not* from `tick()`: the clock is derived from the running anchor, so a
+    /// relaunch reconstructs the elapsed time itself and per-second writes would
+    /// buy nothing.
+    func saveState() {
+        guard !isApplyingSavedState else { return }
+        stateStore.save(currentSnapshot())
+    }
+
+    /// Drops the saved match. Used where the coach has explicitly wiped the game,
+    /// so a relaunch starts clean instead of resuming what they just cleared.
+    private func clearSavedMatch() {
+        guard !isApplyingSavedState else { return }
+        stateStore.clear()
+    }
+
+    private func currentSnapshot() -> GameDaySnapshot {
+        let wallNow = wallClock()
+        return GameDaySnapshot(
+            savedAt: wallNow,
+            teamID: teamID,
+            // Convert the monotonic anchor into wall-clock terms: it marks the
+            // instant `now() - runAnchor` seconds ago.
+            runningSince: runAnchor.map { wallNow.addingTimeInterval(-max(0, now() - $0)) },
+            accumulatedElapsed: accumulatedElapsed,
+            accumulatedPlaying: accumulatedPlaying,
+            accumulatedPlayingAtPeriodStart: accumulatedPlayingAtPeriodStart,
+            elapsedAtPeriodStart: elapsedAtPeriodStart,
+            starterIDs: starterIDs,
+            playerStatuses: playerStatuses,
+            currentPeriod: currentPeriod,
+            formation: formation,
+            reminders: reminders,
+            subLog: subLog,
+            subAlertLeadMinutes: subAlertLeadMinutes,
+            newReminderMinute: newReminderMinute,
+            teamScore: teamScore,
+            opponentScore: opponentScore,
+            opponentName: opponentName,
+            linkedGameID: linkedGameID
+        )
     }
 
     /// Monotonic seconds that keep advancing while the device sleeps (locked
@@ -200,6 +348,11 @@ final class GameDayViewModel: ObservableObject {
         }
 
         normalizeSelections()
+        // Reminders naming a departed player were just dropped, so the
+        // notifications scheduled from them would still fire for a sub that can
+        // no longer happen.
+        rescheduleNotifications()
+        saveState()
     }
 
     // MARK: - Derived state
@@ -294,6 +447,7 @@ final class GameDayViewModel: ObservableObject {
             reminders[index].triggered = true
             activeReminder = reminders[index]
             showReminder = true
+            saveState()
             return
         }
 
@@ -306,6 +460,7 @@ final class GameDayViewModel: ObservableObject {
             reminders[index].preAlertTriggered = true
             activePreAlert = reminders[index]
             showPreAlert = true
+            saveState()
         }
     }
 
@@ -400,6 +555,7 @@ final class GameDayViewModel: ObservableObject {
         guard !isRunning else { return }
         runAnchor = now()
         isRunning = true
+        saveState()
         rescheduleNotifications()
         // Begin (or resume) the Live Activity when the clock starts running.
         activity.start(teamName: teamName, opponentName: opponentName, accentHex: accentHex,
@@ -412,6 +568,7 @@ final class GameDayViewModel: ObservableObject {
         settle()
         runAnchor = nil
         isRunning = false
+        saveState()
         rescheduleNotifications()
         refreshActivity()
     }
@@ -422,12 +579,14 @@ final class GameDayViewModel: ObservableObject {
 
     func scoreTeam(_ delta: Int, in store: AppStore) {
         teamScore = max(0, teamScore + delta)
+        saveState()
         persistScore(in: store)
         refreshActivity()
     }
 
     func scoreOpponent(_ delta: Int, in store: AppStore) {
         opponentScore = max(0, opponentScore + delta)
+        saveState()
         persistScore(in: store)
         refreshActivity()
     }
@@ -438,10 +597,12 @@ final class GameDayViewModel: ObservableObject {
     /// before writing the current score back.
     func linkGame(_ id: UUID?, in store: AppStore) {
         linkedGameID = id
+        saveState()
         guard let id, let game = store.games.first(where: { $0.id == id }) else { return }
         opponentName = game.opponent
         if let recorded = game.teamScore { teamScore = recorded }
         if let recorded = game.opponentScore { opponentScore = recorded }
+        saveState()
         persistScore(in: store)
         refreshActivity()
     }
@@ -494,6 +655,7 @@ final class GameDayViewModel: ObservableObject {
         normalizeSelections()
         rescheduleNotifications()
         endActivity()
+        clearSavedMatch()
     }
 
     func resetGameClock() {
@@ -522,6 +684,7 @@ final class GameDayViewModel: ObservableObject {
         normalizeSelections()
         rescheduleNotifications()
         endActivity()
+        clearSavedMatch()
     }
 
     func advancePeriod() {
@@ -532,6 +695,7 @@ final class GameDayViewModel: ObservableObject {
         currentPeriod += 1
         elapsedAtPeriodStart = accumulatedElapsed
         accumulatedPlayingAtPeriodStart = accumulatedPlaying
+        saveState()
         rescheduleNotifications()
         refreshActivity()
     }
@@ -553,6 +717,7 @@ final class GameDayViewModel: ObservableObject {
             updated.preAlertTriggered = due
             return updated
         }
+        saveState()
         rescheduleNotifications()
         refreshActivity()
     }
@@ -563,6 +728,7 @@ final class GameDayViewModel: ObservableObject {
         settle()
         starterIDs.remove(player.id)
         normalizeSelections()
+        saveState()
     }
 
     func moveToStarter(_ player: Player) {
@@ -571,6 +737,7 @@ final class GameDayViewModel: ObservableObject {
         settle()
         starterIDs.insert(player.id)
         normalizeSelections()
+        saveState()
     }
 
     func setPlayerStatus(_ player: Player, _ status: GamePlayerStatus) {
@@ -584,6 +751,7 @@ final class GameDayViewModel: ObservableObject {
         }
 
         normalizeSelections()
+        saveState()
     }
 
     // MARK: - Helpers

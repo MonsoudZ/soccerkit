@@ -166,7 +166,10 @@ final class AppStore: ObservableObject {
 
     /// The live game-day session. Held here (app-lifetime) so an in-progress
     /// match survives navigating between sections on any device — including the
-    /// iPhone, where the detail view is torn down on section changes. It is not
+    /// iPhone, where the detail view is torn down on section changes. The match
+    /// also survives the app itself being killed: it persists through its own
+    /// `GameDayStateStore` rather than the app snapshot, since a match in
+    /// progress belongs to the device refereeing it, not to synced data. It is not
     /// `@Published`, so its per-second clock updates don't re-render the rest of
     /// the app; `GameDayView` observes it directly.
     /// Built in `init` rather than as a default value: a property default
@@ -176,7 +179,8 @@ final class AppStore: ObservableObject {
 
     init(snapshot: AppSnapshot,
          persistence: PersistenceService = UserDefaultsPersistenceService(),
-         remoteSync: RemoteSyncService? = nil) {
+         remoteSync: RemoteSyncService? = nil,
+         gameDayState: GameDayStateStore = InMemoryGameDayStateStore()) {
         let resolvedTeams = Self.atLeastOneTeam(snapshot.teams)
         self.teams = resolvedTeams
         self.players = snapshot.players
@@ -201,7 +205,7 @@ final class AppStore: ObservableObject {
         self.eventRemindersEnabled = UserDefaults.standard.bool(forKey: "eventRemindersEnabled")
         self.reminderLeadMinutes = (UserDefaults.standard.object(forKey: "reminderLeadMinutes") as? Int) ?? 60
         self.lastSyncedRecords = SyncRecords.records(from: snapshot)
-        self.gameDay = GameDayViewModel()
+        self.gameDay = GameDayViewModel(stateStore: gameDayState)
         publishWidgetData()
         if let remoteSync {
             remoteSync.snapshotProvider = { [weak self] in self?.snapshot ?? snapshot }
@@ -271,7 +275,11 @@ final class AppStore: ObservableObject {
         let snapshot = Self.loadSnapshot(from: persistence)
 
         return AppStore(snapshot: snapshot, persistence: persistence,
-                        remoteSync: Self.makeRemoteSync(namespace: userID))
+                        remoteSync: Self.makeRemoteSync(namespace: userID),
+                        // Only the running app persists the live match: a test or
+                        // preview building a store gets the in-memory default, so
+                        // it can't resume a match left behind by something else.
+                        gameDayState: UserDefaultsGameDayStateStore(namespace: userID))
     }
 
     /// Chooses the sync transport at launch:
@@ -316,6 +324,9 @@ final class AppStore: ObservableObject {
         restore(Self.loadSnapshot(from: persistence), adoptVersion: true)
         lastSyncedRecords = SyncRecords.records(from: snapshot)
         remoteSync?.setNamespace(userID)
+        // A live match is partitioned per coach the same way the snapshot is, so
+        // a shared device never shows one coach the other's game in progress.
+        gameDay.switchUser(to: userID)
     }
 
     /// Completes the Sign in with Apple → backend handshake: exchanges the fresh
@@ -373,6 +384,7 @@ final class AppStore: ObservableObject {
     /// about to suspend so the latest state is durable before termination.
     func flushPendingWrites() {
         persistence.flushPendingSync()
+        gameDay.saveBeforeSuspending()
     }
 
     // MARK: - Derived collections

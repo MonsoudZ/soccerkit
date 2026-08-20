@@ -1,7 +1,7 @@
 import CoreGraphics
 import SwiftUI
 
-struct SubReminder: Identifiable, Hashable {
+struct SubReminder: Identifiable, Hashable, Codable {
     let id: UUID
     var minute: Int
     var outPlayerID: UUID
@@ -12,7 +12,7 @@ struct SubReminder: Identifiable, Hashable {
     var preAlertTriggered: Bool = false
 }
 
-struct SubLogEntry: Identifiable, Hashable {
+struct SubLogEntry: Identifiable, Hashable, Codable {
     let id: UUID
     var time: Int
     var outPlayerID: UUID
@@ -22,7 +22,7 @@ struct SubLogEntry: Identifiable, Hashable {
     var note: String
 }
 
-enum GamePlayerStatus: String, CaseIterable, Identifiable {
+enum GamePlayerStatus: String, CaseIterable, Identifiable, Codable {
     case available = "Available"
     case late = "Late"
     case injured = "Injured"
@@ -44,7 +44,7 @@ enum LineupDropTarget {
     case bench
 }
 
-enum LineupFormation: String, CaseIterable, Identifiable {
+enum LineupFormation: String, CaseIterable, Identifiable, Codable {
     case balanced = "Balanced"
     case defensive = "Defensive"
     case attacking = "Attacking"
