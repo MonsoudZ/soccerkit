@@ -77,8 +77,19 @@ struct ContentView: View {
         }
     }
 
+    /// Onboarding is for a coach who has nothing yet.
+    ///
+    /// `hasOnboarded` is a per-device flag, so a returning coach setting up a
+    /// second device would otherwise be walked through first-run setup with their
+    /// own season sitting behind the sheet — where the primary button is "Create
+    /// My Team", the last thing they want. Holding the seed is the signal that
+    /// they genuinely have nothing, which also means the sheet gets out of the
+    /// way on its own the moment their data finishes downloading.
     private var showOnboarding: Binding<Bool> {
-        Binding(get: { !hasOnboarded }, set: { hasOnboarded = !$0 })
+        Binding(
+            get: { !hasOnboarded && store.isShowingSeedData },
+            set: { hasOnboarded = !$0 }
+        )
     }
 }
 

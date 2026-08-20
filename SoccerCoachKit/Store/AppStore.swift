@@ -123,7 +123,11 @@ final class AppStore: ObservableObject {
     /// record they own. So while this is set, nothing is pushed, and the first
     /// records to arrive from the server replace the seed instead of merging
     /// into it.
-    private(set) var isShowingSeedData: Bool
+    ///
+    /// Published because the UI reads it too: onboarding is only for a coach who
+    /// has nothing yet, so the first-run sheet has to disappear the moment their
+    /// season lands.
+    @Published private(set) var isShowingSeedData: Bool
 
     /// Whether iCloud (CloudKit) sync is on, so the coach's data follows them
     /// across devices with record-level merge.

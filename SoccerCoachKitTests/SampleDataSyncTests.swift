@@ -138,6 +138,7 @@ final class SampleDataSyncTests: XCTestCase {
         XCTAssertEqual(store.teams.first?.name, "New FC")
         XCTAssertTrue(allPushedDeletes.isEmpty, "Nothing was on the server to delete")
     }
+
     /// Signing into a fresh account lands on the seed too, and the store has to
     /// know that — otherwise the demo data becomes "theirs" through a different
     /// door than first launch, and their season merges into it on arrival.
@@ -151,5 +152,4 @@ final class SampleDataSyncTests: XCTestCase {
         XCTAssertTrue(store.isShowingSeedData,
                       "A coach with no data yet is looking at a placeholder, not their season")
     }
-
 }
