@@ -93,7 +93,23 @@ final class AppStore: ObservableObject {
     private let remoteSync: RemoteSyncService?
     /// The record set last mirrored remotely, so each persist can push only
     /// what changed.
-    private var lastSyncedRecords: [SyncRecord] = []
+    private var lastSyncedRecords: [SyncRecord] = [] {
+        // Bumped on every assignment, from wherever. A diff computed off the main
+        // actor carries the value this had when it started; if they no longer
+        // match, the state it was diffed against is gone and the result describes
+        // a server that no longer exists.
+        didSet { baselineGeneration &+= 1 }
+    }
+    private var baselineGeneration = 0
+    /// Whether an encode/diff pass is running, and whether more state landed
+    /// while it was — so a burst of edits collapses into one pass rather than one
+    /// pass each.
+    private var isDiffing = false
+    private var needsDiff = false
+    /// Identifies the current pass. A synchronous flush bumps it, which retires
+    /// whatever was in flight: without that, the flush and the pass it overtook
+    /// would both act on the same diff.
+    private var diffPassToken = 0
     /// True while applying a remote change, so it isn't re-uploaded.
     private var isApplyingRemote = false
     /// True while the app is showing the sample seed rather than the coach's own
@@ -257,27 +273,86 @@ final class AppStore: ObservableObject {
     /// sync baseline backward past a newer push that already advanced it.
     private var pushGeneration = 0
 
-    /// Pushes local record changes to the remote (diffed against the last sync).
+    /// Queues a push of local record changes, diffed against the last sync.
+    ///
+    /// The encode and diff happen off the main actor. `records(from:)`
+    /// JSON-encodes every entity in the snapshot, and this runs from `persist()`
+    /// — so on the main thread it re-encoded the coach's whole season on every
+    /// attendance tap, score change, and character typed into a notes field. That
+    /// is the same problem `UserDefaultsPersistenceService` solves for the
+    /// snapshot write, and this mirrors its shape: coalesce, work on a background
+    /// queue, and offer a synchronous flush for the moments that can't wait.
     private func syncLocalChanges() {
-        guard let remoteSync, cloudSyncEnabled else { return }
-        // The seed is a placeholder, not the coach's data: pushing it would put a
-        // demo team in their account, and diffing against it would raise deletes
-        // for records it never contained.
-        guard !isShowingSeedData else { return }
-        let current = SyncRecords.records(from: snapshot)
+        guard remoteSync != nil, cloudSyncEnabled, !isShowingSeedData else { return }
+
+        // A change just applied from the remote is already in sync; adopt it as
+        // the baseline so it isn't echoed back. This one stays synchronous:
+        // `isApplyingRemote` is only true for the duration of the restore that
+        // set it, so a deferred pass would run after it had been cleared and
+        // would push the remote's own change straight back at it.
+        guard !isApplyingRemote else {
+            lastSyncedRecords = SyncRecords.records(from: snapshot)
+            return
+        }
+
+        needsDiff = true
+        startDiffPassIfIdle()
+    }
+
+    private func startDiffPassIfIdle() {
+        guard needsDiff, !isDiffing,
+              remoteSync != nil, cloudSyncEnabled, !isShowingSeedData else { return }
+        isDiffing = true
+        needsDiff = false
+
+        // Read the state as it is now, not as it was when the edit landed: a pass
+        // deferred behind a burst should describe where the burst ended up.
+        let current = snapshot
+        let baseline = lastSyncedRecords
+        let generation = baselineGeneration
+        diffPassToken &+= 1
+        let token = diffPassToken
+        Task.detached(priority: .utility) { [weak self] in
+            let records = SyncRecords.records(from: current)
+            let (upserts, deletes) = SyncRecords.diff(from: baseline, to: records)
+            await self?.completeDiffPass(records: records, upserts: upserts, deletes: deletes,
+                                         baselineGeneration: generation, token: token)
+        }
+    }
+
+    /// Tail of a background pass: it owns the in-flight flag and the restart.
+    private func completeDiffPass(records: [SyncRecord], upserts: [SyncRecord],
+                                  deletes: [SyncRecordKey], baselineGeneration generation: Int,
+                                  token: Int) {
+        // A flush overtook this pass and has already dealt with the state it was
+        // describing. It no longer owns the in-flight flag either, so leave both
+        // the flag and the restart to whoever does.
+        guard token == diffPassToken else { return }
+        isDiffing = false
+        // Whatever happens below, pick up anything that landed while encoding.
+        defer { startDiffPassIfIdle() }
+        applyDiff(records: records, upserts: upserts, deletes: deletes, baselineGeneration: generation)
+    }
+
+    private func applyDiff(records: [SyncRecord], upserts: [SyncRecord],
+                           deletes: [SyncRecordKey], baselineGeneration generation: Int) {
+        // The baseline moved while we were encoding — a remote change was applied,
+        // or an earlier push landed — so this diff describes a server state that
+        // no longer holds. Acting on it could delete records the remote just sent.
+        // Redo it instead.
+        guard generation == baselineGeneration else {
+            needsDiff = true
+            return
+        }
+        guard let remoteSync, cloudSyncEnabled, !isShowingSeedData else { return }
 
         // Every baseline change — here or in an in-flight push's completion —
         // supersedes older ones, so a late completion can't move the baseline
         // backward past newer state.
         pushGeneration += 1
-        let generation = pushGeneration
+        let pushTag = pushGeneration
 
-        // A change we just applied from the remote is already in sync; adopt it as
-        // the baseline so it isn't echoed back, and stop.
-        guard !isApplyingRemote else { lastSyncedRecords = current; return }
-
-        let (upserts, deletes) = SyncRecords.diff(from: lastSyncedRecords, to: current)
-        guard !upserts.isEmpty || !deletes.isEmpty else { lastSyncedRecords = current; return }
+        guard !upserts.isEmpty || !deletes.isEmpty else { lastSyncedRecords = records; return }
 
         // Advance the baseline only once the push actually lands. This used to run
         // in a `defer` — before the fire-and-forget push had even started — so a
@@ -286,9 +361,28 @@ final class AppStore: ObservableObject {
         // baseline put on failure means the records reappear in the next diff and
         // retry on the next local edit.
         remoteSync.push(upserts: upserts, deletes: deletes) { [weak self] landed in
-            guard let self, landed, generation == self.pushGeneration else { return }
-            self.lastSyncedRecords = current
+            guard let self, landed, pushTag == self.pushGeneration else { return }
+            self.lastSyncedRecords = records
         }
+    }
+
+    /// Runs any queued diff immediately, on the caller's thread.
+    ///
+    /// Needed wherever a deferred pass would simply never happen — the app
+    /// suspending — and by tests, which need the push to be observable at the
+    /// point they assert on it rather than whenever a background task gets to it.
+    func flushPendingRemoteSync() {
+        guard needsDiff || isDiffing else { return }
+        guard remoteSync != nil, cloudSyncEnabled, !isShowingSeedData else { return }
+        // Retire any in-flight pass and take ownership of the state it was
+        // describing, so this and it can't both act on the same diff.
+        diffPassToken &+= 1
+        isDiffing = false
+        needsDiff = false
+        let records = SyncRecords.records(from: snapshot)
+        let (upserts, deletes) = SyncRecords.diff(from: lastSyncedRecords, to: records)
+        applyDiff(records: records, upserts: upserts, deletes: deletes,
+                  baselineGeneration: baselineGeneration)
     }
 
     /// The store used at launch: persisted snapshot if present and readable,
@@ -412,6 +506,8 @@ final class AppStore: ObservableObject {
     /// about to suspend so the latest state is durable before termination.
     func flushPendingWrites() {
         persistence.flushPendingSync()
+        // A queued diff would otherwise be dropped by the suspend it was racing.
+        flushPendingRemoteSync()
         gameDay.saveBeforeSuspending()
     }
 

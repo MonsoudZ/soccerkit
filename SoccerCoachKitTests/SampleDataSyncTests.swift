@@ -22,6 +22,7 @@ final class SampleDataSyncTests: XCTestCase {
         let store = AppStore(snapshot: SampleData.snapshot,
                              persistence: InMemoryPersistence(), remoteSync: mock)
         store.cloudSyncEnabled = true
+        store.flushPendingRemoteSync()
         return store
     }
 
@@ -87,6 +88,7 @@ final class SampleDataSyncTests: XCTestCase {
         // The coach explores the sample data and decides to keep it, adding their
         // own team alongside. The seed is theirs now.
         store.addTeam(name: "My Team", ageGroup: .u10, season: "2026")
+        store.flushPendingRemoteSync()
 
         XCTAssertFalse(store.isShowingSeedData)
         let uploadedTeamIDs = Set(allPushedUpserts.filter { $0.type == .team }.map(\.id))
@@ -102,6 +104,7 @@ final class SampleDataSyncTests: XCTestCase {
         mock.pushedDeletes.removeAll()
 
         store.resetToSampleData()
+        store.flushPendingRemoteSync()
 
         XCTAssertTrue(allPushedDeletes.isEmpty,
                       "Resetting this device must not tombstone the coach's account")
@@ -116,6 +119,7 @@ final class SampleDataSyncTests: XCTestCase {
         // hasOnboarded is per-device, so a coach adding a second device runs
         // onboarding again — with their real season already downloaded behind it.
         store.startFresh(name: "New FC", ageGroup: .u10, season: "2026", accent: .teal)
+        store.flushPendingRemoteSync()
 
         XCTAssertTrue(allPushedDeletes.isEmpty,
                       "Creating a team must not tombstone the coach's account")
@@ -128,6 +132,7 @@ final class SampleDataSyncTests: XCTestCase {
         let store = seededStore()
 
         store.startFresh(name: "New FC", ageGroup: .u10, season: "2026", accent: .teal)
+        store.flushPendingRemoteSync()
 
         XCTAssertEqual(store.teams.count, 1, "A first-time coach gets a clean start, not the demo teams")
         XCTAssertEqual(store.teams.first?.name, "New FC")

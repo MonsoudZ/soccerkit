@@ -41,8 +41,16 @@ final class SyncWatermarkTests: XCTestCase {
         let store = AppStore(snapshot: TestData.snapshot(playerCount: 1),
                              persistence: InMemoryPersistence(), remoteSync: mock)
         store.cloudSyncEnabled = true
+        store.flushPendingRemoteSync()
         mock.pushedUpserts.removeAll() // ignore any bootstrap push from enabling sync
         return store
+    }
+
+    /// The diff runs off the main actor, so a test has to flush it to observe the
+    /// push at the point it asserts rather than whenever the background task lands.
+    private func addPlayer(_ player: Player, to teamID: UUID, in store: AppStore) {
+        store.addPlayer(player, toTeam: teamID)
+        store.flushPendingRemoteSync()
     }
 
     private func ids(_ batch: [SyncRecord]?) -> Set<String> { Set((batch ?? []).map(\.id)) }
@@ -57,12 +65,12 @@ final class SyncWatermarkTests: XCTestCase {
         let teamID = store.teams[0].id
 
         let p1 = TestData.player(teamID: teamID, number: 10)
-        store.addPlayer(p1, toTeam: teamID)
+        addPlayer(p1, to: teamID, in: store)
         XCTAssertTrue(ids(mock.pushedUpserts.last).contains(p1.id.uuidString),
                       "the first push should carry p1")
 
         let p2 = TestData.player(teamID: teamID, number: 11)
-        store.addPlayer(p2, toTeam: teamID)
+        addPlayer(p2, to: teamID, in: store)
         let latest = ids(mock.pushedUpserts.last)
         XCTAssertTrue(latest.contains(p1.id.uuidString),
                       "p1's failed push must still be in the next diff, not lost")
@@ -78,13 +86,54 @@ final class SyncWatermarkTests: XCTestCase {
         let teamID = store.teams[0].id
 
         let p1 = TestData.player(teamID: teamID, number: 10)
-        store.addPlayer(p1, toTeam: teamID)
+        addPlayer(p1, to: teamID, in: store)
 
         let p2 = TestData.player(teamID: teamID, number: 11)
-        store.addPlayer(p2, toTeam: teamID)
+        addPlayer(p2, to: teamID, in: store)
         let latest = ids(mock.pushedUpserts.last)
         XCTAssertFalse(latest.contains(p1.id.uuidString),
                        "p1 was acknowledged; it must not be re-pushed")
         XCTAssertTrue(latest.contains(p2.id.uuidString))
+    }
+
+    /// The point of deferring the diff: a burst of edits costs one encode of the
+    /// season rather than one each. The pass can only complete back on the main
+    /// actor, which a synchronous test body never yields to, so the burst is
+    /// guaranteed to still be pending when the flush picks it up.
+    func testABurstOfEditsCoalescesIntoASinglePush() {
+        let mock = MockRemoteSync()
+        let store = makeStore(mock)
+        let teamID = store.teams[0].id
+
+        let added = (10...12).map { TestData.player(teamID: teamID, number: $0) }
+        for player in added { store.addPlayer(player, toTeam: teamID) }
+        XCTAssertTrue(mock.pushedUpserts.isEmpty, "The diff is deferred, not run per edit")
+
+        store.flushPendingRemoteSync()
+
+        XCTAssertEqual(mock.pushedUpserts.count, 1, "One push carries the whole burst")
+        let pushed = ids(mock.pushedUpserts.last)
+        for player in added {
+            XCTAssertTrue(pushed.contains(player.id.uuidString), "\(player.name) is in it")
+        }
+    }
+
+    /// Adopting a remote change as the baseline has to stay synchronous. It is
+    /// guarded by a flag that is only set for the duration of the restore, so a
+    /// deferred pass would run after it cleared and push the server's own change
+    /// straight back at it.
+    func testAChangeAppliedFromTheRemoteIsNotEchoedBack() {
+        let mock = MockRemoteSync()
+        let store = makeStore(mock)
+
+        let team = TestData.team()
+        let remote = AppSnapshot(teams: [team], players: [], drills: [], sessions: [],
+                                 diagrams: [], games: [], events: [], selectedTeamID: team.id)
+        mock.applyRemoteChanges?(SyncRecords.records(from: remote), [])
+        store.flushPendingRemoteSync()
+
+        XCTAssertTrue(store.teams.contains { $0.id == team.id }, "The remote change was applied")
+        XCTAssertTrue(mock.pushedUpserts.isEmpty,
+                      "A change that came from the server is not pushed back at it")
     }
 }
