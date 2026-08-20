@@ -72,9 +72,44 @@ enum SyncRecords {
         return records
     }
 
-    /// The one record for a specific id (used to materialize a CKRecord on demand).
+    /// The one record for a specific id (used to materialize a CKRecord on
+    /// demand).
+    ///
+    /// Encodes only the entity that was asked for. `CKSyncEngine` calls this once
+    /// per record in a batch, so routing it through `records(from:)` — which
+    /// encodes every entity in the snapshot — cost one full-snapshot encode per
+    /// record in the batch, making a push quadratic in the size of the coach's
+    /// data. The bootstrap push, a single batch holding the whole season, is
+    /// exactly the worst case.
     static func record(from snapshot: AppSnapshot, type: SyncRecordType, id: String) -> SyncRecord? {
-        records(from: snapshot).first { $0.type == type && $0.id == id }
+        // Prefs is the one non-entity record: a singleton with a fixed id and no
+        // backing collection to look up.
+        if type == .prefs {
+            guard id == prefsID,
+                  let payload = try? encoder.encode(Prefs(selectedTeamID: snapshot.selectedTeamID))
+            else { return nil }
+            return SyncRecord(type: .prefs, id: prefsID, payload: payload)
+        }
+
+        guard let uuid = UUID(uuidString: id) else { return nil }
+        switch type {
+        case .team: return encode(snapshot.teams, id: uuid, as: .team)
+        case .player: return encode(snapshot.players, id: uuid, as: .player)
+        case .drill: return encode(snapshot.drills, id: uuid, as: .drill)
+        case .session: return encode(snapshot.sessions, id: uuid, as: .session)
+        case .diagram: return encode(snapshot.diagrams, id: uuid, as: .diagram)
+        case .game: return encode(snapshot.games, id: uuid, as: .game)
+        case .event: return encode(snapshot.events, id: uuid, as: .event)
+        case .rosterMembership: return encode(snapshot.memberships, id: uuid, as: .rosterMembership)
+        case .person: return encode(snapshot.people, id: uuid, as: .person)
+        case .userAccount: return encode(snapshot.userAccounts, id: uuid, as: .userAccount)
+        case .organization: return encode(snapshot.organizations, id: uuid, as: .organization)
+        case .orgMembership: return encode(snapshot.orgMemberships, id: uuid, as: .orgMembership)
+        case .shareGrant: return encode(snapshot.shareGrants, id: uuid, as: .shareGrant)
+        case .formTemplate: return encode(snapshot.formTemplates, id: uuid, as: .formTemplate)
+        case .formInstance: return encode(snapshot.formInstances, id: uuid, as: .formInstance)
+        case .prefs: return nil // handled above
+        }
     }
 
     /// Upserts a fetched record into a snapshot.
@@ -145,6 +180,15 @@ enum SyncRecords {
         items.compactMap { item in
             (try? encoder.encode(item)).map { SyncRecord(type: type, id: item.id.uuidString, payload: $0) }
         }
+    }
+
+    /// One entity's record. Shares `encoder` with the bulk `encode` above so the
+    /// payload is byte-identical either way — `diff` compares payloads, so a
+    /// difference in encoding would read as a spurious edit on every sync.
+    private static func encode<T: Identifiable & Codable>(_ items: [T], id: UUID, as type: SyncRecordType) -> SyncRecord? where T.ID == UUID {
+        guard let item = items.first(where: { $0.id == id }),
+              let payload = try? encoder.encode(item) else { return nil }
+        return SyncRecord(type: type, id: item.id.uuidString, payload: payload)
     }
 
     private static func upsert<T: Identifiable & Codable>(_ payload: Data, into array: inout [T]) where T.ID == UUID {
