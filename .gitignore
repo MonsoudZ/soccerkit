@@ -1,6 +1,12 @@
 # macOS
 .DS_Store
 
+# The Xcode project is generated from project.yml by XcodeGen — see README.
+# Committing it meant a build artifact tracked alongside its own source, and the
+# two drifted every time either was touched by hand. CI regenerates it on every
+# run and never read the committed copy.
+SoccerCoachKit.xcodeproj/
+
 # Xcode
 build/
 DerivedData/

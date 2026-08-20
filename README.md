@@ -29,7 +29,13 @@ The first build focuses on the coach's weekly loop:
 
 ## Open It
 
-Open `SoccerCoachKit.xcodeproj` in Xcode and run the `SoccerCoachKit` scheme on an iPhone or iPad simulator.
+Generate the Xcode project, then open it and run the `SoccerCoachKit` scheme on an iPhone or iPad simulator:
+
+```sh
+brew install xcodegen   # once
+xcodegen generate       # after every clone, and after any project.yml change
+open SoccerCoachKit.xcodeproj
+```
 
 ## Project Structure
 
@@ -47,12 +53,14 @@ The app follows an MVVM + services layout, grouped by feature:
 
 ## Development
 
-The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonyz/XcodeGen) — treat `project.yml` as the source of truth and regenerate after adding files or changing build settings:
+The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonyz/XcodeGen) — `project.yml` is the source of truth, and the generated `SoccerCoachKit.xcodeproj` is **not** committed (it's gitignored, like any other build product). Regenerate after cloning, after adding files, and after changing build settings:
 
 ```sh
 brew install xcodegen
 xcodegen generate
 ```
+
+Adding a file therefore means adding it to disk under a path `project.yml` already covers and regenerating — never editing the project in Xcode's file navigator, which would be undone by the next generate.
 
 ### Connecting to the Go backend (local dev)
 
@@ -68,6 +76,7 @@ xcodegen generate
 Run the tests from the command line:
 
 ```sh
+xcodegen generate   # if you haven't since cloning or changing project.yml
 xcodebuild test -scheme SoccerCoachKit -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 

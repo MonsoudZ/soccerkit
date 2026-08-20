@@ -55,8 +55,9 @@ xcodebuild -project SoccerCoachKit.xcodeproj -scheme SoccerCoachKit \
 ```
 
 `-allowProvisioningUpdates` lets Xcode register/refresh App IDs and profiles as
-needed. Or just open `SoccerCoachKit.xcodeproj` in Xcode, confirm the team on
-both targets (SoccerCoachKit, GameWidget), and Run to a connected device.
+needed. Or just open `SoccerCoachKit.xcodeproj` in Xcode (after `xcodegen generate` —
+the project isn't committed), confirm the team on both targets (SoccerCoachKit,
+GameWidget), and Run to a connected device.
 
 ### Simulator / CI (unsigned)
 
@@ -64,6 +65,7 @@ Local capability entitlements aren't enforced in the Simulator, and CI builds
 unsigned:
 
 ```sh
+xcodegen generate                     # the project is generated, not committed
 xcodebuild test -project SoccerCoachKit.xcodeproj -scheme SoccerCoachKit \
   -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO
 ```
