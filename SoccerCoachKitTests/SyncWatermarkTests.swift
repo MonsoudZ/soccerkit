@@ -12,6 +12,11 @@ final class MockRemoteSync: RemoteSyncService {
 
     /// The upserts of every push, in order.
     var pushedUpserts: [[SyncRecord]] = []
+    /// Every push tagged with the namespace the service pointed at when it was
+    /// made, so a test can prove a batch never lands in the wrong coach's remote.
+    var pushes: [(namespace: String?, upserts: [SyncRecord], deletes: [SyncRecordKey])] = []
+    /// The namespace currently in effect (nil = guest).
+    private(set) var namespace: String?
     /// What each push's completion reports. `true` = the batch landed.
     var result = true
 
@@ -25,9 +30,10 @@ final class MockRemoteSync: RemoteSyncService {
     func start() {}
     func refresh() { refreshCount += 1 }
     func stop() {}
-    func setNamespace(_ namespace: String?) {}
+    func setNamespace(_ namespace: String?) { self.namespace = namespace }
     func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void) {
         pushedUpserts.append(upserts)
+        pushes.append((namespace: namespace, upserts: upserts, deletes: deletes))
         completion(result)
     }
     func purge(completion: @escaping (Bool) -> Void) {

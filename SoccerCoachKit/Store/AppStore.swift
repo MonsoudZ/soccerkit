@@ -102,6 +102,9 @@ final class AppStore: ObservableObject {
     private var watermark: SyncWatermarkStore { SyncWatermarkStore(namespace: syncNamespace) }
     /// True while applying a remote change, so it isn't re-uploaded.
     private var isApplyingRemote = false
+    /// True while `switchUser` swaps partitions, so the persist that the swap
+    /// itself triggers can't push. See `syncLocalChanges`.
+    private var isSwitchingUser = false
 
     /// Whether iCloud (CloudKit) sync is on, so the coach's data follows them
     /// across devices with record-level merge.
@@ -252,13 +255,25 @@ final class AppStore: ObservableObject {
     /// Pushes local record changes to the remote (diffed against the last sync).
     private func syncLocalChanges() {
         guard let remoteSync, cloudSyncEnabled else { return }
-        let current = SyncRecords.records(from: snapshot)
 
         // Every baseline change — here or in an in-flight push's completion —
         // supersedes older ones, so a late completion can't move the baseline
-        // backward past newer state.
+        // backward past newer state. Bumped before the guards below so a push
+        // still in flight for the outgoing coach can't land after a user switch
+        // and drag the incoming coach's baseline back to it.
         pushGeneration += 1
         let generation = pushGeneration
+
+        // A partition swap is not a local edit, and must not push: the snapshot
+        // being written belongs to the incoming coach while `remoteSync` still
+        // points at the outgoing coach's namespace. Diffing here uploaded one
+        // coach's season into the other's zone — and, because none of the
+        // outgoing coach's records appear in the incoming snapshot, tombstoned
+        // every one of them. `switchUser` sets the baseline itself once both
+        // sides point at the new namespace.
+        guard !isSwitchingUser else { return }
+
+        let current = SyncRecords.records(from: snapshot)
 
         // A change we just applied from the remote is already in sync; adopt it as
         // the baseline so it isn't echoed back, and stop.
@@ -337,11 +352,25 @@ final class AppStore: ObservableObject {
     /// account never sees the previous coach's roster, and no one loses data.
     func switchUser(to userID: String?) {
         watermark.save(syncedDigests) // bank the outgoing coach's baseline
+
+        // Nothing in here may push. `restore` fires a `persist()`, and for the
+        // length of the swap that persist would diff the outgoing coach's
+        // baseline against the incoming coach's snapshot and hand the result to a
+        // `remoteSync` still pointed at the outgoing coach's namespace — writing
+        // one coach's season into the other's zone and tombstoning the outgoing
+        // coach's records along the way. The baseline is set explicitly below
+        // instead, once every side names the new partition.
+        isSwitchingUser = true
+        defer { isSwitchingUser = false }
+
         persistence.setNamespace(userID)
         syncNamespace = userID
         restore(Self.loadSnapshot(from: persistence), adoptVersion: true)
         syncedDigests = watermark.load()
             ?? SyncRecords.digests(from: SyncRecords.records(from: snapshot))
+        // Last, and after `restore`: both services re-point asynchronously and
+        // read `snapshotProvider` when they do, so the incoming snapshot has to
+        // be loaded before they look.
         remoteSync?.setNamespace(userID)
     }
 
