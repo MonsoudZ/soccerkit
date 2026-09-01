@@ -70,6 +70,7 @@
 		48A47D72960BC336B847C31F /* PlayerDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 579F573224031508619F1068 /* PlayerDeletionTests.swift */; };
 		491A09353FC5B995DC197634 /* UndoAndOnboardingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE36A74989B7D4D3E99B363C /* UndoAndOnboardingTests.swift */; };
 		49F926A64C41345BF7FA44E4 /* AuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6420E11FEE914E4CE04BCE8F /* AuthTests.swift */; };
+		4AB95D18C6C9C18D28C039B5 /* CredentialStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A032F396073FA55EAB3572 /* CredentialStateTests.swift */; };
 		4C4D125EA0F196A08DC44302 /* CloudKitSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77272CF68BBE4E97AA8415F4 /* CloudKitSyncService.swift */; };
 		4FD4DBEAEE03194D35285179 /* RosterMembershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E9113918058E64FC7A33D3 /* RosterMembershipTests.swift */; };
 		50A2FD13DE97E4F105C3CB9E /* GameReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821EFBF7CF708FA1FAC9500A /* GameReportView.swift */; };
@@ -436,6 +437,7 @@
 		DF006DC70EE25A4FA70938F5 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		E000B301A0E0880343CAA894 /* GameFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameFormViewModel.swift; sourceTree = "<group>"; };
 		E027F0A69041086C12D31B40 /* GameWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GameWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1A032F396073FA55EAB3572 /* CredentialStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStateTests.swift; sourceTree = "<group>"; };
 		E283044F9FD0730BBA851B0D /* AuthController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthController.swift; sourceTree = "<group>"; };
 		E2B15765B4A0F722BDB9B758 /* DrillLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillLibraryView.swift; sourceTree = "<group>"; };
 		E32C75C924C9B0748E97D82E /* AppSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSection.swift; sourceTree = "<group>"; };
@@ -534,6 +536,7 @@
 				4B07991E52277EEF7E5A6E7C /* CalendarFilterTests.swift */,
 				1C7BEBC129C0E4C75C954741 /* CoachIdentityTests.swift */,
 				53232505D31526D37D095C40 /* CodableMigrationTests.swift */,
+				E1A032F396073FA55EAB3572 /* CredentialStateTests.swift */,
 				3D6FF90BDF1EE67F1C42C609 /* DevelopmentTests.swift */,
 				72A71DF027E8FE9FA76AAF57 /* DiagramAttachmentTests.swift */,
 				3D817EE3E47AB008B3FE89CB /* EvaluationReadModelTests.swift */,
@@ -1277,6 +1280,7 @@
 				E539C349AF8E7AAF7A5CE767 /* CalendarFilterTests.swift in Sources */,
 				3F27414220C304E8B0B4AED7 /* CoachIdentityTests.swift in Sources */,
 				83593E6B307A131E210B9FC6 /* CodableMigrationTests.swift in Sources */,
+				4AB95D18C6C9C18D28C039B5 /* CredentialStateTests.swift in Sources */,
 				2E88A421D16EC840389878B3 /* DevelopmentTests.swift in Sources */,
 				46CB8AA41E5D18BDC1760F91 /* DiagramAttachmentTests.swift in Sources */,
 				D5791BDFF208485BB6B6EE76 /* EvaluationReadModelTests.swift in Sources */,

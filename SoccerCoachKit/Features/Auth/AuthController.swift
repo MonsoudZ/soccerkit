@@ -73,12 +73,42 @@ final class AuthController: ObservableObject {
         }
     }
 
-    /// Re-checks the stored Apple credential on launch and signs out if it was
-    /// revoked or is no longer found.
+    /// Whether a credential-state check means the coach's Apple session is over.
+    ///
+    /// Only a credential that is definitively gone ends the session. This used to
+    /// be `state != .authorized`, which swept up two cases it shouldn't:
+    ///
+    /// - A check that *failed*. The error was discarded, and a failed check
+    ///   reports `.notFound` — indistinguishable, from the state alone, from a
+    ///   credential the user actually deleted. So a transient failure signed the
+    ///   coach out.
+    /// - `.transferred`, which means the app moved to a different developer team.
+    ///   The coach is still signed in; the account just needs migrating.
+    ///
+    /// This runs on every launch, and signing out is expensive: it drops the
+    /// coach into the guest namespace — an app that looks empty, because their
+    /// data lives under their own partition — and clears the backend session, so
+    /// getting back needs a full Sign in with Apple round-trip. Staying signed in
+    /// on an inconclusive answer costs nothing by comparison; the next launch
+    /// checks again.
+    /// `nonisolated` because the credential-state completion runs off the main
+    /// actor; the decision is pure, so it needs no isolation.
+    nonisolated static func shouldSignOut(state: ASAuthorizationAppleIDProvider.CredentialState,
+                                          error: Error?) -> Bool {
+        guard error == nil else { return false }
+        switch state {
+        case .revoked, .notFound: return true
+        case .authorized, .transferred: return false
+        @unknown default: return false // a state we don't understand is not proof
+        }
+    }
+
+    /// Re-checks the stored Apple credential on launch and signs out only if it
+    /// was revoked or is genuinely no longer there.
     func refreshCredentialState() {
         guard let userID else { return }
-        ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { [weak self] state, _ in
-            guard state != .authorized else { return }
+        ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { [weak self] state, error in
+            guard Self.shouldSignOut(state: state, error: error) else { return }
             Task { @MainActor in self?.signOut() }
         }
     }
