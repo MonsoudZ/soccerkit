@@ -60,7 +60,7 @@ final class SyncPushIntegrityTests: XCTestCase {
         let pulled = expectation(description: "service is running")
         service.onStatusChange = { if case .synced = $0 { pulled.fulfill() } }
         service.start()
-        wait(for: [pulled], timeout: 5)
+        wait(for: [pulled], timeout: 20)
         service.onStatusChange = nil
     }
 
@@ -89,7 +89,7 @@ final class SyncPushIntegrityTests: XCTestCase {
             result = $0
             landed.fulfill()
         }
-        wait(for: [landed], timeout: 5)
+        wait(for: [landed], timeout: 20)
 
         XCTAssertEqual(result, false, "a batch that dropped a record must not report as landed")
     }
@@ -111,7 +111,7 @@ final class SyncPushIntegrityTests: XCTestCase {
             return (200, Data(#"{"conflicts":[],"cursor":"2"}"#.utf8))
         }
         service.push(upserts: [good, unencodableRecord()], deletes: []) { _ in landed.fulfill() }
-        wait(for: [landed], timeout: 5)
+        wait(for: [landed], timeout: 20)
 
         XCTAssertEqual(pushed.map(\.id), [good.id], "the encodable record must still reach the server")
     }
@@ -128,7 +128,7 @@ final class SyncPushIntegrityTests: XCTestCase {
             if case .synced = status { XCTFail("an incomplete batch must not report as synced") }
         }
         service.push(upserts: [unencodableRecord()], deletes: []) { _ in }
-        wait(for: [reported], timeout: 5)
+        wait(for: [reported], timeout: 20)
     }
 
     /// The healthy path is unchanged: a fully-encodable batch is acknowledged.
@@ -142,7 +142,7 @@ final class SyncPushIntegrityTests: XCTestCase {
             result = $0
             landed.fulfill()
         }
-        wait(for: [landed], timeout: 5)
+        wait(for: [landed], timeout: 20)
 
         XCTAssertEqual(result, true)
     }

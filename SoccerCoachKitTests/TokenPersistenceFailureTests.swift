@@ -76,7 +76,7 @@ final class TokenPersistenceFailureTests: XCTestCase {
             if case .failed = status { failed.fulfill() }
         }
         service.start()
-        wait(for: [failed], timeout: 5)
+        wait(for: [failed], timeout: 20)
         service.stop()
 
         XCTAssertTrue(storage.attemptedKeys.contains("backendAuthToken"),

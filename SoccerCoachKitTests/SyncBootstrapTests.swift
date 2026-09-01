@@ -35,6 +35,11 @@ final class SyncBootstrapTests: XCTestCase {
         return (service, tokens)
     }
 
+    /// Waits are on stubbed responses, so a healthy run returns in milliseconds.
+    /// The ceiling only has to outlast a loaded CI runner — this suite has twice
+    /// failed there on a 5s wait while passing 25 consecutive local iterations.
+    private let timeout: TimeInterval = 20
+
     private func freshDefaults() -> UserDefaults {
         UserDefaults(suiteName: "bootstrap-tests-\(UUID().uuidString)")!
     }
@@ -82,7 +87,7 @@ final class SyncBootstrapTests: XCTestCase {
             if upserts.count == expected { pushed.fulfill() }
         }
         service.start()
-        wait(for: [pushed], timeout: 5)
+        wait(for: [pushed], timeout: timeout)
     }
 
     /// And it happens once: a second launch against the same namespace must not
@@ -93,7 +98,8 @@ final class SyncBootstrapTests: XCTestCase {
         capturePushes { _ in first.fulfill() }
         let (service, _) = makeService(defaults: defaults)
         service.start()
-        wait(for: [first], timeout: 5)
+        wait(for: [first], timeout: timeout)
+        service.stop() // so only the relaunched service can push below
 
         // A fresh service over the same namespace/defaults — i.e. the next launch.
         var pushCount = 0
@@ -102,7 +108,7 @@ final class SyncBootstrapTests: XCTestCase {
         let pulled = expectation(description: "second start completes its pull")
         relaunched.onStatusChange = { if case .synced = $0 { pulled.fulfill() } }
         relaunched.start()
-        wait(for: [pulled], timeout: 5)
+        wait(for: [pulled], timeout: timeout)
 
         XCTAssertEqual(pushCount, 0, "an already-bootstrapped namespace must not re-upload everything")
     }
@@ -125,13 +131,14 @@ final class SyncBootstrapTests: XCTestCase {
         }
         let (service, _) = makeService(defaults: defaults)
         service.start()
-        wait(for: [failed], timeout: 5)
+        wait(for: [failed], timeout: timeout)
+        service.stop() // only the relaunched service may drive phase two
 
         let retried = expectation(description: "the next start retries the bootstrap")
         capturePushes { _ in retried.fulfill() }
         let (relaunched, _) = makeService(defaults: defaults)
         relaunched.start()
-        wait(for: [retried], timeout: 5)
+        wait(for: [retried], timeout: timeout)
     }
 
     /// Purging the account drops the bootstrap flag: the server's copy is gone,
@@ -142,19 +149,20 @@ final class SyncBootstrapTests: XCTestCase {
         capturePushes { _ in bootstrapped.fulfill() }
         let (service, _) = makeService(defaults: defaults)
         service.start()
-        wait(for: [bootstrapped], timeout: 5)
+        wait(for: [bootstrapped], timeout: timeout)
+        service.stop()
 
         StubURLProtocol.responder = { req in
             (req.httpMethod == "DELETE" && req.url?.path == "/v1/me") ? (204, Data()) : (500, Data())
         }
         let purged = expectation(description: "purge completes")
         service.purge { XCTAssertTrue($0); purged.fulfill() }
-        wait(for: [purged], timeout: 5)
+        wait(for: [purged], timeout: timeout)
 
         let reUploaded = expectation(description: "a later start uploads again")
         capturePushes { _ in reUploaded.fulfill() }
         let (relaunched, _) = makeService(defaults: defaults)
         relaunched.start()
-        wait(for: [reUploaded], timeout: 5)
+        wait(for: [reUploaded], timeout: timeout)
     }
 }
