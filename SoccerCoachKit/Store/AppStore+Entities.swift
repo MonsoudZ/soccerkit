@@ -151,13 +151,7 @@ extension AppStore {
                 updated.rsvps.removeValue(forKey: player.id)
                 return updated
             }
-            games = games.map { game in
-                var updated = game
-                updated.rsvps.removeValue(forKey: player.id)
-                updated.attendance.removeValue(forKey: player.id)
-                updated.playerReports.removeValue(forKey: player.id)
-                return updated
-            }
+            games = games.map { $0.removingPlayer(player.id) }
             events = events.map { event in
                 var updated = event
                 updated.rsvps.removeValue(forKey: player.id)

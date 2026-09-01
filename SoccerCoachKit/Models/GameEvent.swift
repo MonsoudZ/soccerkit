@@ -44,6 +44,26 @@ struct GameEvent: Identifiable, Hashable, Codable {
         self.coachPostMatch = coachPostMatch
     }
 
+    /// This game with every trace of a player removed.
+    ///
+    /// A game keys five separate dictionaries by player id, and the delete
+    /// cascade used to clear them by hand at the call site — so when the
+    /// questionnaires feature added `preMatchCheckIns` and
+    /// `postMatchReflections`, the cascade wasn't extended and a deleted player's
+    /// wellness answers (sleep, mood, pain, injury) survived on every game they
+    /// were recorded in, exported and synced with the rest. Removal lives here
+    /// now, beside the dictionaries themselves, so a sixth one is handled by the
+    /// same method rather than by remembering.
+    func removingPlayer(_ playerID: UUID) -> GameEvent {
+        var updated = self
+        updated.rsvps.removeValue(forKey: playerID)
+        updated.attendance.removeValue(forKey: playerID)
+        updated.playerReports.removeValue(forKey: playerID)
+        updated.preMatchCheckIns.removeValue(forKey: playerID)
+        updated.postMatchReflections.removeValue(forKey: playerID)
+        return updated
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
         case teamID
