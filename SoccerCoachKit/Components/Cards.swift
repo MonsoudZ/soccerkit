@@ -80,7 +80,7 @@ struct GameSummaryCard: View {
     let game: GameEvent
 
     var body: some View {
-        let summary = store.rsvpSummary(game.rsvps)
+        let summary = store.rsvpSummary(for: game)
 
         VStack(alignment: .leading, spacing: 10) {
             HStack {

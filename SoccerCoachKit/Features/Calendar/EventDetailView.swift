@@ -44,7 +44,7 @@ struct EventDetailView: View {
                     } header: {
                         Text("RSVP")
                     } footer: {
-                        let summary = store.rsvpSummary(event.rsvps)
+                        let summary = store.rsvpSummary(for: event)
                         Text("\(summary.going) going · \(summary.maybe) maybe · \(summary.notGoing) not going · \(summary.total - summary.going - summary.maybe - summary.notGoing) no response")
                     }
                 }

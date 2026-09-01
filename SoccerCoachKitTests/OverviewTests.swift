@@ -24,6 +24,36 @@ final class OverviewTests: XCTestCase {
         XCTAssertEqual(s.players.count, 3, "total spans all teams")
     }
 
+    /// Attendance and RSVP totals belong to the fixture's own team.
+    ///
+    /// The bug: both summaries counted against `roster`, which is always the
+    /// *selected* team. `CoachOverviewView` renders `soonestGame`, which ranges
+    /// over every team, so as soon as the soonest fixture belonged to another
+    /// team its own players failed the membership filter and the total came from
+    /// a squad they aren't in — "0 going of 3" for a game whose whole squad had
+    /// replied.
+    func testSummariesCountAgainstTheFixturesOwnTeam() {
+        let selected = TestData.team(), other = TestData.team()
+        let mine = TestData.player(teamID: selected.id, number: 1)
+        let theirs = (1...3).map { TestData.player(teamID: other.id, number: $0) }
+
+        var game = GameEvent(id: UUID(), teamID: other.id, opponent: "X",
+                             date: Date().addingTimeInterval(3600))
+        for player in theirs { game.rsvps[player.id] = .going }
+        for player in theirs { game.attendance[player.id] = .present }
+
+        let s = store(teams: [selected, other], players: [mine] + theirs, games: [game])
+        XCTAssertEqual(s.selectedTeamID, selected.id, "the other team's fixture is the one under test")
+
+        let rsvp = s.rsvpSummary(for: game)
+        XCTAssertEqual(rsvp.going, 3, "every player on the fixture's team replied")
+        XCTAssertEqual(rsvp.total, 3, "out of that team's squad, not the selected team's")
+
+        let attendance = s.attendanceSummary(for: game)
+        XCTAssertEqual(attendance.present, 3)
+        XCTAssertEqual(attendance.total, 3)
+    }
+
     func testSoonestGameAcrossTeamsAndPerTeamNext() {
         let a = TestData.team(), b = TestData.team()
         func game(_ team: UUID, daysFromNow: Int) -> GameEvent {

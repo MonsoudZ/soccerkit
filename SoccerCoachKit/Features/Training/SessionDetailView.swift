@@ -179,7 +179,7 @@ struct SessionDetailView: View {
                     } header: {
                         Text("RSVP")
                     } footer: {
-                        let summary = store.rsvpSummary(session.rsvps)
+                        let summary = store.rsvpSummary(for: session)
                         Text("\(summary.going) going · \(summary.maybe) maybe · \(summary.notGoing) not going · \(summary.total - summary.going - summary.maybe - summary.notGoing) no response")
                     }
 

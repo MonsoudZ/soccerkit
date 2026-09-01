@@ -128,7 +128,7 @@ struct GameDetailView: View {
                     } header: {
                         Text("RSVP")
                     } footer: {
-                        let summary = store.rsvpSummary(game.rsvps)
+                        let summary = store.rsvpSummary(for: game)
                         Text("\(summary.going) going · \(summary.maybe) maybe · \(summary.notGoing) not going · \(summary.total - summary.going - summary.maybe - summary.notGoing) no response")
                     }
 
