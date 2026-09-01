@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// One CloudKit record type per entity, so two devices editing *different*
@@ -160,18 +161,42 @@ enum SyncRecords {
         }
     }
 
-    /// What changed between two snapshots, as records to upload and keys to delete.
+    /// A stable fingerprint of a payload, so the sync baseline can be remembered
+    /// across launches without storing a second copy of the whole dataset.
+    ///
+    /// SHA-256 rather than `hashValue`: Swift seeds its hashing per process, so
+    /// `hashValue` differs between launches and a watermark built from it would
+    /// mark every record as changed on every launch.
+    static func digest(_ payload: Data) -> String {
+        SHA256.hash(data: payload).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// The fingerprint of every record in a set — the durable form of "what the
+    /// remote has".
+    static func digests(from records: [SyncRecord]) -> [SyncRecordKey: String] {
+        Dictionary(records.map { (SyncRecordKey($0.type, $0.id), digest($0.payload)) },
+                   uniquingKeysWith: { a, _ in a })
+    }
+
+    /// What changed since the baseline, as records to upload and keys to delete.
+    ///
+    /// Takes fingerprints rather than records so the caller can hold a baseline
+    /// that survives relaunch: keeping whole payloads in memory meant the
+    /// baseline was rebuilt from local data at every launch, which silently
+    /// declared everything already synced and dropped any edit made while the
+    /// remote was unreachable.
+    static func diff(fromDigests old: [SyncRecordKey: String], to new: [SyncRecord])
+        -> (upserts: [SyncRecord], deletes: [SyncRecordKey]) {
+        let newKeys = Set(new.map { SyncRecordKey($0.type, $0.id) })
+        let upserts = new.filter { old[SyncRecordKey($0.type, $0.id)] != digest($0.payload) }
+        let deletes = old.keys.filter { !newKeys.contains($0) }
+        return (upserts, deletes)
+    }
+
+    /// What changed between two record sets. Thin wrapper over the digest form.
     static func diff(from old: [SyncRecord], to new: [SyncRecord])
         -> (upserts: [SyncRecord], deletes: [SyncRecordKey]) {
-        let oldMap = Dictionary(old.map { (SyncRecordKey($0.type, $0.id), $0.payload) }, uniquingKeysWith: { a, _ in a })
-        let newKeys = Set(new.map { SyncRecordKey($0.type, $0.id) })
-
-        let upserts = new.filter { oldMap[SyncRecordKey($0.type, $0.id)] != $0.payload }
-        let deletes = old.compactMap { record -> SyncRecordKey? in
-            let key = SyncRecordKey(record.type, record.id)
-            return newKeys.contains(key) ? nil : key
-        }
-        return (upserts, deletes)
+        diff(fromDigests: digests(from: old), to: new)
     }
 
     // MARK: Helpers

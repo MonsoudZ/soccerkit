@@ -91,9 +91,15 @@ final class AppStore: ObservableObject {
     /// The remote sync backend — CloudKit today, the Go API once configured.
     /// Both satisfy `RemoteSyncService`, so the store code is transport-agnostic.
     private let remoteSync: RemoteSyncService?
-    /// The record set last mirrored remotely, so each persist can push only
-    /// what changed.
-    private var lastSyncedRecords: [SyncRecord] = []
+    /// Fingerprints of the records the remote is known to have, so each persist
+    /// pushes only what changed. Loaded at launch and written back on suspend:
+    /// rebuilding it from local data every launch declared everything already
+    /// synced, which quietly dropped any edit made while the remote was
+    /// unreachable.
+    private var syncedDigests: [SyncRecordKey: String] = [:]
+    /// Which coach's baseline is loaded (nil = guest), so a user switch swaps it.
+    private var syncNamespace: String?
+    private var watermark: SyncWatermarkStore { SyncWatermarkStore(namespace: syncNamespace) }
     /// True while applying a remote change, so it isn't re-uploaded.
     private var isApplyingRemote = false
 
@@ -104,7 +110,6 @@ final class AppStore: ObservableObject {
             UserDefaults.standard.set(cloudSyncEnabled, forKey: "iCloudSyncEnabled")
             if cloudSyncEnabled {
                 remoteSync?.start()
-                lastSyncedRecords = SyncRecords.records(from: snapshot)
                 syncLocalChanges()
             } else {
                 remoteSync?.stop()
@@ -176,7 +181,8 @@ final class AppStore: ObservableObject {
 
     init(snapshot: AppSnapshot,
          persistence: PersistenceService = UserDefaultsPersistenceService(),
-         remoteSync: RemoteSyncService? = nil) {
+         remoteSync: RemoteSyncService? = nil,
+         namespace: String? = nil) {
         let resolvedTeams = Self.atLeastOneTeam(snapshot.teams)
         self.teams = resolvedTeams
         self.players = snapshot.players
@@ -200,7 +206,13 @@ final class AppStore: ObservableObject {
         self.cloudSyncEnabled = (UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool) ?? (remoteSync != nil)
         self.eventRemindersEnabled = UserDefaults.standard.bool(forKey: "eventRemindersEnabled")
         self.reminderLeadMinutes = (UserDefaults.standard.object(forKey: "reminderLeadMinutes") as? Int) ?? 60
-        self.lastSyncedRecords = SyncRecords.records(from: snapshot)
+        self.syncNamespace = namespace
+        // Fall back to the current snapshot when there's no stored baseline: the
+        // services' one-time bootstrap owns the initial full upload, so an
+        // upgrade shouldn't re-push the whole season just because this is the
+        // first launch that keeps a watermark.
+        self.syncedDigests = SyncWatermarkStore(namespace: namespace).load()
+            ?? SyncRecords.digests(from: SyncRecords.records(from: snapshot))
         self.gameDay = GameDayViewModel()
         publishWidgetData()
         if let remoteSync {
@@ -242,10 +254,13 @@ final class AppStore: ObservableObject {
 
         // A change we just applied from the remote is already in sync; adopt it as
         // the baseline so it isn't echoed back, and stop.
-        guard !isApplyingRemote else { lastSyncedRecords = current; return }
+        guard !isApplyingRemote else { syncedDigests = SyncRecords.digests(from: current); return }
 
-        let (upserts, deletes) = SyncRecords.diff(from: lastSyncedRecords, to: current)
-        guard !upserts.isEmpty || !deletes.isEmpty else { lastSyncedRecords = current; return }
+        let (upserts, deletes) = SyncRecords.diff(fromDigests: syncedDigests, to: current)
+        guard !upserts.isEmpty || !deletes.isEmpty else {
+            syncedDigests = SyncRecords.digests(from: current)
+            return
+        }
 
         // Advance the baseline only once the push actually lands. This used to run
         // in a `defer` — before the fire-and-forget push had even started — so a
@@ -255,7 +270,7 @@ final class AppStore: ObservableObject {
         // retry on the next local edit.
         remoteSync.push(upserts: upserts, deletes: deletes) { [weak self] landed in
             guard let self, landed, generation == self.pushGeneration else { return }
-            self.lastSyncedRecords = current
+            self.syncedDigests = SyncRecords.digests(from: current)
         }
     }
 
@@ -271,7 +286,8 @@ final class AppStore: ObservableObject {
         let snapshot = Self.loadSnapshot(from: persistence)
 
         return AppStore(snapshot: snapshot, persistence: persistence,
-                        remoteSync: Self.makeRemoteSync(namespace: userID))
+                        remoteSync: Self.makeRemoteSync(namespace: userID),
+                        namespace: userID)
     }
 
     /// Chooses the sync transport at launch:
@@ -312,9 +328,12 @@ final class AppStore: ObservableObject {
     /// the incoming coach's data (or a fresh sample) is loaded — so a different
     /// account never sees the previous coach's roster, and no one loses data.
     func switchUser(to userID: String?) {
+        watermark.save(syncedDigests) // bank the outgoing coach's baseline
         persistence.setNamespace(userID)
+        syncNamespace = userID
         restore(Self.loadSnapshot(from: persistence), adoptVersion: true)
-        lastSyncedRecords = SyncRecords.records(from: snapshot)
+        syncedDigests = watermark.load()
+            ?? SyncRecords.digests(from: SyncRecords.records(from: snapshot))
         remoteSync?.setNamespace(userID)
     }
 
@@ -378,6 +397,10 @@ final class AppStore: ObservableObject {
     /// about to suspend so the latest state is durable before termination.
     func flushPendingWrites() {
         persistence.flushPendingSync()
+        // The sync baseline rides along: this runs when the app leaves the
+        // foreground, which is when a termination realistically follows. Writing
+        // it here rather than on every push keeps a large map off the hot path.
+        watermark.save(syncedDigests)
     }
 
     // MARK: - Derived collections
@@ -536,6 +559,9 @@ final class AppStore: ObservableObject {
         }
         TokenStore().clear()
         persistence.purge()
+        // The remote's copy is gone, so nothing can be assumed synced against it.
+        watermark.clear()
+        syncedDigests = [:]
         return true
     }
 
