@@ -12,6 +12,24 @@ final class StubURLProtocol: URLProtocol {
 
     static func reset() { responder = nil; seenPaths = [] }
 
+    /// The request body. URLSession hands `URLProtocol` an `httpBodyStream`
+    /// rather than `httpBody`, so a test that inspects what was pushed has to
+    /// drain the stream.
+    static func body(of request: URLRequest) -> Data {
+        if let body = request.httpBody { return body }
+        guard let stream = request.httpBodyStream else { return Data() }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        while stream.hasBytesAvailable {
+            let read = stream.read(&buffer, maxLength: buffer.count)
+            if read <= 0 { break }
+            data.append(buffer, count: read)
+        }
+        return data
+    }
+
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func stopLoading() {}

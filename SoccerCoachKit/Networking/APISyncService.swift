@@ -160,16 +160,50 @@ final class APISyncService: RemoteSyncService {
 
     /// Returns whether the batch was acknowledged by the server, so the caller can
     /// hold its sync baseline until a push actually lands.
+    ///
+    /// "Landed" means *every* record in the batch did. A record that fails wire
+    /// encoding used to be dropped by a `compactMap` while the batch still
+    /// reported success, so `AppStore` advanced its baseline past it and the
+    /// record vanished from every later diff — silently unsynced, forever, with
+    /// nothing surfaced. That is the same loss `36074ba` closed for failed
+    /// pushes, reopened one line earlier in the encode.
     private func performPush(upserts: [SyncRecord], deletes: [SyncRecordKey]) async -> Bool {
+        // Encode what we can and keep the good records moving, but remember that
+        // the batch was incomplete.
+        var encoded: [SyncRecordDTO] = []
+        var droppedCount = 0
+        for record in upserts {
+            if let dto = try? SyncWireCodec.dto(from: record) {
+                encoded.append(dto)
+            } else {
+                droppedCount += 1
+                // The payload is JSON this app encoded itself, so failing to read
+                // it back is a bug in our own encoding — assert so a regression is
+                // visible rather than quietly costing a record. Exempt the test
+                // host, which drives this path deliberately to prove the batch is
+                // reported as *not* landed.
+                if !AppEnvironment.isTestingOrUITesting {
+                    assertionFailure("Could not encode \(record.type.rawValue) \(record.id) for the wire")
+                }
+            }
+        }
+
         do {
             let request = SyncPushRequest(
-                upserts: upserts.compactMap { try? SyncWireCodec.dto(from: $0) },
+                upserts: encoded,
                 deletes: deletes.map(SyncWireCodec.keyDTO(from:)),
                 cursor: defaults.string(forKey: cursorKey)
             )
             let response = try await withAuthRetry { try await self.client.push(request) }
             // Adopt any records the server won a conflict on.
             apply(response.conflicts, deletes: [], cursor: response.cursor)
+            guard droppedCount == 0 else {
+                // The server took the rest, but the baseline must not advance:
+                // holding it keeps the dropped records in the next diff so they're
+                // retried instead of lost.
+                onStatusChange?(.failed("Couldn't sync \(droppedCount) item\(droppedCount == 1 ? "" : "s")"))
+                return false
+            }
             onStatusChange?(.synced(Date()))
             return true
         } catch {

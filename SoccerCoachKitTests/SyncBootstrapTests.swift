@@ -13,6 +13,12 @@ import XCTest
 /// so both transports get it and the store's diff logic is untouched.
 @MainActor
 final class SyncBootstrapTests: XCTestCase {
+    /// Every service a test started. They own detached `Task`s, so a service left
+    /// running outlives its test: its next retry lands on the *shared* static
+    /// `StubURLProtocol.responder` and re-fires an expectation the finished test
+    /// already fulfilled, failing whichever test happens to be running. Stopping
+    /// them in `tearDown` keeps each test's traffic inside its own test.
+    private var startedServices: [APISyncService] = []
 
     private func makeService(defaults: UserDefaults) -> (APISyncService, TokenStore) {
         let config = URLSessionConfiguration.ephemeral
@@ -25,6 +31,7 @@ final class SyncBootstrapTests: XCTestCase {
         let service = APISyncService(client: client, namespace: "test",
                                      defaults: defaults, tokenStore: tokens)
         service.snapshotProvider = { TestData.snapshot(playerCount: 3) }
+        startedServices.append(service)
         return (service, tokens)
     }
 
@@ -39,18 +46,7 @@ final class SyncBootstrapTests: XCTestCase {
             case ("GET", "/v1/sync"):
                 return (200, Data(#"{"records":[],"deletes":[],"cursor":"1"}"#.utf8))
             case ("POST", "/v1/sync"):
-                let body = req.httpBody ?? req.httpBodyStream.map { stream -> Data in
-                    stream.open()
-                    defer { stream.close() }
-                    var data = Data()
-                    var buffer = [UInt8](repeating: 0, count: 4096)
-                    while stream.hasBytesAvailable {
-                        let read = stream.read(&buffer, maxLength: buffer.count)
-                        if read <= 0 { break }
-                        data.append(buffer, count: read)
-                    }
-                    return data
-                } ?? Data()
+                let body = StubURLProtocol.body(of: req)
                 let request = try? JSONDecoder().decode(SyncPushRequest.self, from: body)
                 onPush(request?.upserts ?? [])
                 return (200, Data(#"{"conflicts":[],"cursor":"2"}"#.utf8))
@@ -60,8 +56,18 @@ final class SyncBootstrapTests: XCTestCase {
         }
     }
 
-    override func setUp() { super.setUp(); StubURLProtocol.reset() }
-    override func tearDown() { StubURLProtocol.reset(); super.tearDown() }
+    override func setUp() {
+        super.setUp()
+        StubURLProtocol.reset()
+        startedServices = []
+    }
+
+    override func tearDown() {
+        startedServices.forEach { $0.stop() }
+        startedServices = []
+        StubURLProtocol.reset()
+        super.tearDown()
+    }
 
     /// The fix: starting sync for the first time uploads what's already on the
     /// device, not nothing.
