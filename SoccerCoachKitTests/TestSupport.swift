@@ -66,6 +66,21 @@ final class FailingTokenStorage: TokenStorage {
     }
 }
 
+/// A stand-in Info.plist, so the backend-configuration rules can be tested for
+/// what they are rather than against however the running bundle happens to be
+/// built (a developer's gitignored `Config/Local.xcconfig` used to decide the
+/// outcome).
+struct StubInfoDictionary: InfoDictionary {
+    private let values: [String: Any]
+    init(_ values: [String: Any] = [:]) { self.values = values }
+    func infoValue(forKey key: String) -> Any? { values[key] }
+
+    /// No `BackendBaseURL` at all — a build that was never pointed at a server.
+    static let unconfigured = StubInfoDictionary()
+    /// What an unset `$(BACKEND_BASE_URL)` actually expands to in the plist.
+    static let empty = StubInfoDictionary([BackendConfig.baseURLKey: ""])
+}
+
 /// A controllable monotonic clock for `GameDayViewModel` tests.
 final class TestClock {
     var seconds: TimeInterval = 0

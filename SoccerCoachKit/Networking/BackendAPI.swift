@@ -1,18 +1,44 @@
 import Foundation
 
+/// Supplies Info.plist values.
+///
+/// `Bundle` conforms, so the app reads its own Info.plist. The seam exists for
+/// the tests: `BackendConfig`'s rules used to be reachable only through
+/// `Bundle.main`, which made them assertions about *how the running bundle was
+/// built* rather than about the code. A developer who followed the README and
+/// created `Config/Local.xcconfig` turned the suite red, while CI — which has no
+/// such file — stayed green. Injecting the dictionary lets the rules be tested
+/// for what they are.
+protocol InfoDictionary {
+    func infoValue(forKey key: String) -> Any?
+}
+
+extension Bundle: InfoDictionary {
+    func infoValue(forKey key: String) -> Any? { object(forInfoDictionaryKey: key) }
+}
+
 /// Where the Go backend lives and how the app is entitled to it.
 ///
 /// The base URL is read from the `BackendBaseURL` Info.plist key (set it per
-/// build config, e.g. `http://localhost:8080` for local dev). When it's absent
-/// the app has no backend configured and stays entirely on CloudKit + local —
-/// so this whole layer is inert until you point it at a server.
+/// build config, e.g. `http://localhost:8080` for local dev). When it's absent —
+/// or empty, or only whitespace, which is what an unset `$(BACKEND_BASE_URL)`
+/// expands to — the app has no backend configured and stays entirely on CloudKit
+/// + local, so this whole layer is inert until you point it at a server.
 enum BackendConfig {
-    static var baseURL: URL? {
-        guard let raw = Bundle.main.object(forInfoDictionaryKey: "BackendBaseURL") as? String,
+    static let baseURLKey = "BackendBaseURL"
+
+    /// Resolves the backend from a given info dictionary.
+    static func baseURL(in info: InfoDictionary) -> URL? {
+        guard let raw = info.infoValue(forKey: baseURLKey) as? String,
               !raw.trimmingCharacters(in: .whitespaces).isEmpty,
               let url = URL(string: raw) else { return nil }
         return url
     }
+
+    static func isConfigured(in info: InfoDictionary) -> Bool { baseURL(in: info) != nil }
+
+    /// The running app's backend.
+    static var baseURL: URL? { baseURL(in: Bundle.main) }
 
     static var isConfigured: Bool { baseURL != nil }
 }
@@ -129,8 +155,11 @@ struct APIClient {
         let e = JSONEncoder(); e.outputFormatting = [.sortedKeys]; return e
     }
 
-    init?(session: URLSession = .shared, tokenProvider: @escaping () -> String?) {
-        guard let baseURL = BackendConfig.baseURL else { return nil }
+    /// Builds a client for the configured backend, or `nil` when there isn't one.
+    /// `info` defaults to the app's own bundle; tests pass a stub dictionary.
+    init?(info: InfoDictionary = Bundle.main, session: URLSession = .shared,
+          tokenProvider: @escaping () -> String?) {
+        guard let baseURL = BackendConfig.baseURL(in: info) else { return nil }
         self.baseURL = baseURL
         self.session = session
         self.tokenProvider = tokenProvider
