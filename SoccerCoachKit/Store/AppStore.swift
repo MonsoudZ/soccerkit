@@ -127,6 +127,14 @@ final class AppStore: ObservableObject {
         remoteSync?.start()
     }
 
+    /// Fetches remote changes now. Called when the app returns to the foreground,
+    /// so the other device's edits are there when the coach looks — sync used to
+    /// pull once at launch and then wait for the next one.
+    func refreshFromRemote() {
+        guard cloudSyncEnabled else { return }
+        remoteSync?.refresh()
+    }
+
     private let scheduleNotifier = ScheduleNotifier()
 
     /// Whether the coach opted into reminders for upcoming games/practices.

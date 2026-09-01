@@ -20,6 +20,10 @@ protocol RemoteSyncService: AnyObject {
     /// its diff baseline from local data, so without a bootstrap the first diff
     /// is empty and pre-existing data would never reach the remote at all.
     func start()
+    /// Fetches whatever the remote has gained since the last cursor, without
+    /// restarting sync. `start()` pulls once and then never again on its own, so
+    /// without this a second device's changes only showed up at relaunch.
+    func refresh()
     func stop()
     /// Pushes local changes to the remote. `completion(true)` means the batch was
     /// durably accepted (CloudKit) or acknowledged by the server (API); the caller
@@ -72,6 +76,14 @@ final class APISyncService: RemoteSyncService {
             await pull()
             await bootstrapIfNeeded()
         }
+    }
+
+    /// Pulls again on demand — the app calls this when it returns to the
+    /// foreground, which is when a coach expects to see what their other device
+    /// did. No-op while stopped: there is no session to pull with.
+    func refresh() {
+        guard isRunning else { return }
+        Task { await pull() }
     }
 
     func stop() {

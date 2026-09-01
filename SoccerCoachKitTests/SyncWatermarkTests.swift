@@ -19,7 +19,11 @@ final class MockRemoteSync: RemoteSyncService {
     var purgeResult = true
     private(set) var purgeCalled = false
 
+    /// How many times the app asked for a fresh pull.
+    private(set) var refreshCount = 0
+
     func start() {}
+    func refresh() { refreshCount += 1 }
     func stop() {}
     func setNamespace(_ namespace: String?) {}
     func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void) {

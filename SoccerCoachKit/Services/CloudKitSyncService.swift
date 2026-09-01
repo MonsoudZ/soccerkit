@@ -93,6 +93,14 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
         defaults.set(true, forKey: bootstrapKey)
     }
 
+    /// Asks the engine to fetch now. It normally learns of remote changes from
+    /// silent pushes; this covers the case where one didn't arrive (no push
+    /// entitlement in development, or the app was killed when it was sent).
+    func refresh() {
+        guard let engine else { return }
+        Task { try? await engine.fetchChanges() }
+    }
+
     func stop() { engine = nil }
 
     func purge(completion: @escaping (Bool) -> Void) {
