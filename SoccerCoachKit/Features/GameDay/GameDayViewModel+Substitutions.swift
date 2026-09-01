@@ -7,6 +7,7 @@ extension GameDayViewModel {
         guard let outID = selectedOutPlayerID, let inID = selectedInPlayerID else { return }
         reminders.append(SubReminder(id: UUID(), minute: newReminderMinute, outPlayerID: outID, inPlayerID: inID, triggered: false))
         rescheduleNotifications()
+        persistSession()
     }
 
     func applySubstitution(_ reminder: SubReminder) {
@@ -30,11 +31,13 @@ extension GameDayViewModel {
         starterIDs.insert(last.outPlayerID)
         subLog.removeFirst()
         normalizeSelections()
+        persistSession()
     }
 
     func deleteReminder(_ reminder: SubReminder) {
         reminders.removeAll { $0.id == reminder.id }
         rescheduleNotifications()
+        persistSession()
     }
 
     @discardableResult
@@ -49,6 +52,7 @@ extension GameDayViewModel {
             at: 0
         )
         normalizeSelections()
+        persistSession()
         return true
     }
 

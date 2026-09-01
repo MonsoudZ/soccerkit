@@ -81,6 +81,28 @@ struct StubInfoDictionary: InfoDictionary {
     static let empty = StubInfoDictionary([BackendConfig.baseURLKey: ""])
 }
 
+/// In-memory `GameDaySessionStore`, so a relaunch can be simulated by handing
+/// the same store to a second view model without touching the real defaults.
+final class InMemoryGameDaySessionStore: GameDaySessionStore {
+    private(set) var stored: GameDaySession?
+    private(set) var clearCount = 0
+
+    init(_ stored: GameDaySession? = nil) { self.stored = stored }
+
+    func load() -> GameDaySession? { stored }
+    func save(_ session: GameDaySession) { stored = session }
+    func clear() { stored = nil; clearCount += 1 }
+}
+
+/// A controllable wall clock, for the restore rules (which are all about how
+/// much real time passed while the app wasn't running).
+final class TestDate {
+    private(set) var current: Date
+    init(_ start: Date = Date(timeIntervalSince1970: 1_700_000_000)) { current = start }
+    func now() -> Date { current }
+    func advance(_ by: TimeInterval) { current = current.addingTimeInterval(by) }
+}
+
 /// A controllable monotonic clock for `GameDayViewModel` tests.
 final class TestClock {
     var seconds: TimeInterval = 0

@@ -72,6 +72,7 @@
 		49F926A64C41345BF7FA44E4 /* AuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6420E11FEE914E4CE04BCE8F /* AuthTests.swift */; };
 		4AB95D18C6C9C18D28C039B5 /* CredentialStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A032F396073FA55EAB3572 /* CredentialStateTests.swift */; };
 		4C4D125EA0F196A08DC44302 /* CloudKitSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77272CF68BBE4E97AA8415F4 /* CloudKitSyncService.swift */; };
+		4CB34CF197DA3C23F3C8C691 /* GameDaySessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696BA1F5260C9AABDA2C06F2 /* GameDaySessionTests.swift */; };
 		4FD4DBEAEE03194D35285179 /* RosterMembershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03E9113918058E64FC7A33D3 /* RosterMembershipTests.swift */; };
 		50A2FD13DE97E4F105C3CB9E /* GameReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821EFBF7CF708FA1FAC9500A /* GameReportView.swift */; };
 		52D7BF3C476FAAEB78E44115 /* TestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B6A23DC307C0F03CBFB286 /* TestSupport.swift */; };
@@ -196,6 +197,7 @@
 		E645122B0F7964C9A33FAA00 /* DomainColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709FC7448142265BEEB73A63 /* DomainColors.swift */; };
 		E70DAF745985008AFB3AB46B /* TeamFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F2F02EBC20BD55030FF53E /* TeamFormViewModel.swift */; };
 		E7B364F926008AE16017B720 /* BackendAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75EDF4E55E1F56C828D44179 /* BackendAPI.swift */; };
+		E7DC28FB866A8BAF48A55352 /* GameDaySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36C5329DD67C2021AB793593 /* GameDaySession.swift */; };
 		E8D743A244E87E7599139E85 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = D599AA6CC8475F7112A70EF7 /* DesignTokens.swift */; };
 		E990917EA6A8720F2A7AA6FE /* DiagramExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F699FE02E82F753263CF6371 /* DiagramExportView.swift */; };
 		EA2158ABCD43D2D46CDC48AF /* GameReportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB9252531B81DFDE9F134F73 /* GameReportViewModel.swift */; };
@@ -296,6 +298,7 @@
 		32134B29E0DDFED2971C2924 /* SquadAvailabilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquadAvailabilityView.swift; sourceTree = "<group>"; };
 		3517FEEE8E5124FEB6D2DACA /* TeamDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamDashboardView.swift; sourceTree = "<group>"; };
 		3619A3D1D4E8D2DAE15DC687 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		36C5329DD67C2021AB793593 /* GameDaySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDaySession.swift; sourceTree = "<group>"; };
 		3862964ADFDBFBAEA409E30C /* FixtureSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureSnapshot.swift; sourceTree = "<group>"; };
 		3A613A3511E3BE08900E5924 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3B224BF033A31D2C46817D1B /* Array+RemovingDuplicates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+RemovingDuplicates.swift"; sourceTree = "<group>"; };
@@ -335,6 +338,7 @@
 		66573B483E248F07D29E680D /* TabPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabPreferences.swift; sourceTree = "<group>"; };
 		669E831BC9A1091C55557857 /* GameFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameFormView.swift; sourceTree = "<group>"; };
 		66AF516B7AF47BA0D3165FE2 /* SessionFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionFormViewModel.swift; sourceTree = "<group>"; };
+		696BA1F5260C9AABDA2C06F2 /* GameDaySessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDaySessionTests.swift; sourceTree = "<group>"; };
 		6EA1AFAA7ABAA48702F0576A /* GamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamesView.swift; sourceTree = "<group>"; };
 		6F8B9E021145AFC53DE6273C /* TrainingPlannerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingPlannerViewModel.swift; sourceTree = "<group>"; };
 		709FC7448142265BEEB73A63 /* DomainColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainColors.swift; sourceTree = "<group>"; };
@@ -552,6 +556,7 @@
 				C5A8D8642F80DE5DB24AF966 /* FormRunnerViewModelTests.swift */,
 				03009FD533B0BA6E463540EC /* FormScoreDirectionTests.swift */,
 				E54D42C1930CB3AAC006563D /* GameDayClockTests.swift */,
+				696BA1F5260C9AABDA2C06F2 /* GameDaySessionTests.swift */,
 				1432D329B273DCC5EEB7AD24 /* MatchInsightsTests.swift */,
 				10851D6A0387E8F1F66C34C6 /* OrganizationTests.swift */,
 				111B48BCB8201C527592FBC8 /* OverviewTests.swift */,
@@ -720,6 +725,7 @@
 				8C82BEA5599335EA01AA0841 /* GameDayComponents.swift */,
 				D670418A30F9393EC244F252 /* GameDayModels.swift */,
 				14CD30A6564C873B7AAF6358 /* GameDayNotifier.swift */,
+				36C5329DD67C2021AB793593 /* GameDaySession.swift */,
 				047218D64B0DDEE2757C28B8 /* GameDayView.swift */,
 				82C3B12B392B328FE29FE2B1 /* GameDayViewModel.swift */,
 				FDB2E3B182D4829DFFB91DA8 /* GameDayViewModel+Goals.swift */,
@@ -1091,10 +1097,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				DF5DF9AC103AF11536E8B79D /* GameWidget */,
 				583A1C501DC8540B7031965E /* SoccerCoachKit */,
 				7CA9AF8583A6C4EA30A2EA0E /* SoccerCoachKitTests */,
 				9E58A4D208649E643EA3EAC7 /* SoccerCoachKitUITests */,
-				DF5DF9AC103AF11536E8B79D /* GameWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -1187,6 +1193,7 @@
 				046043C46451E25208AB2053 /* GameDayComponents.swift in Sources */,
 				D19CD59F1EA7757D6E54BDCA /* GameDayModels.swift in Sources */,
 				414D2B5C62EAE176E3E87A5F /* GameDayNotifier.swift in Sources */,
+				E7DC28FB866A8BAF48A55352 /* GameDaySession.swift in Sources */,
 				A19767AF178D397224F7296C /* GameDayView.swift in Sources */,
 				A93A6018566014032BAE0A16 /* GameDayViewModel+Goals.swift in Sources */,
 				64DA23CAB076C6024F46A6F0 /* GameDayViewModel+Substitutions.swift in Sources */,
@@ -1299,6 +1306,7 @@
 				DB40119317BCE0FD7407468C /* FormRunnerViewModelTests.swift in Sources */,
 				479A10204021A6916E9161C4 /* FormScoreDirectionTests.swift in Sources */,
 				362F11CF75D03F063784A0B7 /* GameDayClockTests.swift in Sources */,
+				4CB34CF197DA3C23F3C8C691 /* GameDaySessionTests.swift in Sources */,
 				CE074B6B67AE0A7128FA3555 /* MatchInsightsTests.swift in Sources */,
 				76207120F4E2D47102402363 /* OrganizationTests.swift in Sources */,
 				8DA4D3462B995A97ACB33B1F /* OverviewTests.swift in Sources */,

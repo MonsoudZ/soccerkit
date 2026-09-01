@@ -47,7 +47,9 @@ final class GameDayViewModel: ObservableObject {
     @Published var showPreAlert = false
     /// How many minutes before a reminder's minute the early heads-up fires.
     @Published var subAlertLeadMinutes = 1
-    @Published var formation: LineupFormation = .balanced
+    @Published var formation: LineupFormation = .balanced {
+        didSet { persistSession() }
+    }
 
     // Live scoreboard (surfaced on the Game Day screen and the Live Activity).
     @Published var teamScore = 0
@@ -56,10 +58,161 @@ final class GameDayViewModel: ObservableObject {
     /// The scheduled game this live match writes its score into, if any.
     @Published var linkedGameID: UUID?
 
+    /// Where the match is saved between launches. `nil` disables persistence,
+    /// which is the default so a view model built in a test doesn't reach into
+    /// the real defaults; `AppStore` injects the signed-in coach's store.
+    private var sessionStore: GameDaySessionStore?
+    /// Whether this process has already looked for a match to adopt. The lookup
+    /// happens once: after that, what's in memory is the match.
+    private var hasCheckedForSavedSession = false
+    /// Wall-clock source, injectable so the restore rules are testable. Separate
+    /// from `now`, which is monotonic and therefore meaningless across launches.
+    private let date: () -> Date
+
+    /// A gap longer than this isn't "the app came straight back" — the device
+    /// was off, or the match was abandoned hours ago. The banked state is still
+    /// restored, because the lineup, sub log and score are exactly what a coach
+    /// wants back, but the clock stays where it stopped rather than leaping
+    /// forward by the whole outage.
+    static let maxResumableGap: TimeInterval = 2 * 60 * 60
+    /// Past this a saved match belongs to a previous day; it is dropped rather
+    /// than offered.
+    static let sessionLifetime: TimeInterval = 12 * 60 * 60
+
     /// `now` is injectable purely for testing; production uses a monotonic
     /// source.
-    init(now: @escaping () -> TimeInterval = GameDayViewModel.monotonicNow) {
+    init(now: @escaping () -> TimeInterval = GameDayViewModel.monotonicNow,
+         date: @escaping () -> Date = Date.init,
+         sessionStore: GameDaySessionStore? = nil) {
         self.now = now
+        self.date = date
+        self.sessionStore = sessionStore
+    }
+
+    // MARK: - Surviving a relaunch
+
+    /// The durable match, or `nil` before a team has been loaded.
+    private var session: GameDaySession? {
+        guard let teamID else { return nil }
+        return GameDaySession(
+            teamID: teamID,
+            savedAt: date(),
+            runningSince: isRunning ? date() : nil,
+            accumulatedElapsed: accumulatedElapsed,
+            elapsedAtPeriodStart: elapsedAtPeriodStart,
+            accumulatedPlaying: accumulatedPlaying,
+            accumulatedPlayingAtPeriodStart: accumulatedPlayingAtPeriodStart,
+            starterIDs: starterIDs,
+            playerStatuses: playerStatuses,
+            currentPeriod: currentPeriod,
+            formation: formation,
+            reminders: reminders,
+            subLog: subLog,
+            subAlertLeadMinutes: subAlertLeadMinutes,
+            teamScore: teamScore,
+            opponentScore: opponentScore,
+            opponentName: opponentName,
+            linkedGameID: linkedGameID
+        )
+    }
+
+    /// Saves the match after a change worth not losing.
+    ///
+    /// The running clock needs no periodic save of its own: `runningSince`
+    /// records the point the banked totals stop, so however long the app is gone
+    /// the restore can add the interval since. Settling first is what makes that
+    /// true — it brings the totals up to the instant being stamped, so a save
+    /// from a caller that didn't settle (a goal, say) can't strand the seconds
+    /// between the last settle and now.
+    /// Internal rather than private: the substitution intents live in their own
+    /// extension file and save through this too.
+    func persistSession() {
+        guard let sessionStore else { return }
+        settle()
+        guard let session else { return }
+        sessionStore.save(session)
+    }
+
+    /// Adopts a saved match if there is one worth adopting.
+    private func restoreSavedSession(with store: AppStore) {
+        guard let sessionStore, let saved = sessionStore.load() else { return }
+        guard saved.teamID == store.selectedTeamID else { return }
+        let age = date().timeIntervalSince(saved.savedAt)
+        guard age >= 0, age < Self.sessionLifetime else {
+            sessionStore.clear()
+            return
+        }
+        apply(saved, with: store)
+    }
+
+    private func apply(_ saved: GameDaySession, with store: AppStore) {
+        loadConfiguration(from: store)
+        roster = store.roster
+
+        accumulatedElapsed = saved.accumulatedElapsed
+        elapsedAtPeriodStart = saved.elapsedAtPeriodStart
+        accumulatedPlaying = saved.accumulatedPlaying
+        accumulatedPlayingAtPeriodStart = saved.accumulatedPlayingAtPeriodStart
+        starterIDs = saved.starterIDs
+        playerStatuses = saved.playerStatuses
+        currentPeriod = saved.currentPeriod
+        formation = saved.formation
+        reminders = saved.reminders
+        subLog = saved.subLog
+        subAlertLeadMinutes = saved.subAlertLeadMinutes
+        teamScore = saved.teamScore
+        opponentScore = saved.opponentScore
+        opponentName = saved.opponentName
+        linkedGameID = saved.linkedGameID
+
+        resumeClock(from: saved)
+        normalizeSelections()
+        rescheduleNotifications()
+    }
+
+    /// Puts the clock back where it would have been.
+    ///
+    /// The interval from `runningSince` to now is what the match accrued while
+    /// the app wasn't running — what the monotonic clock would have counted had
+    /// the process survived — so it is banked exactly the way `settle` banks a
+    /// live interval. Without this a crash mid-half quietly costs the players on
+    /// the field the minutes they were actually playing.
+    private func resumeClock(from saved: GameDaySession) {
+        runAnchor = nil
+        isRunning = false
+        guard let runningSince = saved.runningSince else { return }
+
+        // A negative gap means the wall clock moved backwards under us; too long
+        // a one means the outage wasn't part of the match. Neither is time this
+        // match played, so keep the banked clock and let the coach restart it.
+        let gap = date().timeIntervalSince(runningSince)
+        guard gap >= 0, gap <= Self.maxResumableGap else { return }
+
+        accumulatedElapsed += gap
+        for id in starterIDs where playerStatuses[id, default: .available] == .available {
+            accumulatedPlaying[id, default: 0] += gap
+        }
+        runAnchor = now()
+        isRunning = true
+    }
+
+    /// Points the match at a different coach's saved session, dropping whatever
+    /// is in memory. The outgoing coach's match stays saved under their own key
+    /// and the incoming coach's is adopted the next time Game Day appears — the
+    /// in-memory one is cleared rather than left on screen, because its sub log
+    /// carries the previous coach's players by name. Deliberately doesn't save:
+    /// writing this empty match would overwrite the incoming coach's stored one.
+    func switchSessionStore(_ newStore: GameDaySessionStore?) {
+        sessionStore = newStore
+        hasCheckedForSavedSession = false
+        roster = []
+        teamID = nil
+        resetLineup()
+    }
+
+    /// Drops the saved match — the account and its data are going away.
+    func discardSavedSession() {
+        sessionStore?.clear()
     }
 
     /// Monotonic seconds that keep advancing while the device sleeps (locked
@@ -119,6 +272,7 @@ final class GameDayViewModel: ObservableObject {
         loadConfiguration(from: store)
         roster = store.roster
         resetLineup()
+        persistSession()
     }
 
     /// Loads the team's game rules (field size, game length, minimum minutes,
@@ -149,6 +303,13 @@ final class GameDayViewModel: ObservableObject {
             self.teamScore = team
             self.opponentScore = opponent
             self.persistScore(in: store)
+        }
+        // A fresh process holds no match, so look for a saved one before
+        // deciding this is a new game — otherwise the team check below reads a
+        // nil teamID as "different team" and resets over it.
+        if !hasCheckedForSavedSession {
+            hasCheckedForSavedSession = true
+            restoreSavedSession(with: store)
         }
         if teamID != store.selectedTeamID {
             reset(with: store)
@@ -200,6 +361,7 @@ final class GameDayViewModel: ObservableObject {
         }
 
         normalizeSelections()
+        persistSession()
     }
 
     // MARK: - Derived state
@@ -294,6 +456,7 @@ final class GameDayViewModel: ObservableObject {
             reminders[index].triggered = true
             activeReminder = reminders[index]
             showReminder = true
+            persistSession()
             return
         }
 
@@ -306,6 +469,7 @@ final class GameDayViewModel: ObservableObject {
             reminders[index].preAlertTriggered = true
             activePreAlert = reminders[index]
             showPreAlert = true
+            persistSession()
         }
     }
 
@@ -327,6 +491,7 @@ final class GameDayViewModel: ObservableObject {
         activeReminder = nil
         showReminder = false
         rescheduleNotifications()
+        persistSession()
         presentNextPendingAlert()
     }
 
@@ -405,6 +570,7 @@ final class GameDayViewModel: ObservableObject {
         activity.start(teamName: teamName, opponentName: opponentName, accentHex: accentHex,
                        teamScore: teamScore, opponentScore: opponentScore,
                        periodLabel: currentPeriodLabel, isRunning: true, elapsed: elapsedSeconds)
+        persistSession()
     }
 
     func pause() {
@@ -414,6 +580,7 @@ final class GameDayViewModel: ObservableObject {
         isRunning = false
         rescheduleNotifications()
         refreshActivity()
+        persistSession()
     }
 
     // MARK: Live scoreboard
@@ -424,12 +591,14 @@ final class GameDayViewModel: ObservableObject {
         teamScore = max(0, teamScore + delta)
         persistScore(in: store)
         refreshActivity()
+        persistSession()
     }
 
     func scoreOpponent(_ delta: Int, in store: AppStore) {
         opponentScore = max(0, opponentScore + delta)
         persistScore(in: store)
         refreshActivity()
+        persistSession()
     }
 
     /// Links (or unlinks) the live match to a scheduled game so the score is
@@ -444,6 +613,7 @@ final class GameDayViewModel: ObservableObject {
         if let recorded = game.opponentScore { opponentScore = recorded }
         persistScore(in: store)
         refreshActivity()
+        persistSession()
     }
 
     /// Mirrors the live score into the linked game's record. No-op when unlinked.
@@ -522,6 +692,7 @@ final class GameDayViewModel: ObservableObject {
         normalizeSelections()
         rescheduleNotifications()
         endActivity()
+        persistSession()
     }
 
     func advancePeriod() {
@@ -534,6 +705,7 @@ final class GameDayViewModel: ObservableObject {
         accumulatedPlayingAtPeriodStart = accumulatedPlaying
         rescheduleNotifications()
         refreshActivity()
+        persistSession()
     }
 
     func resetPeriodClock() {
@@ -555,6 +727,7 @@ final class GameDayViewModel: ObservableObject {
         }
         rescheduleNotifications()
         refreshActivity()
+        persistSession()
     }
 
     // MARK: - Lineup
@@ -563,6 +736,7 @@ final class GameDayViewModel: ObservableObject {
         settle()
         starterIDs.remove(player.id)
         normalizeSelections()
+        persistSession()
     }
 
     func moveToStarter(_ player: Player) {
@@ -571,6 +745,7 @@ final class GameDayViewModel: ObservableObject {
         settle()
         starterIDs.insert(player.id)
         normalizeSelections()
+        persistSession()
     }
 
     func setPlayerStatus(_ player: Player, _ status: GamePlayerStatus) {
@@ -584,6 +759,7 @@ final class GameDayViewModel: ObservableObject {
         }
 
         normalizeSelections()
+        persistSession()
     }
 
     // MARK: - Helpers

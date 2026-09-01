@@ -193,7 +193,8 @@ final class AppStore: ObservableObject {
     init(snapshot: AppSnapshot,
          persistence: PersistenceService = UserDefaultsPersistenceService(),
          remoteSync: RemoteSyncService? = nil,
-         namespace: String? = nil) {
+         namespace: String? = nil,
+         gameDaySessions: GameDaySessionStore? = nil) {
         let resolvedTeams = Self.atLeastOneTeam(snapshot.teams)
         self.teams = resolvedTeams
         self.players = snapshot.players
@@ -224,7 +225,11 @@ final class AppStore: ObservableObject {
         // first launch that keeps a watermark.
         self.syncedDigests = SyncWatermarkStore(namespace: namespace).load()
             ?? SyncRecords.digests(from: SyncRecords.records(from: snapshot))
-        self.gameDay = GameDayViewModel()
+        // A live match is saved per coach, so it can't be read by another
+        // account on the device. Skipped under test unless a store is injected,
+        // so a test's view model doesn't write into the real defaults.
+        self.gameDay = GameDayViewModel(sessionStore: gameDaySessions
+            ?? (AppEnvironment.isTestingOrUITesting ? nil : UserDefaultsGameDaySessionStore(namespace: namespace)))
         publishWidgetData()
         if let remoteSync {
             remoteSync.snapshotProvider = { [weak self] in self?.snapshot ?? snapshot }
@@ -372,6 +377,10 @@ final class AppStore: ObservableObject {
         // read `snapshotProvider` when they do, so the incoming snapshot has to
         // be loaded before they look.
         remoteSync?.setNamespace(userID)
+        // The live match is partitioned too — the outgoing coach's stays saved
+        // under their own key rather than following them out.
+        gameDay.switchSessionStore(AppEnvironment.isTestingOrUITesting
+            ? nil : UserDefaultsGameDaySessionStore(namespace: userID))
     }
 
     /// Completes the Sign in with Apple → backend handshake: exchanges the fresh
@@ -596,6 +605,7 @@ final class AppStore: ObservableObject {
         }
         TokenStore().clear()
         persistence.purge()
+        gameDay.discardSavedSession()
         // The remote's copy is gone, so nothing can be assumed synced against it.
         watermark.clear()
         syncedDigests = [:]
