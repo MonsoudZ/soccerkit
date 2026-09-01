@@ -16,6 +16,9 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
     private var zoneID: CKRecordZone.ID
     private var namespace: String
     private var stateKey: String
+    /// Whether this zone's existing data has been enqueued at least once.
+    /// Durable, so the whole season isn't re-pushed on every launch.
+    private var bootstrapKey: String
     private var engine: CKSyncEngine?
 
     /// Supplies the current data so records can be materialised on demand.
@@ -33,6 +36,7 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
         self.container = CKContainer(identifier: containerID)
         self.zoneID = CKRecordZone.ID(zoneName: "coach-\(self.namespace)", ownerName: CKCurrentUserDefaultName)
         self.stateKey = "ckSyncState.\(self.namespace)"
+        self.bootstrapKey = "ckSyncBootstrapped.\(self.namespace)"
     }
 
     func start() {
@@ -64,6 +68,29 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
         self.engine = engine
         // Make sure the zone exists before any record save.
         engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
+        bootstrapIfNeeded(engine)
+    }
+
+    /// Enqueues everything already on the device, once per zone.
+    ///
+    /// `AppStore` pushes only `SyncRecords.diff(from: lastSyncedRecords, …)`, and
+    /// it seeds that baseline from the local snapshot at launch — so the first
+    /// diff is empty by construction and a coach's existing season would never be
+    /// uploaded, on this device or visible on any other. The bootstrap is that
+    /// missing first push: every record id, diffed against nothing.
+    ///
+    /// Only ids are enqueued; `nextRecordZoneChangeBatch` materialises each one
+    /// from the *current* snapshot at send time, so anything edited or deleted in
+    /// the meantime goes up correct (or is dropped). Enqueuing is the durable
+    /// step — the engine owns retry from here — which is why the flag is set now,
+    /// matching what `push` reports.
+    private func bootstrapIfNeeded(_ engine: CKSyncEngine) {
+        guard !defaults.bool(forKey: bootstrapKey), let snapshot = snapshotProvider?() else { return }
+        let changes = SyncRecords.records(from: snapshot).map {
+            CKSyncEngine.PendingRecordZoneChange.saveRecord(recordID($0.type, $0.id))
+        }
+        if !changes.isEmpty { engine.state.add(pendingRecordZoneChanges: changes) }
+        defaults.set(true, forKey: bootstrapKey)
     }
 
     func stop() { engine = nil }
@@ -76,18 +103,26 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
                 // drop the local sync state so nothing re-materialises the data.
                 try await self.container.privateCloudDatabase.deleteRecordZone(withID: self.zoneID)
                 self.engine = nil
-                self.defaults.removeObject(forKey: self.stateKey)
+                self.clearZoneState()
                 completion(true)
             } catch let error as CKError where error.code == .zoneNotFound {
                 // Nothing to delete (never synced) — treat as success.
                 self.engine = nil
-                self.defaults.removeObject(forKey: self.stateKey)
+                self.clearZoneState()
                 completion(true)
             } catch {
                 self.onStatusChange?(.failed("Couldn't delete iCloud data"))
                 completion(false)
             }
         }
+    }
+
+    /// Drops the local state tied to a zone that no longer exists, so a later
+    /// sync rebuilds from scratch and re-uploads rather than trusting the old
+    /// bootstrap.
+    private func clearZoneState() {
+        defaults.removeObject(forKey: stateKey)
+        defaults.removeObject(forKey: bootstrapKey)
     }
 
     /// Re-points sync at a different coach's zone (per-Apple-ID isolation).
@@ -97,6 +132,7 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
         self.namespace = ns
         self.zoneID = CKRecordZone.ID(zoneName: "coach-\(ns)", ownerName: CKCurrentUserDefaultName)
         self.stateKey = "ckSyncState.\(ns)"
+        self.bootstrapKey = "ckSyncBootstrapped.\(ns)" // the new zone has its own flag
         if engine != nil {
             stop()
             start() // rebuild for the new zone

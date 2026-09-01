@@ -22,11 +22,14 @@ final class AuthController: ObservableObject {
     var isSignedIn: Bool { userID != nil }
 
     private let defaults: UserDefaults
+    /// The backend session this identity owns, cleared on sign-out.
+    private let tokens: TokenStore
     private static let userIDKey = "appleUserID"
     private static let nameKey = "appleUserName"
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, tokens: TokenStore = TokenStore()) {
         self.defaults = defaults
+        self.tokens = tokens
         userID = defaults.string(forKey: Self.userIDKey)
         displayName = defaults.string(forKey: Self.nameKey)
     }
@@ -80,10 +83,19 @@ final class AuthController: ObservableObject {
         }
     }
 
+    /// Ends the session. The backend tokens go with it: they are this coach's
+    /// bearer credentials, so leaving them in the Keychain would let sync keep
+    /// talking to the server as them — pushing the signed-out guest namespace's
+    /// edits under their identity, and, if a different coach signs in on this
+    /// device, syncing as the previous one until (or unless) the new handshake
+    /// succeeds.
     func signOut() {
         userID = nil
         displayName = nil
+        identityToken = nil
+        authorizationCode = nil
         defaults.removeObject(forKey: Self.userIDKey)
         defaults.removeObject(forKey: Self.nameKey)
+        tokens.clear()
     }
 }

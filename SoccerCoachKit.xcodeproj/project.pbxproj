@@ -20,6 +20,7 @@
 		0A910DA3E370151076626FA3 /* SyncRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0B16DCD56AC97DCCDDEB14 /* SyncRecords.swift */; };
 		0C24EFAB9765768B9D30EF01 /* FormMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14462E46CC6BF7D3DDE225BF /* FormMigration.swift */; };
 		0DCC47BB4F84919FED383042 /* MatchQuestionnaireView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC004CD91C35650BA8698B4 /* MatchQuestionnaireView.swift */; };
+		0DF821FFC9B9BC3954FDB6DA /* SyncBootstrapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4AA3F96F7919B2681BB14E1 /* SyncBootstrapTests.swift */; };
 		0E7468E7529FAEF325E22AD3 /* MatchInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5993E6B82812C9FE0D21EE13 /* MatchInsights.swift */; };
 		10541A4DCEEA141F2BB3CD09 /* TabBarEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E73890BFB17EDCBF711D02 /* TabBarEditorView.swift */; };
 		114D664C004BA7780F189A47 /* SessionFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AF516B7AF47BA0D3165FE2 /* SessionFormViewModel.swift */; };
@@ -385,6 +386,7 @@
 		B2DF2534C0FA5C3FFBCBBC60 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B4067E61C60836C2E4A13927 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
 		B47BD9E72C72E69A304F40E0 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
+		B4AA3F96F7919B2681BB14E1 /* SyncBootstrapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncBootstrapTests.swift; sourceTree = "<group>"; };
 		B554941066AD795E8BB36BB7 /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
 		B59275DA8BE5DC7422A707EA /* SoccerCoachKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoccerCoachKit.entitlements; sourceTree = "<group>"; };
 		B70E08F338CCBA717766CAF0 /* SessionExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionExportTests.swift; sourceTree = "<group>"; };
@@ -544,6 +546,7 @@
 				65CFD7C31322FFFD50D9A850 /* SettingsBackupTests.swift */,
 				023C5AF0BFE75109E1643E62 /* ShareGrantTests.swift */,
 				C5EDCA245ED52C23650735E7 /* SquadAvailabilityTests.swift */,
+				B4AA3F96F7919B2681BB14E1 /* SyncBootstrapTests.swift */,
 				FE2F6EF6B282F47BA41B4F01 /* SyncRecordsTests.swift */,
 				5C4D0301498C8E9A477C25D0 /* SyncWatermarkTests.swift */,
 				3C312CC0ED38AF35CADD4383 /* SyncWireTests.swift */,
@@ -1061,10 +1064,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				DF5DF9AC103AF11536E8B79D /* GameWidget */,
 				583A1C501DC8540B7031965E /* SoccerCoachKit */,
 				7CA9AF8583A6C4EA30A2EA0E /* SoccerCoachKitTests */,
 				9E58A4D208649E643EA3EAC7 /* SoccerCoachKitUITests */,
+				DF5DF9AC103AF11536E8B79D /* GameWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -1281,6 +1284,7 @@
 				1F8F605BAF488850658ACD24 /* SettingsBackupTests.swift in Sources */,
 				D4C784BE016AD9976CFF7490 /* ShareGrantTests.swift in Sources */,
 				A119A66AF308A4E5AAC77E3A /* SquadAvailabilityTests.swift in Sources */,
+				0DF821FFC9B9BC3954FDB6DA /* SyncBootstrapTests.swift in Sources */,
 				6DC5F6B6EA2FBB5F32FF537B /* SyncRecordsTests.swift in Sources */,
 				F02479D7DB3F3C08038CA20E /* SyncWatermarkTests.swift in Sources */,
 				8EF4950A0425216CBE4AF9A3 /* SyncWireTests.swift in Sources */,

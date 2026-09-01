@@ -38,6 +38,23 @@ final class AuthTests: XCTestCase {
         XCTAssertFalse(AuthController(defaults: defaults).isSignedIn)
     }
 
+    /// The backend session is this coach's bearer credential. Leaving it in the
+    /// Keychain on sign-out let sync keep talking to the server as them — pushing
+    /// the signed-out guest namespace's edits under their identity, and syncing as
+    /// the previous coach if a different one signed in on the same device.
+    func testSignOutClearsTheBackendSession() {
+        let tokens = TokenStore(storage: InMemoryTokenStorage())
+        tokens.token = "access"
+        tokens.refreshToken = "refresh"
+        let auth = AuthController(defaults: isolatedDefaults(), tokens: tokens)
+        auth.completeSignIn(userID: "abc", name: "X")
+
+        auth.signOut()
+
+        XCTAssertNil(tokens.token, "sign-out must drop the access token")
+        XCTAssertNil(tokens.refreshToken, "sign-out must drop the refresh token")
+    }
+
     func testSubsequentSignInWithoutNameKeepsStoredName() {
         let defaults = isolatedDefaults()
         let auth = AuthController(defaults: defaults)

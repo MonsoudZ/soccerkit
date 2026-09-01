@@ -15,6 +15,10 @@ protocol RemoteSyncService: AnyObject {
     /// Reports sync lifecycle so the UI can surface status.
     var onStatusChange: ((SyncStatus) -> Void)? { get set }
 
+    /// Begins syncing. The first `start()` for a namespace must also upload the
+    /// snapshot already on the device (see `snapshotProvider`): `AppStore` seeds
+    /// its diff baseline from local data, so without a bootstrap the first diff
+    /// is empty and pre-existing data would never reach the remote at all.
     func start()
     func stop()
     /// Pushes local changes to the remote. `completion(true)` means the batch was
@@ -49,6 +53,9 @@ final class APISyncService: RemoteSyncService {
     /// rotation instead of racing (a rotating endpoint would reject the loser).
     private var refreshInFlight: Task<Bool, Never>?
     private var cursorKey: String { "apiSyncCursor.\(namespace)" }
+    /// Whether this namespace's existing data has been uploaded at least once.
+    /// Durable, so the whole season isn't re-pushed on every launch.
+    private var bootstrapKey: String { "apiSyncBootstrapped.\(namespace)" }
 
     init(client: APIClient, namespace: String?, defaults: UserDefaults = .standard,
          tokenStore: TokenStore = TokenStore()) {
@@ -61,7 +68,10 @@ final class APISyncService: RemoteSyncService {
     func start() {
         isRunning = true
         onStatusChange?(.syncing)
-        Task { await pull() }
+        Task {
+            await pull()
+            await bootstrapIfNeeded()
+        }
     }
 
     func stop() {
@@ -73,7 +83,12 @@ final class APISyncService: RemoteSyncService {
         let ns = namespace ?? "default"
         guard ns != self.namespace else { return }
         self.namespace = ns
-        if isRunning { Task { await pull() } }
+        if isRunning {
+            Task {
+                await pull()
+                await bootstrapIfNeeded() // the new namespace has its own flag
+            }
+        }
     }
 
     func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void) {
@@ -90,12 +105,42 @@ final class APISyncService: RemoteSyncService {
                 try await client.deleteAccount()
                 tokenStore.clear()
                 defaults.removeObject(forKey: cursorKey)
+                // The account's server data is gone, so a later sync must upload
+                // from scratch rather than trust the old bootstrap.
+                defaults.removeObject(forKey: bootstrapKey)
                 isRunning = false
                 completion(true)
             } catch {
                 onStatusChange?(.failed(Self.message(for: error)))
                 completion(false)
             }
+        }
+    }
+
+    // MARK: - Bootstrap
+
+    /// Uploads everything already on the device, once per namespace.
+    ///
+    /// `AppStore` pushes only `SyncRecords.diff(from: lastSyncedRecords, …)`, and
+    /// it seeds that baseline from the local snapshot at launch — so the first
+    /// diff is empty by construction and a coach's existing season would never be
+    /// uploaded, on this device or visible on any other. The bootstrap is that
+    /// missing first push: the full record set, diffed against nothing.
+    ///
+    /// Runs after the initial pull so anything the server already holds is merged
+    /// in first and goes up in the same batch, rather than being overwritten by a
+    /// stale local copy. The flag advances only on a server ack, so a bootstrap
+    /// that fails is retried on the next `start()`.
+    private func bootstrapIfNeeded() async {
+        guard isRunning, !defaults.bool(forKey: bootstrapKey),
+              let snapshot = snapshotProvider?() else { return }
+        let records = SyncRecords.records(from: snapshot)
+        guard !records.isEmpty else {
+            defaults.set(true, forKey: bootstrapKey) // nothing to upload
+            return
+        }
+        if await performPush(upserts: records, deletes: []) {
+            defaults.set(true, forKey: bootstrapKey)
         }
     }
 
