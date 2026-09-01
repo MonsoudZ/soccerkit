@@ -65,18 +65,29 @@ enum FormTemplateCatalog {
 
     // MARK: - Post-match reflection  (was `PostMatchReflection`)
 
+    /// Unlike the pre-match scales, these don't all run the same way, and the
+    /// `scaleFields` helper's "higher is better" default was wrong for two of
+    /// them: fatigue is inverted (5 is the worst reading, not the best), and RPE
+    /// is descriptive load with no better/worse to it at all. Both are spelled
+    /// out here so the composite reads them correctly instead of averaging a
+    /// wrecked athlete up to "thriving".
     static let postMatchReflection = FormTemplate(
         id: ID.postMatchReflection,
         context: .postGame,
         subjectType: .athlete,
         name: "Post-Match Reflection",
-        fields: scaleFields([
-            ("exertion", "Effort (RPE)"),
-            ("performance", "Performance"),
-            ("enjoyment", "Enjoyment"),
-            ("fatigue", "Fatigue"),
-            ("confidence", "Confidence"),
-        ]) + [
+        fields: [
+            FormField(key: "exertion", label: "Effort (RPE)", kind: .scale, position: 0,
+                      config: .unscoredScale()),
+            FormField(key: "performance", label: "Performance", kind: .scale, position: 1,
+                      config: .scale()),
+            FormField(key: "enjoyment", label: "Enjoyment", kind: .scale, position: 2,
+                      config: .scale()),
+            FormField(key: "fatigue", label: "Fatigue", kind: .scale, position: 3,
+                      config: .scale(higherIsBetter: false)),
+            FormField(key: "confidence", label: "Confidence", kind: .scale, position: 4,
+                      config: .scale()),
+        ] + [
             FormField(key: "hadInjury", label: "Had injury", kind: .bool, position: 5),
             FormField(key: "wentWell", label: "What went well", kind: .text, position: 6),
             FormField(key: "workOn", label: "What to work on", kind: .text, position: 7),

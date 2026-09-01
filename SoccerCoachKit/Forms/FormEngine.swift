@@ -15,8 +15,17 @@ enum FormEngine {
     /// for any other scored template). Only recorded answers count; an unrated
     /// scale contributes nothing (it is absent, not zero). `nil` when none of
     /// the scale fields were rated.
+    ///
+    /// Each value is placed on a common "higher is better" axis first, via the
+    /// field's `higherIsBetter`. Without that step an inverted scale pushed the
+    /// score the wrong way — a post-match reflection scored a shattered athlete
+    /// as thriving, because high fatigue read as a high number and the flag,
+    /// though declared on every field, was never consulted. Fields with no
+    /// declared direction (RPE) sit out rather than distort the mean.
     static func scaleMean(of instance: FormInstance, using template: FormTemplate) -> Double? {
-        let values = template.scaleFields.compactMap { instance.number(for: $0.key) }
+        let values = template.scaleFields.compactMap { field in
+            instance.number(for: field.key).flatMap { field.config.normalizedScore(for: $0) }
+        }
         guard !values.isEmpty else { return nil }
         return values.reduce(0, +) / Double(values.count)
     }

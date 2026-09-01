@@ -60,8 +60,12 @@ struct FormFieldConfig: Hashable, Codable {
     var min: Int?
     /// Inclusive upper bound for `scale`/`number`.
     var max: Int?
-    /// For `scale`: whether a higher value is a *better* outcome. Drives the
-    /// composite-score direction (readiness averages "higher is better" scales).
+    /// For `scale`: whether a higher value is a *better* outcome, which is what
+    /// lets a composite average scales that run in opposite directions (sleep up
+    /// is good, fatigue up is not). `nil` means the field has no scoring
+    /// direction — either a deliberately descriptive measure like RPE, or a
+    /// template that predates the flag — and either way it can't be placed on the
+    /// composite's axis, so `normalizedScore(for:)` leaves it out.
     var higherIsBetter: Bool?
     /// Allowed values for a `select` field.
     var options: [String]?
@@ -76,6 +80,27 @@ struct FormFieldConfig: Hashable, Codable {
     static let none = FormFieldConfig()
     static func scale(min: Int = 1, max: Int = 5, higherIsBetter: Bool = true) -> FormFieldConfig {
         FormFieldConfig(min: min, max: max, higherIsBetter: higherIsBetter)
+    }
+
+    /// A scale that is recorded and trended but carries no notion of better or
+    /// worse, so composites skip it. RPE is the case in point: a hard match is a
+    /// hard match, not a bad one, and averaging it into a "how did it go" score
+    /// would drag the score down for a good performance.
+    static func unscoredScale(min: Int = 1, max: Int = 5) -> FormFieldConfig {
+        FormFieldConfig(min: min, max: max, higherIsBetter: nil)
+    }
+
+    /// `value` placed on a common "higher is better" axis, so one mean can span
+    /// scales that run in opposite directions. An inverted scale is mirrored
+    /// within its own bounds (fatigue 5 of 1...5 scores as 1); a scale with no
+    /// declared direction, or an inverted one whose bounds are unknown — mirroring
+    /// needs them — returns `nil` and is left out rather than silently averaged
+    /// the wrong way round.
+    func normalizedScore(for value: Double) -> Double? {
+        guard let higherIsBetter else { return nil }
+        if higherIsBetter { return value }
+        guard let min, let max, min < max else { return nil }
+        return Double(min + max) - value
     }
     static func number(min: Int? = 0, max: Int? = nil) -> FormFieldConfig {
         FormFieldConfig(min: min, max: max)
