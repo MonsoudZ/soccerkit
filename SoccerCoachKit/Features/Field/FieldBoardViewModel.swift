@@ -96,16 +96,57 @@ final class FieldBoardViewModel: ObservableObject {
             createNewDiagram(in: store)
             return
         }
+        store.updateDiagram(board(appliedTo: currentDiagram))
+    }
 
-        var updated = currentDiagram
-        updated.title = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled Diagram" : title.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// `diagram` with the in-memory board written onto it.
+    private func board(appliedTo diagram: TacticsDiagram) -> TacticsDiagram {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        var updated = diagram
+        updated.title = trimmed.isEmpty ? "Untitled Diagram" : trimmed
         updated.notes = notes
         updated.players = players
         updated.zones = zones
         updated.lines = lines
         updated.equipment = equipment
+        return updated
+    }
+
+    // MARK: - Autosave
+
+    /// Writes the board to the store if it differs from what's stored.
+    ///
+    /// The board lives in this view model until something saves it, and the Save
+    /// button used to be the only thing that did — so switching team, picking
+    /// another diagram, or simply navigating away discarded the work silently.
+    /// Every one of those paths now banks the board first. Every other editor in
+    /// the app writes through the store as it goes; this brings the board in
+    /// line.
+    ///
+    /// Skips an unchanged board on purpose: `updateDiagram` stamps `updatedAt`,
+    /// which reorders the newest-first diagram picker and pushes a sync record,
+    /// so saving on every appear/disappear would churn both for no reason.
+    func autosave(in store: AppStore) {
+        guard let diagram = currentDiagram(in: store) else { return }
+        let updated = board(appliedTo: diagram)
+        guard updated != diagram else { return }
         store.updateDiagram(updated)
-        selectedDiagramID = updated.id
+    }
+
+    /// Picker binding that banks the outgoing board before the incoming diagram
+    /// loads over it. This replaced an `onChange` on `selectedDiagramID`, which
+    /// fires *after* the id has already moved on — by which point the board it
+    /// would have saved belongs to the wrong diagram.
+    func diagramSelection(in store: AppStore) -> Binding<UUID?> {
+        Binding(
+            get: { [weak self] in self?.selectedDiagramID },
+            set: { [weak self] newValue in
+                guard let self, newValue != self.selectedDiagramID else { return }
+                self.autosave(in: store)
+                self.selectedDiagramID = newValue
+                self.loadSelectedDiagram(in: store)
+            }
+        )
     }
 
     func createNewDiagram(in store: AppStore) {
@@ -147,8 +188,36 @@ final class FieldBoardViewModel: ObservableObject {
     func deleteCurrentDiagram(in store: AppStore) {
         guard let currentDiagram = currentDiagram(in: store) else { return }
         store.deleteDiagram(currentDiagram)
-        selectedDiagramID = nil
-        ensureDiagramLoaded(in: store)
+
+        // Move to whatever is left rather than immediately seeding a replacement.
+        // Creating one here would be a second mutation, and the store retires a
+        // pending undo as soon as another change lands — so the auto-create would
+        // cancel the undo offer for the delete that just happened, and make
+        // deleting your last diagram look like nothing happened. `onAppear`'s
+        // `ensureDiagramLoaded` still seeds one next time the board is opened.
+        if let next = store.teamDiagrams.first {
+            selectedDiagramID = next.id
+            loadDiagram(next)
+        } else {
+            selectedDiagramID = nil
+            clearBoard()
+        }
+    }
+
+    /// Empties the board in memory only — no diagram is selected, so there is
+    /// nothing to write to.
+    private func clearBoard() {
+        title = "Game Plan"
+        notes = ""
+        players = []
+        zones = []
+        lines = []
+        equipment = []
+        draftLine = nil
+        opponentCount = 1
+        coneCount = 1
+        zoneCount = 1
+        exportURL = nil
     }
 
     // MARK: - Export

@@ -33,6 +33,7 @@
 		1A363492D9F8E244972C0735 /* SeasonStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9656BD699164650E0C8CA0 /* SeasonStatsView.swift */; };
 		1BA1E68A28C72C1FB8C92626 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8AFCC9FE872CDD1DBC04F0D6 /* Assets.xcassets */; };
 		1CAD10850DBB686E2A5A2DBB /* SquadAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1094D3E5DA759430901FA0 /* SquadAvailability.swift */; };
+		1EC193F4EF9F7172E2F282FA /* FieldBoardAutosaveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C051CAC5BF1161903DAE9B /* FieldBoardAutosaveTests.swift */; };
 		1EF16B2E10AF151C19DAAA66 /* AppStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B92027CEAFF183FF2B07A6D /* AppStoreTests.swift */; };
 		1EFED580786BB8BBA6D2BA15 /* EventFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F171A020267A1A75C129F42B /* EventFormViewModel.swift */; };
 		1F8F605BAF488850658ACD24 /* SettingsBackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65CFD7C31322FFFD50D9A850 /* SettingsBackupTests.swift */; };
@@ -361,6 +362,7 @@
 		890FB74DF7045103CF8FB54F /* DrillLibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillLibraryViewModel.swift; sourceTree = "<group>"; };
 		8964175092D95FEA905816A1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		8973FE4C4F2BEFB9BFEAFD60 /* GameActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameActivityController.swift; sourceTree = "<group>"; };
+		89C051CAC5BF1161903DAE9B /* FieldBoardAutosaveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldBoardAutosaveTests.swift; sourceTree = "<group>"; };
 		8AFC47C3AC9A9138478A5C62 /* AppStore+Roster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStore+Roster.swift"; sourceTree = "<group>"; };
 		8AFCC9FE872CDD1DBC04F0D6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8C6F73B9997102DCA306077E /* PersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceService.swift; sourceTree = "<group>"; };
@@ -535,6 +537,7 @@
 				3D6FF90BDF1EE67F1C42C609 /* DevelopmentTests.swift */,
 				72A71DF027E8FE9FA76AAF57 /* DiagramAttachmentTests.swift */,
 				3D817EE3E47AB008B3FE89CB /* EvaluationReadModelTests.swift */,
+				89C051CAC5BF1161903DAE9B /* FieldBoardAutosaveTests.swift */,
 				246916B0B3E5075E85F457D2 /* FormEngineTests.swift */,
 				C5A8D8642F80DE5DB24AF966 /* FormRunnerViewModelTests.swift */,
 				03009FD533B0BA6E463540EC /* FormScoreDirectionTests.swift */,
@@ -1277,6 +1280,7 @@
 				2E88A421D16EC840389878B3 /* DevelopmentTests.swift in Sources */,
 				46CB8AA41E5D18BDC1760F91 /* DiagramAttachmentTests.swift in Sources */,
 				D5791BDFF208485BB6B6EE76 /* EvaluationReadModelTests.swift in Sources */,
+				1EC193F4EF9F7172E2F282FA /* FieldBoardAutosaveTests.swift in Sources */,
 				BE41D37B3A800494C8615FD9 /* FormEngineTests.swift in Sources */,
 				DB40119317BCE0FD7407468C /* FormRunnerViewModelTests.swift in Sources */,
 				479A10204021A6916E9161C4 /* FormScoreDirectionTests.swift in Sources */,

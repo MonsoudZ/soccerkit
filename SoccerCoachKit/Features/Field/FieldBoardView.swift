@@ -3,6 +3,7 @@ import SwiftUI
 struct FieldBoardView: View {
     @EnvironmentObject private var store: AppStore
     @StateObject private var viewModel = FieldBoardViewModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,12 +25,17 @@ struct FieldBoardView: View {
         }
         .screenBackground()
         .onAppear { viewModel.ensureDiagramLoaded(in: store) }
+        // The board is held in the view model, so anything that replaces it or
+        // tears the view down has to bank it first, or the work is gone.
+        .onDisappear { viewModel.autosave(in: store) }
         .onChange(of: store.selectedTeamID) {
+            viewModel.autosave(in: store) // the outgoing team's board
             viewModel.selectedDiagramID = nil
             viewModel.ensureDiagramLoaded(in: store)
         }
-        .onChange(of: viewModel.selectedDiagramID) {
-            viewModel.loadSelectedDiagram(in: store)
+        .onChange(of: scenePhase) { _, phase in
+            // onDisappear doesn't run when the app is backgrounded or killed.
+            if phase != .active { viewModel.autosave(in: store) }
         }
         .toolbar {
             Button {
@@ -108,7 +114,7 @@ struct FieldBoardView: View {
     private var boardToolbar: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Picker("Diagram", selection: $viewModel.selectedDiagramID) {
+                Picker("Diagram", selection: viewModel.diagramSelection(in: store)) {
                     ForEach(store.teamDiagrams) { diagram in
                         Text(diagram.title).tag(Optional(diagram.id))
                     }

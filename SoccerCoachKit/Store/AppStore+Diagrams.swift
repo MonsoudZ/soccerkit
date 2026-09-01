@@ -150,6 +150,10 @@ extension AppStore {
     }
 
     func deleteDiagram(_ diagram: TacticsDiagram) {
+        // Every other delete offers an undo (team, player, game, event, drill,
+        // session); this one was the exception, and a diagram can be a lot of
+        // work to rebuild.
+        registerUndo("Deleted \(diagram.title)")
         batch {
             diagrams.removeAll { $0.id == diagram.id }
             sessions = sessions.map { session in
