@@ -247,9 +247,18 @@ final class APISyncService: RemoteSyncService {
         if let existing = refreshInFlight { return await existing.value }
         let task = Task { () -> Bool in
             defer { refreshInFlight = nil }
-            guard let refresh = tokenStore.refreshToken else { return false }
+            guard let presented = tokenStore.refreshToken else { return false }
             do {
-                let rotated = try await client.refresh(refresh)
+                let rotated = try await client.refresh(presented)
+                // The session can end while a rotation is in flight, and this
+                // `await` is a whole network round-trip wide. Signing out clears
+                // the tokens; writing the rotated pair afterwards would put a
+                // live session for the coach who just signed out back into the
+                // keychain — precisely the leak `AuthController.signOut` clears
+                // them to prevent, and enough for sync to keep talking to the
+                // server as them. If what we presented is no longer what's
+                // stored, the session moved on without us: drop the rotation.
+                guard tokenStore.refreshToken == presented else { return false }
                 // A rotation we can't persist is worse than no rotation: the
                 // server has already revoked the token we presented, so a write
                 // that silently failed would leave a dead refresh token on disk

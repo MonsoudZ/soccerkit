@@ -134,4 +134,40 @@ final class RefreshTokenTests: XCTestCase {
         XCTAssertNil(tokens.token, "a dead session must clear the access token")
         XCTAssertNil(tokens.refreshToken, "a dead session must clear the refresh token")
     }
+
+    /// Signing out while a rotation is in flight must not resurrect the session.
+    ///
+    /// `/v1/auth/refresh` is a whole network round-trip, and the coach can sign
+    /// out during it. `AuthController.signOut` clears the tokens precisely so
+    /// sync can't keep talking to the server as them — but the rotation was still
+    /// holding a fresh pair and wrote it back afterwards, leaving a live session
+    /// for a signed-out coach in the keychain. The rotation must notice the
+    /// session moved on and drop what it fetched.
+    func testSignOutDuringRotationDoesNotRestoreTheSession() {
+        let (service, tokens, _) = makeStack()
+        tokens.token = "expired"
+        tokens.refreshToken = "refresh-1"
+
+        StubURLProtocol.responder = { req in
+            switch (req.httpMethod ?? "", req.url?.path ?? "") {
+            case ("POST", "/v1/auth/refresh"):
+                // The coach signs out while the server is answering — exactly the
+                // window the guard covers.
+                tokens.clear()
+                return (200, Data(#"{"accessToken":"fresh","refreshToken":"refresh-2"}"#.utf8))
+            default:
+                return (401, Data()) // the expired access token
+            }
+        }
+
+        let settled = expectation(description: "sync reports a failure")
+        service.onStatusChange = { status in
+            if case .failed = status { settled.fulfill() }
+        }
+        service.start()
+        wait(for: [settled], timeout: 5)
+
+        XCTAssertNil(tokens.token, "a signed-out coach must not get an access token back")
+        XCTAssertNil(tokens.refreshToken, "nor a refresh token — the session is over")
+    }
 }
