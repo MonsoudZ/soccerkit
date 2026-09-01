@@ -41,11 +41,25 @@ final class TokenStore {
         set { storage.set(newValue, forKey: refreshKey) }
     }
 
+    /// Stores a freshly-issued session, reporting whether it is actually saved.
+    ///
+    /// Use this rather than assigning the two properties whenever the session
+    /// has to survive: a silently-dropped write reads back as a missing token,
+    /// and the coach then sees "Sign in again to sync" forever — signing in
+    /// again can't help, because signing in is the step that isn't sticking.
+    /// Both keys are written even if the first fails, so a partial save doesn't
+    /// leave a stale refresh token paired with a new access token.
+    @discardableResult
+    func save(token newToken: String?, refreshToken newRefresh: String?) -> Bool {
+        let storedToken = storage.set(newToken, forKey: accessKey)
+        let storedRefresh = storage.set(newRefresh, forKey: refreshKey)
+        return storedToken && storedRefresh
+    }
+
     /// Drops both tokens — the session is over (sign-out, or a refresh that the
     /// server rejected, so there's nothing left to retry with).
     func clear() {
-        token = nil
-        refreshToken = nil
+        save(token: nil, refreshToken: nil)
     }
 }
 

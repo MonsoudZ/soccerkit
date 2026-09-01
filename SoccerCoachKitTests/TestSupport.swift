@@ -34,7 +34,36 @@ final class InMemoryPersistence: PersistenceService {
 final class InMemoryTokenStorage: TokenStorage {
     private var values: [String: String] = [:]
     func string(forKey key: String) -> String? { values[key] }
-    func set(_ value: String?, forKey key: String) { values[key] = value }
+    @discardableResult
+    func set(_ value: String?, forKey key: String) -> Bool {
+        values[key] = value
+        return true
+    }
+}
+
+/// `TokenStorage` that refuses every write, standing in for a keychain the app
+/// can't write to (locked before first unlock, item inaccessible, entitlement
+/// missing). The real `KeychainTokenStorage` can't be driven into that state
+/// from a test host — `testKeychainRoundTrip` is skipped in CI for the same
+/// reason — so this covers what actually matters: that a failed write is
+/// reported and acted on rather than swallowed.
+final class FailingTokenStorage: TokenStorage {
+    /// What reads return. Seeded so a test can model the real shape of the
+    /// failure — the keychain still holds the *old* session, it just won't take
+    /// the new one — rather than an empty store, which short-circuits any caller
+    /// that reads before it writes.
+    private let seed: [String: String]
+    private(set) var attemptedKeys: [String] = []
+
+    init(seed: [String: String] = [:]) { self.seed = seed }
+
+    func string(forKey key: String) -> String? { seed[key] }
+
+    @discardableResult
+    func set(_ value: String?, forKey key: String) -> Bool {
+        attemptedKeys.append(key)
+        return false // and the seed is left untouched: the write didn't land
+    }
 }
 
 /// A controllable monotonic clock for `GameDayViewModel` tests.

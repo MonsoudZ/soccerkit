@@ -238,8 +238,13 @@ final class APISyncService: RemoteSyncService {
             guard let refresh = tokenStore.refreshToken else { return false }
             do {
                 let rotated = try await client.refresh(refresh)
-                tokenStore.token = rotated.accessToken
-                tokenStore.refreshToken = rotated.refreshToken
+                // A rotation we can't persist is worse than no rotation: the
+                // server has already revoked the token we presented, so a write
+                // that silently failed would leave a dead refresh token on disk
+                // and the retry below would replay the expired access token.
+                // Report the refresh as failed instead of pretending it worked.
+                guard tokenStore.save(token: rotated.accessToken,
+                                      refreshToken: rotated.refreshToken) else { return false }
                 return true
             } catch APIError.unauthorized {
                 tokenStore.clear()

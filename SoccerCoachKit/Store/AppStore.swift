@@ -346,11 +346,16 @@ final class AppStore: ObservableObject {
             for attempt in 1...maxAttempts {
                 do {
                     let response = try await client.authenticateApple(request)
-                    let tokens = TokenStore()
-                    tokens.token = response.token
-                    // Persist the refresh token so an expired access token rotates
-                    // instead of forcing another Sign in with Apple.
-                    tokens.refreshToken = response.refreshToken
+                    // Persist the refresh token alongside the access token, so an
+                    // expired access token rotates instead of forcing another Sign
+                    // in with Apple. If the keychain won't take them, say so: a
+                    // session that didn't save is not a session, and starting sync
+                    // on it would loop the coach through "sign in again" forever.
+                    guard TokenStore().save(token: response.token,
+                                            refreshToken: response.refreshToken) else {
+                        syncStatus = .failed("Couldn't save your session")
+                        return
+                    }
                     // Authenticated now — (re)start sync so its pull carries the token.
                     if cloudSyncEnabled { remoteSync?.start() }
                     return
