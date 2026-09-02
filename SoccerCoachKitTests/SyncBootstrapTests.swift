@@ -271,3 +271,100 @@ final class SyncBootstrapTests: XCTestCase {
         XCTAssertGreaterThan(pushes.count, 0, "a later start uploads again")
     }
 }
+
+// MARK: - Draining a paged delta
+
+extension SyncBootstrapTests {
+
+    /// A pull takes every page, not the first one.
+    ///
+    /// The server may answer a pull with part of the delta — it has to be free to, or a
+    /// reinstall asking `since=0` makes it assemble an account's whole history in memory.
+    /// There is no "more" flag on the wire; the cursor is the contract, and a client that
+    /// stops after one response leaves the rest until the next launch or foreground.
+    ///
+    /// Against a server that returns everything at once this is one request and a break,
+    /// which is what every other test here observes.
+    func testPullDrainsEveryPage() {
+        let requests = PageRecorder()
+        respond { request in
+            guard request.httpMethod == "GET", request.url?.path == "/v1/sync" else {
+                return nil
+            }
+            let since = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "since" })?.value ?? ""
+            requests.record(since)
+
+            // Two pages of one record each, then the empty page that ends the drain.
+            switch since {
+            case "", "0":
+                return (200, Self.page(id: "11111111-1111-1111-1111-111111111111", cursor: "1"))
+            case "1":
+                return (200, Self.page(id: "22222222-2222-2222-2222-222222222222", cursor: "2"))
+            default:
+                return (200, Data(#"{"records":[],"deletes":[],"cursor":"2"}"#.utf8))
+            }
+        }
+
+        let service = makeService()
+        service.start()
+
+        let drained = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in requests.cursors.count >= 3 }, object: nil)
+        wait(for: [drained], timeout: timeout)
+
+        XCTAssertEqual(requests.cursors.prefix(3).map { $0 }, ["", "1", "2"],
+                       "each request must resume from the cursor the last page returned")
+        XCTAssertEqual(defaults.string(forKey: "apiSyncCursor.\(namespace)"), "2",
+                       "the drain ends on the last page's cursor")
+    }
+
+    /// The drain stops when the cursor stands still, however many records come back with
+    /// it. Without that, a server answering with rows but never advancing its cursor
+    /// would hold the client in a loop fetching the same page forever.
+    func testPullStopsWhenTheCursorStopsMoving() {
+        let requests = PageRecorder()
+        respond { request in
+            guard request.httpMethod == "GET", request.url?.path == "/v1/sync" else {
+                return nil
+            }
+            requests.record("")
+            // Always a record, always the same cursor.
+            return (200, Self.page(id: "33333333-3333-3333-3333-333333333333", cursor: "7"))
+        }
+
+        let service = makeService()
+        service.start()
+
+        let settled = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in requests.cursors.count >= 2 }, object: nil)
+        wait(for: [settled], timeout: timeout)
+
+        // Two requests: the first advances the cursor from nothing to "7", the second
+        // finds it unchanged and stops. It must not run away to maxPullPages.
+        XCTAssertLessThan(requests.cursors.count, 10,
+                          "a cursor that does not advance must end the drain, not spin")
+    }
+
+    /// One page of the wire format: a single Prefs document, which is a projected-free
+    /// type the store accepts without needing anything else to exist.
+    private static func page(id: String, cursor: String) -> Data {
+        Data("""
+        {"records":[{"type":"Prefs","id":"\(id)","payload":{}}],"deletes":[],"cursor":"\(cursor)"}
+        """.utf8)
+    }
+}
+
+/// Thread-safe record of the cursors the client asked from. The responder runs on a
+/// URLSession thread, not the test's.
+final class PageRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var seen: [String] = []
+
+    func record(_ since: String) {
+        lock.lock(); defer { lock.unlock() }
+        seen.append(since)
+    }
+
+    var cursors: [String] { lock.lock(); defer { lock.unlock() }; return seen }
+}

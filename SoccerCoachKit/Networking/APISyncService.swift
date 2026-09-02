@@ -158,12 +158,39 @@ final class APISyncService: RemoteSyncService {
 
     // MARK: - Networking
 
+    /// The most pages one pull will drain before giving up and leaving the rest to the
+    /// next trigger. A stop is needed because the loop's exit condition is the server's
+    /// cursor: a server that returned records without advancing it would otherwise spin
+    /// forever. At the server's page size this is far more records than any coach has,
+    /// so reaching it means something is wrong, not that someone is busy.
+    private static let maxPullPages = 100
+
+    /// Drains the delta rather than taking one response and calling it done.
+    ///
+    /// A pull returns everything past the cursor, and the server is free to answer with
+    /// only part of it — it has to be, or a reinstall asking `since=0` makes it build the
+    /// account's entire history in memory at once. The reply carries no "there is more"
+    /// flag and does not need one: the cursor is the contract. If it advanced, ask again
+    /// from where it now points; when it stops moving, the account is caught up.
+    ///
+    /// Without this loop a paged server would look like data loss. The records are not
+    /// lost — the cursor is saved, so the next pull continues — but pulls only happen on
+    /// launch and on foreground, so a coach reinstalling would watch their teams arrive a
+    /// page per app switch with nothing explaining why.
     private func pull() async {
         do {
-            let response = try await withAuthRetry {
-                try await self.client.pull(since: self.defaults.string(forKey: self.cursorKey))
+            for _ in 0..<Self.maxPullPages {
+                let before = defaults.string(forKey: cursorKey)
+                let response = try await withAuthRetry {
+                    try await self.client.pull(since: self.defaults.string(forKey: self.cursorKey))
+                }
+                apply(response.records, deletes: response.deletes, cursor: response.cursor)
+
+                if response.records.isEmpty && response.deletes.isEmpty { break }
+                // The cursor standing still means this page told us nothing new, so
+                // asking again would fetch the same rows forever.
+                if defaults.string(forKey: cursorKey) == before { break }
             }
-            apply(response.records, deletes: response.deletes, cursor: response.cursor)
             onStatusChange?(.synced(Date()))
         } catch {
             onStatusChange?(.failed(Self.message(for: error)))
