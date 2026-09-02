@@ -258,7 +258,22 @@ final class AppStore: ObservableObject {
         }
     }
 
-    /// Applies record-level changes fetched from CloudKit, without re-uploading them.
+    /// Applies record-level changes fetched from the remote, without re-uploading
+    /// them — but without claiming the remote has anything it didn't send.
+    ///
+    /// Applying a remote change can make the store change something of its own.
+    /// `restore` runs `atLeastOneTeam`, which invents a recovery team when a
+    /// remote delete empties `teams`, and re-points `selectedTeamID` when the
+    /// stored one no longer exists. Those are local edits that happen to occur
+    /// inside a remote apply, and the remote has never seen them.
+    ///
+    /// The baseline used to be taken wholesale from the resulting snapshot, which
+    /// fingerprinted those inventions as already-synced. They then dropped out of
+    /// every later diff and were never pushed — not on the next edit, not on
+    /// relaunch, ever — so two devices that both lost their last team each
+    /// recovered into a private team of their own and never converged. Adopting
+    /// only the keys the remote actually sent leaves anything the store invented
+    /// with no baseline entry, so the very next diff picks it up.
     private func applyRemoteChanges(upserts: [SyncRecord], deletes: [SyncRecordKey]) {
         var updated = snapshot
         for record in upserts { SyncRecords.apply(record, to: &updated) }
@@ -266,6 +281,31 @@ final class AppStore: ObservableObject {
         isApplyingRemote = true
         restore(updated, adoptVersion: true)
         isApplyingRemote = false
+
+        adoptBaseline(forRemote: upserts, deletes: deletes)
+        // Now that the baseline names only what the remote holds, push whatever
+        // the repair above invented. Without this it would wait for the coach's
+        // next edit to go up.
+        syncLocalChanges()
+    }
+
+    /// Moves the sync baseline over exactly the records the remote sent, leaving
+    /// every other entry — and every absence — as it was.
+    ///
+    /// Digests come from the resulting snapshot rather than from the received
+    /// payloads, so a record still can't be echoed back even if the bytes we
+    /// re-encode differ from the bytes we were handed.
+    private func adoptBaseline(forRemote upserts: [SyncRecord], deletes: [SyncRecordKey]) {
+        let current = SyncRecords.digests(from: SyncRecords.records(from: snapshot))
+        var baseline = syncedDigests
+        for key in deletes { baseline.removeValue(forKey: key) }
+        for record in upserts {
+            let key = SyncRecordKey(record.type, record.id)
+            // Absent from `current` means applying it didn't land a record we can
+            // re-encode; drop the entry rather than assert a digest we don't have.
+            baseline[key] = current[key]
+        }
+        syncedDigests = baseline
     }
 
     /// Monotonic tag for in-flight pushes, so a late completion can't move the
@@ -293,11 +333,14 @@ final class AppStore: ObservableObject {
         // sides point at the new namespace.
         guard !isSwitchingUser else { return }
 
-        let current = SyncRecords.records(from: snapshot)
+        // Nothing may push while a remote change is being applied: `restore`
+        // fires a `persist()` mid-apply, and the baseline still describes the
+        // pre-apply world, so diffing here would push the remote's own changes
+        // straight back at it. `applyRemoteChanges` moves the baseline and calls
+        // this again itself, once the apply is complete.
+        guard !isApplyingRemote else { return }
 
-        // A change we just applied from the remote is already in sync; adopt it as
-        // the baseline so it isn't echoed back, and stop.
-        guard !isApplyingRemote else { syncedDigests = SyncRecords.digests(from: current); return }
+        let current = SyncRecords.records(from: snapshot)
 
         let (upserts, deletes) = SyncRecords.diff(fromDigests: syncedDigests, to: current)
         guard !upserts.isEmpty || !deletes.isEmpty else {
