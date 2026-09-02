@@ -760,6 +760,12 @@ final class GameDayViewModel: ObservableObject {
         if status != .available {
             starterIDs.remove(player.id)
         } else if starterIDs.isEmpty {
+            // Marking a player unavailable takes them off, so a squad that goes
+            // fully unavailable — everyone injured or late while the coach sorts
+            // the sideline out — empties the lineup. The first one back on is put
+            // straight on the pitch rather than leaving the coach a match with
+            // nobody in it and no obvious way out. Only reachable from empty, so
+            // it can't override a lineup the coach has actually picked.
             starterIDs.insert(player.id)
         }
 

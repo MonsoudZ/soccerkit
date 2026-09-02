@@ -86,7 +86,8 @@ final class FieldBoardViewModel: ObservableObject {
         opponentCount = players.filter { $0.side == .opponent }.count + 1
         coneCount = equipment.count + 1
         zoneCount = zones.count + 1
-        exportURL = nil
+        // A prepared export belongs to the diagram it was rendered from.
+        discardExport()
     }
 
     // MARK: - Saving
@@ -217,7 +218,7 @@ final class FieldBoardViewModel: ObservableObject {
         opponentCount = 1
         coneCount = 1
         zoneCount = 1
-        exportURL = nil
+        discardExport()
     }
 
     // MARK: - Export
@@ -230,9 +231,7 @@ final class FieldBoardViewModel: ObservableObject {
         renderer.scale = 2
         guard let image = renderer.uiImage, let data = image.pngData() else { return }
 
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(safeExportName(for: currentDiagram, extension: "png"))
-        try? data.write(to: url)
-        exportURL = url
+        write(data, named: safeExportName(for: currentDiagram, extension: "png"))
     }
 
     func preparePDFExport(in store: AppStore) {
@@ -244,14 +243,33 @@ final class FieldBoardViewModel: ObservableObject {
         renderer.scale = 2
         guard let image = renderer.uiImage else { return }
 
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(safeExportName(for: currentDiagram, extension: "pdf"))
         let pdfRenderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: size))
         let data = pdfRenderer.pdfData { context in
             context.beginPage()
             image.draw(in: CGRect(x: 26, y: 36, width: 560, height: 720))
         }
-        try? data.write(to: url)
+        write(data, named: safeExportName(for: currentDiagram, extension: "pdf"))
+    }
+
+    /// Writes an export to the temporary directory, dropping the one before it.
+    ///
+    /// The roster, session and settings exporters all clear the previous file;
+    /// this one didn't, so every Prepare Image / Prepare PDF left another render
+    /// behind — and switching to a differently-named diagram meant a new name and
+    /// so a new file rather than an overwrite.
+    private func write(_ data: Data, named name: String) {
+        discardExport()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        guard (try? data.write(to: url)) != nil else { return }
         exportURL = url
+    }
+
+    /// Removes the prepared export, if there is one. Called before preparing the
+    /// next, when the board is torn down, and when the diagram it belongs to goes
+    /// away — a stale share link would otherwise offer the wrong diagram.
+    func discardExport() {
+        if let url = exportURL { try? FileManager.default.removeItem(at: url) }
+        exportURL = nil
     }
 
     private func safeExportName(for diagram: TacticsDiagram, extension fileExtension: String) -> String {

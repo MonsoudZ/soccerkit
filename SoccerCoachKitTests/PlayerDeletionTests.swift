@@ -107,3 +107,64 @@ final class PlayerDeletionTests: XCTestCase {
         XCTAssertNotNil(store.games[0].postMatchReflections[doomed.id])
     }
 }
+
+/// Deleting a team removes the players it leaves with nowhere to play. Those
+/// players stop existing, so every reference to them has to go too — the sweep
+/// `deletePlayer` has always done, which this path skipped.
+@MainActor
+final class TeamDeletionSweepTests: XCTestCase {
+
+    func testDeletingATeamClearsItsOrphansFromSurvivingFixtures() {
+        let store = TestData.store(TestData.snapshot(playerCount: 2))
+        let doomedTeam = store.selectedTeam
+        let orphan = store.roster[0]
+
+        // A second team that survives, with a fixture the orphan appears in —
+        // a guest appearance recorded before their own team was deleted.
+        store.addTeam(name: "Survivors", ageGroup: .u10, season: "2026")
+        let survivingTeam = store.selectedTeamID
+        store.addGame(opponent: "Rivals", date: Date(), location: "", isHome: true, notes: "")
+        store.addSession(title: "Joint session", date: Date(), objective: "")
+        let game = store.games.first { $0.teamID == survivingTeam }!
+        let session = store.sessions.first { $0.teamID == survivingTeam }!
+        store.setAttendance(.present, for: orphan, in: game)
+        store.setRSVP(.going, for: orphan, in: session)
+
+        // A diagram on the surviving team with a marker linked to the orphan.
+        let diagram = store.addDiagram(title: "Shape")
+        var withMarker = store.diagrams.first { $0.id == diagram.id }!
+        withMarker.players = [BoardPlayer(id: UUID(), playerID: orphan.id, label: "O",
+                                          number: 9, side: .team, position: .zero)]
+        store.updateDiagram(withMarker)
+
+        store.deleteTeam(doomedTeam)
+
+        XCTAssertFalse(store.players.contains { $0.id == orphan.id }, "precondition: the orphan is gone")
+        XCTAssertNil(store.games.first { $0.id == game.id }?.attendance[orphan.id],
+                     "attendance for a deleted player must not survive on another team's game")
+        XCTAssertNil(store.sessions.first { $0.id == session.id }?.rsvps[orphan.id],
+                     "nor their RSVP on another team's session")
+        XCTAssertEqual(store.diagrams.first { $0.id == diagram.id }?.players.first?.playerID, nil,
+                       "and a board marker must not keep a dangling player reference")
+    }
+
+    /// A player guesting elsewhere isn't orphaned, so nothing of theirs is swept.
+    func testAGuestKeepsTheirRecordWhenTheirOtherTeamGoes() {
+        let store = TestData.store(TestData.snapshot(playerCount: 2))
+        let doomedTeam = store.selectedTeam
+        let guest = store.roster[0]
+
+        store.addTeam(name: "Plays Up", ageGroup: .u12, season: "2026")
+        let other = store.selectedTeamID
+        store.guestPlayer(guest.id, ontoTeam: other)
+        store.addGame(opponent: "Rivals", date: Date(), location: "", isHome: true, notes: "")
+        let game = store.games.first { $0.teamID == other }!
+        store.setAttendance(.present, for: guest, in: game)
+
+        store.deleteTeam(doomedTeam)
+
+        XCTAssertTrue(store.players.contains { $0.id == guest.id }, "a play-up kid survives")
+        XCTAssertEqual(store.games.first { $0.id == game.id }?.attendance[guest.id], .present,
+                       "and keeps the record they earned on the team they're still on")
+    }
+}

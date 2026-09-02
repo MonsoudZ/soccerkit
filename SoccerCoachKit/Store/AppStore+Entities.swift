@@ -97,6 +97,15 @@ extension AppStore {
             drills.removeAll { $0.teamID == team.id }
             teams.removeAll { $0.id == team.id }
 
+            // The team's own fixtures are gone, but a removed player can be
+            // referenced from another team's — a guest whose last membership was
+            // here still has attendance, RSVPs, check-ins and board markers
+            // wherever the coach recorded them. `deletePlayer` sweeps all of that;
+            // this path removed the players and left the references behind.
+            // `GameEvent.removingPlayer` exists so the list of dictionaries to
+            // clear lives in one place, and this was the caller that didn't use it.
+            for playerID in orphanedIDs { forgetPlayer(playerID) }
+
             if selectedTeamID == team.id {
                 selectedTeamID = teams.first?.id ?? selectedTeamID
             }
@@ -145,29 +154,43 @@ extension AppStore {
             formInstances.removeAll { $0.subject.type == .athlete && $0.subject.id == player.id }
             players.removeAll { $0.id == player.id }
             removePersonIfOrphaned(personID: player.personID, excludingPlayer: player.id)
-            sessions = sessions.map { session in
-                var updated = session
-                updated.attendance.removeValue(forKey: player.id)
-                updated.rsvps.removeValue(forKey: player.id)
-                return updated
+            forgetPlayer(player.id)
+        }
+    }
+
+    /// Clears every reference to a player id from the surviving sessions, games,
+    /// events and diagrams.
+    ///
+    /// Separate from `deletePlayer` because `deleteTeam` removes players too, and
+    /// the two used to sweep differently — so a player orphaned by a team delete
+    /// left their attendance, RSVPs and wellness answers on any fixture belonging
+    /// to another team. Call it wherever a player stops existing; it does not
+    /// remove the player itself.
+    ///
+    /// Callers are already inside a `batch`, so this doesn't open its own.
+    func forgetPlayer(_ playerID: UUID) {
+        sessions = sessions.map { session in
+            var updated = session
+            updated.attendance.removeValue(forKey: playerID)
+            updated.rsvps.removeValue(forKey: playerID)
+            return updated
+        }
+        games = games.map { $0.removingPlayer(playerID) }
+        events = events.map { event in
+            var updated = event
+            updated.rsvps.removeValue(forKey: playerID)
+            return updated
+        }
+        // Detach any board markers linked to this player so diagrams don't
+        // keep a dangling reference (the marker itself stays in place).
+        diagrams = diagrams.map { diagram in
+            var updated = diagram
+            updated.players = updated.players.map { boardPlayer in
+                var marker = boardPlayer
+                if marker.playerID == playerID { marker.playerID = nil }
+                return marker
             }
-            games = games.map { $0.removingPlayer(player.id) }
-            events = events.map { event in
-                var updated = event
-                updated.rsvps.removeValue(forKey: player.id)
-                return updated
-            }
-            // Detach any board markers linked to this player so diagrams don't
-            // keep a dangling reference (the marker itself stays in place).
-            diagrams = diagrams.map { diagram in
-                var updated = diagram
-                updated.players = updated.players.map { boardPlayer in
-                    var marker = boardPlayer
-                    if marker.playerID == player.id { marker.playerID = nil }
-                    return marker
-                }
-                return updated
-            }
+            return updated
         }
     }
 

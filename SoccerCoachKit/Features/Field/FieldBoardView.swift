@@ -27,7 +27,13 @@ struct FieldBoardView: View {
         .onAppear { viewModel.ensureDiagramLoaded(in: store) }
         // The board is held in the view model, so anything that replaces it or
         // tears the view down has to bank it first, or the work is gone.
-        .onDisappear { viewModel.autosave(in: store) }
+        .onDisappear {
+            viewModel.autosave(in: store)
+            // A prepared export is a rendered copy of the board sitting in the
+            // temporary directory. It's only useful while the share button that
+            // offers it is on screen.
+            viewModel.discardExport()
+        }
         .onChange(of: store.selectedTeamID) {
             viewModel.autosave(in: store) // the outgoing team's board
             viewModel.selectedDiagramID = nil
