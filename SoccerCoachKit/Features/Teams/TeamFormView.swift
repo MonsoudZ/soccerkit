@@ -44,10 +44,12 @@ struct TeamFormView: View {
                 }
             }
 
-            Section("Rules") {
-                LabeledContent("Roster Limit", value: "\(viewModel.ageGroup.maxRosterSize)")
-                LabeledContent("Game Format", value: "\(viewModel.ageGroup.playersOnField)v\(viewModel.ageGroup.playersOnField)")
-                LabeledContent("Default Game", value: "\(viewModel.ageGroup.defaultGameMinutes) min")
+            Section("US Soccer Standard") {
+                let standard = viewModel.ageGroup.standard
+                LabeledContent("Format", value: standard.formatLabel)
+                LabeledContent("Roster Limit", value: "\(standard.maxRosterSize)")
+                LabeledContent("Game Length", value: standard.gameLengthLabel)
+                LabeledContent("Ball Size", value: "\(standard.ballSize)")
             }
 
             Section("Training Board Defaults") {

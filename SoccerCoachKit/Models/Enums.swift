@@ -47,46 +47,41 @@ enum DrillCategory: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
 }
 
+/// A single-year age group, as US Soccer registers them.
+///
+/// Every year from U6 to U19 is here rather than the even bands the app started
+/// with, because the standards don't move in twos: U9 and U10 play 7v7 with a
+/// build-out line while U11 plays 9v9 without one, and heading opens up at U12.
+/// A coach on a band had to round to the wrong rulebook.
+///
+/// The raw values are the ones already persisted, so existing teams keep their
+/// age group across this change; the odd years are additions.
+///
+/// Everything derived lives in `standard` (see `USSoccerStandard`); the
+/// properties here read from it so call sites didn't have to change.
 enum AgeGroup: String, CaseIterable, Identifiable, Codable {
     case u6 = "U6"
+    case u7 = "U7"
     case u8 = "U8"
+    case u9 = "U9"
     case u10 = "U10"
+    case u11 = "U11"
     case u12 = "U12"
+    case u13 = "U13"
     case u14 = "U14"
+    case u15 = "U15"
     case u16 = "U16"
+    case u17 = "U17"
+    case u18 = "U18"
     case u19 = "U19"
 
     var id: String { rawValue }
 
-    var playersOnField: Int {
-        switch self {
-        case .u6, .u8: return 4
-        case .u10: return 7
-        case .u12: return 9
-        case .u14, .u16, .u19: return 11
-        }
-    }
+    var playersOnField: Int { standard.playersPerSide }
 
-    var maxRosterSize: Int {
-        switch self {
-        case .u6: return 8
-        case .u8: return 10
-        case .u10: return 12
-        case .u12: return 16
-        case .u14, .u16, .u19: return 18
-        }
-    }
+    var maxRosterSize: Int { standard.maxRosterSize }
 
-    var defaultGameMinutes: Int {
-        switch self {
-        case .u6: return 24
-        case .u8: return 40
-        case .u10: return 50
-        case .u12: return 60
-        case .u14: return 70
-        case .u16, .u19: return 80
-        }
-    }
+    var defaultGameMinutes: Int { standard.gameMinutes }
 }
 
 enum PeriodFormat: String, CaseIterable, Identifiable, Codable {
@@ -102,12 +97,12 @@ enum PeriodFormat: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// Common youth convention, used as the initial value when a team is created.
+    /// The initial value when a team is created, taken from the age group's US
+    /// Soccer standard: 4v4 is played in quarters, everything from 7v7 up in
+    /// halves. A coach can still choose either — the period format is a team
+    /// setting, not a rule.
     static func `default`(for ageGroup: AgeGroup) -> PeriodFormat {
-        switch ageGroup {
-        case .u6, .u8, .u10: return .quarters
-        default: return .halves
-        }
+        ageGroup.standard.periodCount == 4 ? .quarters : .halves
     }
 
     /// Short label for a 1-based period index (e.g. H1/H2 or Q1–Q4, OT beyond).
