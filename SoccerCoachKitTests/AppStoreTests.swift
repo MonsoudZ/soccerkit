@@ -74,6 +74,72 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(updated?.defaultMinimumMinutes, 40, "minimum minutes preserved through edit")
     }
 
+    /// The team form doesn't ask which organization owns the team, so an edit
+    /// must not answer for it. Rebuilding the team let `Team.init` default the
+    /// owner to the personal org — invisible while that is the only org, and a
+    /// team leaving its club as soon as clubs exist.
+    func testTeamEditPreservesItsOrganization() {
+        let club = UUID()
+        let team = Team(id: UUID(), name: "Club FC", ageGroup: .u14, season: "2026",
+                        accentName: "Teal", organizationID: club)
+        let snapshot = AppSnapshot(teams: [team], players: [], drills: [], sessions: [],
+                                   diagrams: [], games: [], events: [], selectedTeamID: team.id)
+        let store = AppStore(snapshot: snapshot, persistence: InMemoryPersistence())
+
+        let vm = TeamFormViewModel(team: team)
+        vm.name = "Club FC B"
+        vm.save(into: store)
+
+        XCTAssertEqual(store.teams.first { $0.id == team.id }?.organizationID, club)
+        XCTAssertNotEqual(store.teams.first { $0.id == team.id }?.organizationID,
+                          Organization.personalID, "the edit didn't re-home the team")
+    }
+
+    /// `Team.ageGroup` resolves a label this build doesn't know to the nearest
+    /// band it does, so the form's picker shows U19 for a U21 team. Saving an
+    /// unrelated edit must not write that approximation back — sync is
+    /// last-write-wins, so it would reach every device.
+    func testTeamEditKeepsAnAgeGroupThisBuildDoesNotKnow() throws {
+        var dict = try JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(TestData.team(ageGroup: .u10))) as! [String: Any]
+        dict["ageGroup"] = "U21"
+        let team = try JSONDecoder().decode(
+            Team.self, from: try JSONSerialization.data(withJSONObject: dict))
+        XCTAssertEqual(team.ageGroup, .u19, "precondition: the rulebook falls to the nearest band")
+
+        let snapshot = AppSnapshot(teams: [team], players: [], drills: [], sessions: [],
+                                   diagrams: [], games: [], events: [], selectedTeamID: team.id)
+        let store = AppStore(snapshot: snapshot, persistence: InMemoryPersistence())
+
+        // The coach fixes a typo in the name and doesn't touch the age picker.
+        let vm = TeamFormViewModel(team: team)
+        vm.name = "Corrected FC"
+        vm.save(into: store)
+
+        let updated = store.teams.first { $0.id == team.id }
+        XCTAssertEqual(updated?.name, "Corrected FC")
+        XCTAssertEqual(updated?.ageGroupLabel, "U21", "the coach's label survived the edit")
+    }
+
+    /// The other half: an age group the coach *does* change is written verbatim,
+    /// and the minutes goal is clamped into the new format's game length.
+    func testTeamEditWritesAnExplicitAgeGroupChange() {
+        let team = TestData.team(ageGroup: .u16, minMinutes: 40)
+        let snapshot = AppSnapshot(teams: [team], players: [], drills: [], sessions: [],
+                                   diagrams: [], games: [], events: [], selectedTeamID: team.id)
+        let store = AppStore(snapshot: snapshot, persistence: InMemoryPersistence())
+
+        let vm = TeamFormViewModel(team: team)
+        vm.ageGroup = .u8
+        vm.save(into: store)
+
+        let updated = store.teams.first { $0.id == team.id }
+        XCTAssertEqual(updated?.ageGroup, .u8)
+        XCTAssertEqual(updated?.ageGroupLabel, "U8")
+        XCTAssertEqual(updated?.defaultMinimumMinutes, AgeGroup.u8.defaultGameMinutes,
+                       "the 40-minute goal was clamped into the shorter game")
+    }
+
     func testJerseyNumberDuplicateDetection() {
         let store = TestData.store(TestData.snapshot(playerCount: 5)) // numbers 1...5
         let existing = store.roster.first { $0.number == 3 }!
