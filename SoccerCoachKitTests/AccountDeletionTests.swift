@@ -41,7 +41,8 @@ final class AccountDeletionTests: XCTestCase {
 
     func testPersistencePurgeRemovesSnapshotAndCorruptBackup() {
         let defaults = UserDefaults(suiteName: "purge-tests-\(UUID().uuidString)")!
-        let persistence = UserDefaultsPersistenceService(defaults: defaults, namespace: "coach-1")
+        let persistence = UserDefaultsPersistenceService(defaults: defaults, namespace: "coach-1",
+                                                         cipher: TestCipher.inMemory())
         persistence.save(TestData.snapshot())
         persistence.flushPendingSync()
         persistence.backupCorruptData(Data("unreadable".utf8))

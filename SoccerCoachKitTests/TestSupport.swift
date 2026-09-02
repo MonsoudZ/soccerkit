@@ -103,6 +103,20 @@ final class TestDate {
     func advance(_ by: TimeInterval) { current = current.addingTimeInterval(by) }
 }
 
+/// Real AES-GCM, but with the key held in memory instead of the Keychain.
+///
+/// For tests about persistence rather than encryption. The unsigned test host
+/// has no usable Keychain — the same reason `testKeychainRoundTrip` is skipped
+/// in CI — so a persistence service built with the production cipher can't seal
+/// anything there and, correctly, writes nothing at all.
+enum TestCipher {
+    /// A cipher whose key survives for as long as `keyStore`, so two services
+    /// sharing one can read each other's writes the way two launches would.
+    static func inMemory(_ keyStore: InMemoryTokenStorage = InMemoryTokenStorage()) -> SnapshotCipher {
+        KeychainSnapshotCipher(storage: keyStore)
+    }
+}
+
 /// A controllable monotonic clock for `GameDayViewModel` tests.
 final class TestClock {
     var seconds: TimeInterval = 0

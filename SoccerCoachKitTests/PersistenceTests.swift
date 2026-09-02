@@ -18,8 +18,13 @@ final class PersistenceTests: XCTestCase {
         super.tearDown()
     }
 
+    /// One key store for every service a test builds, so a second service reads
+    /// what the first wrote — the way a relaunch does.
+    private lazy var keyStore = InMemoryTokenStorage()
+
     private func service() -> UserDefaultsPersistenceService {
-        UserDefaultsPersistenceService(defaults: defaults, baseKey: key)
+        UserDefaultsPersistenceService(defaults: defaults, baseKey: key,
+                                       cipher: TestCipher.inMemory(keyStore))
     }
 
     func testEmptyWhenNothingStored() {
