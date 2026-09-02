@@ -7,6 +7,10 @@ final class InMemoryPersistence: PersistenceService {
     private var storedByNamespace: [String: AppSnapshot] = [:]
     private var namespace = "" // "" == guest / signed-out
     private(set) var backedUp: Data?
+    var onWriteOutcome: ((_ saved: Bool) -> Void)?
+    /// When set, `save` reports the write as failed — standing in for a device
+    /// that won't hand over the encryption key.
+    var failWrites = false
 
     init(stored: AppSnapshot? = nil) { storedByNamespace[""] = stored }
 
@@ -17,7 +21,11 @@ final class InMemoryPersistence: PersistenceService {
     }
 
     func load() -> PersistenceLoadResult { stored.map { .success($0) } ?? .empty }
-    func save(_ snapshot: AppSnapshot) { stored = snapshot }
+    func save(_ snapshot: AppSnapshot) {
+        guard !failWrites else { return onWriteOutcome?(false) ?? () }
+        stored = snapshot
+        onWriteOutcome?(true)
+    }
     func setNamespace(_ namespace: String?) { self.namespace = namespace ?? "" }
     func backupCorruptData(_ data: Data) { backedUp = data }
     func flushPendingSync() {}

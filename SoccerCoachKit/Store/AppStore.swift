@@ -124,6 +124,11 @@ final class AppStore: ObservableObject {
     /// Where CloudKit sync stands, surfaced in Settings so sync isn't silent.
     @Published private(set) var syncStatus: SyncStatus = .off
 
+    /// Whether changes are reaching disk. A save that can't be sealed is dropped
+    /// rather than written in the clear (see `SnapshotCipher`), and this is what
+    /// stops that being invisible to the coach it happens to.
+    @Published private(set) var saveStatus: SaveStatus = .saved
+
     /// Re-attempts sync after a failure or once an iCloud account is available.
     func retrySync() {
         guard cloudSyncEnabled else { return }
@@ -234,6 +239,12 @@ final class AppStore: ObservableObject {
         self.scheduleNotifier = ScheduleNotifier()
         self.gameDay = GameDayViewModel(sessionStore: gameDaySessions
             ?? (AppEnvironment.isTestingOrUITesting ? nil : UserDefaultsGameDaySessionStore(namespace: namespace)))
+        // After every stored property: this captures self. Writes happen on a
+        // background queue, so the outcome arrives off the main actor and hops
+        // here before it touches published state.
+        persistence.onWriteOutcome = { [weak self] saved in
+            Task { @MainActor in self?.saveStatus = saved ? .saved : .unsaved }
+        }
         publishWidgetData()
         if let remoteSync {
             remoteSync.snapshotProvider = { [weak self] in self?.snapshot ?? snapshot }

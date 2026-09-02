@@ -18,7 +18,12 @@ enum PersistenceLoadResult {
 /// protocol lets the store be initialized with an alternate backend (in-memory
 /// for tests and previews, or a future file/CloudKit implementation) without
 /// touching the view or store logic.
-protocol PersistenceService {
+protocol PersistenceService: AnyObject {
+    /// Reports whether each write reached disk, so the app can tell the coach
+    /// when their changes aren't being saved instead of losing them quietly.
+    /// Called on a background queue.
+    var onWriteOutcome: ((_ saved: Bool) -> Void)? { get set }
+
     func load() -> PersistenceLoadResult
     func save(_ snapshot: AppSnapshot)
     /// Switches which user's data this store reads and writes. Passing a coach's
@@ -57,6 +62,7 @@ final class UserDefaultsPersistenceService: PersistenceService {
     private let lock = NSLock()
     private var pending: AppSnapshot?
     private let cipher: SnapshotCipher
+    var onWriteOutcome: ((_ saved: Bool) -> Void)?
 
     init(defaults: UserDefaults = .standard,
          namespace: String? = nil,
@@ -160,7 +166,9 @@ final class UserDefaultsPersistenceService: PersistenceService {
 
     private func drain() {
         while let snapshot = takePending() {
-            guard write(snapshot) else {
+            let saved = write(snapshot)
+            onWriteOutcome?(saved)
+            guard saved else {
                 // Couldn't seal it. Hand it back rather than drop the coach's
                 // changes on the floor, and stop: retrying in this loop would
                 // spin on the same unavailable key.

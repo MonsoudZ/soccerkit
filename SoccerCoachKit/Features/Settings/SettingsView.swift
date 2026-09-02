@@ -9,6 +9,9 @@ struct SettingsView: View {
 
     var body: some View {
         List {
+            // First: if changes aren't reaching disk, that outranks everything
+            // else on this screen.
+            saveWarningSection
             accountSection
             remindersSection
             syncSection
@@ -101,6 +104,26 @@ struct SettingsView: View {
             Text("Reminders")
         } footer: {
             Text("Get a notification before upcoming games, practices, and events.")
+        }
+    }
+
+    /// Only present when there is something wrong: a permanent "Saved" row is
+    /// noise, but changes that aren't being written must not be silent.
+    @ViewBuilder
+    private var saveWarningSection: some View {
+        if store.saveStatus == .unsaved {
+            Section {
+                Label(store.saveStatus.label, systemImage: store.saveStatus.systemImage)
+                    .foregroundStyle(store.saveStatus.tint)
+                    .font(.subheadline.weight(.medium))
+                if let detail = store.saveStatus.detail {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Storage")
+            }
         }
     }
 
