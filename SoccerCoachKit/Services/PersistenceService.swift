@@ -43,8 +43,10 @@ protocol PersistenceService {
 }
 
 /// Default persistence backed by `UserDefaults`, storing a JSON-encoded
-/// snapshot. Writes are encoded off the main thread and coalesced, so rapid
-/// mutations don't block the UI or waste work.
+/// snapshot — sealed, not in the clear, because the roster it holds carries
+/// children's medical notes and their guardians' contact details (see
+/// `SnapshotCipher`). Writes are encoded off the main thread and coalesced, so
+/// rapid mutations don't block the UI or waste work.
 final class UserDefaultsPersistenceService: PersistenceService {
     private let defaults: UserDefaults
     private let baseKey: String
@@ -54,13 +56,16 @@ final class UserDefaultsPersistenceService: PersistenceService {
     private let queue = DispatchQueue(label: "SoccerCoachKit.persistence", qos: .utility)
     private let lock = NSLock()
     private var pending: AppSnapshot?
+    private let cipher: SnapshotCipher
 
     init(defaults: UserDefaults = .standard,
          namespace: String? = nil,
-         baseKey: String = "SoccerCoachKit.AppSnapshot.v1") {
+         baseKey: String = "SoccerCoachKit.AppSnapshot.v1",
+         cipher: SnapshotCipher = KeychainSnapshotCipher()) {
         self.defaults = defaults
         self.baseKey = baseKey
         self.namespace = namespace
+        self.cipher = cipher
     }
 
     func setNamespace(_ namespace: String?) {
@@ -73,13 +78,31 @@ final class UserDefaultsPersistenceService: PersistenceService {
             return .empty
         }
 
+        if let plaintext = try? cipher.open(data) {
+            do {
+                return .success(try JSONDecoder().decode(AppSnapshot.self, from: plaintext))
+            } catch {
+                return .corrupt(data: data, error: error)
+            }
+        }
+
+        // Not sealed, or not sealed with a key we hold. Either it predates
+        // encryption at rest, or it came from a device whose key didn't travel
+        // with it (an unencrypted backup restored elsewhere).
         do {
             let snapshot = try JSONDecoder().decode(AppSnapshot.self, from: data)
+            // Migrate on read. Waiting for the coach's next edit would work, but
+            // until they make one their players' medical notes stay on disk in
+            // the clear — and a coach who only ever reads the roster never makes
+            // one.
+            save(snapshot)
             return .success(snapshot)
         } catch {
             // Surface the raw bytes rather than collapsing to `nil`: the caller
             // must be able to tell corruption apart from a fresh install so it
-            // never overwrites recoverable data with sample content.
+            // never overwrites recoverable data with sample content. Ciphertext
+            // we have no key for lands here too, and is preserved for the same
+            // reason — it is unreadable, not worthless.
             return .corrupt(data: data, error: error)
         }
     }
@@ -108,7 +131,18 @@ final class UserDefaultsPersistenceService: PersistenceService {
         defaults.set(data, forKey: backupKey)
     }
 
-    func corruptBackup() -> Data? { defaults.data(forKey: backupKey) }
+    /// The preserved blob, unsealed when we hold the key.
+    ///
+    /// This exists so a coach can export and inspect data the app couldn't read.
+    /// The stored copy stays sealed — leaving decrypted medical notes parked
+    /// under a backup key would undo the point — but a blob that failed to
+    /// *decode* after decrypting fine is exactly the recoverable case, so it
+    /// comes back out readable. One we have no key for comes back as it is:
+    /// unreadable, and still the only copy.
+    func corruptBackup() -> Data? {
+        guard let stored = defaults.data(forKey: backupKey) else { return nil }
+        return (try? cipher.open(stored)) ?? stored
+    }
 
     func clearCorruptBackup() { defaults.removeObject(forKey: backupKey) }
 
@@ -126,7 +160,13 @@ final class UserDefaultsPersistenceService: PersistenceService {
 
     private func drain() {
         while let snapshot = takePending() {
-            write(snapshot)
+            guard write(snapshot) else {
+                // Couldn't seal it. Hand it back rather than drop the coach's
+                // changes on the floor, and stop: retrying in this loop would
+                // spin on the same unavailable key.
+                returnUnwritten(snapshot)
+                return
+            }
         }
     }
 
@@ -138,14 +178,42 @@ final class UserDefaultsPersistenceService: PersistenceService {
         return snapshot
     }
 
-    private func write(_ snapshot: AppSnapshot) {
+    /// Puts an unwritten snapshot back so the next `save` or `flushPendingSync`
+    /// tries again — unless a newer one arrived while we were failing, which
+    /// supersedes it.
+    private func returnUnwritten(_ snapshot: AppSnapshot) {
+        lock.lock()
+        defer { lock.unlock() }
+        if pending == nil { pending = snapshot }
+    }
+
+    /// Writes the snapshot, sealed. Returns whether it landed.
+    private func write(_ snapshot: AppSnapshot) -> Bool {
+        let encoded: Data
         do {
-            let data = try JSONEncoder().encode(snapshot)
-            defaults.set(data, forKey: storageKey)
+            encoded = try JSONEncoder().encode(snapshot)
         } catch {
             // Encoding a value type we fully own should never fail; assert so a
             // regression is visible instead of silently dropping every write.
+            // Unrecoverable, so it isn't handed back for a retry.
             assertionFailure("Failed to encode AppSnapshot: \(error)")
+            return true
+        }
+
+        do {
+            defaults.set(try cipher.seal(encoded), forKey: storageKey)
+            return true
+        } catch {
+            // The Keychain wouldn't give up the key. That is a runtime condition
+            // rather than a bug — a background launch before the device's first
+            // unlock can hit it — so it must not trap.
+            //
+            // There is deliberately no plaintext fallback. Writing the clear JSON
+            // is the one outcome worse than not writing it, because that is a
+            // squad of children's medical notes on disk. The snapshot goes back
+            // on the queue instead, and the next flush (the app is flushed on its
+            // way to the background) writes it once the key is readable again.
+            return false
         }
     }
 }
