@@ -69,17 +69,24 @@ enum ScheduleReminderPlanner {
     }
 }
 
-/// The part of `UNUserNotificationCenter` that schedule reminders use.
+/// The part of `UNUserNotificationCenter` that the app's two notifiers use.
 ///
-/// Behind a protocol so `ScheduleNotifier`'s ordering guarantee can be tested:
-/// the real centre can't be driven into an overlap on demand, and the overlap
-/// is the whole bug. Deliberately thin — it deals in primitives, and the
-/// notification objects are built on the far side of it.
+/// Behind a protocol so their ordering guarantee can be tested: the real centre
+/// can't be driven into an overlap on demand, and the overlap is the whole bug.
+/// Deliberately thin — it deals in primitives, and the notification objects are
+/// built on the far side of it.
+///
+/// The two `add`s differ by trigger, because the two callers mean different
+/// things by "when". A schedule reminder fires at a wall-clock date that can be
+/// days out, so it matches date components and minute granularity is plenty. A
+/// sub reminder fires a counted number of seconds from now, measured against a
+/// running match clock, and rounding that to the minute would move it.
 @MainActor
 protocol NotificationCenterScheduling {
     func pendingIdentifiers() async -> [String]
     func removePendingRequests(withIdentifiers identifiers: [String])
     func add(identifier: String, title: String, body: String, fireDate: Date)
+    func add(identifier: String, title: String, body: String, secondsFromNow: TimeInterval)
     func requestAuthorization()
 }
 
@@ -96,19 +103,35 @@ final class SystemNotificationCenter: NotificationCenterScheduling {
     }
 
     func add(identifier: String, title: String, body: String, fireDate: Date) {
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        content.sound = .default
-
         let components = Calendar.current.dateComponents(
             [.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-        center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
+        add(identifier: identifier, content: content(title: title, body: body), trigger: trigger)
+    }
+
+    func add(identifier: String, title: String, body: String, secondsFromNow: TimeInterval) {
+        // `UNTimeIntervalNotificationTrigger` traps on a non-positive interval.
+        // Callers already drop anything under a second; this is the belt to that
+        // pair of braces, because the trap would take the app down mid-match.
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: max(1, secondsFromNow), repeats: false)
+        add(identifier: identifier, content: content(title: title, body: body), trigger: trigger)
     }
 
     func requestAuthorization() {
         center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    private func content(title: String, body: String) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        return content
+    }
+
+    private func add(identifier: String, content: UNNotificationContent, trigger: UNNotificationTrigger) {
+        center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
     }
 }
 

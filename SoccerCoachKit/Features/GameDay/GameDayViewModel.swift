@@ -29,7 +29,10 @@ final class GameDayViewModel: ObservableObject {
     /// Source of monotonic seconds (injectable for testing).
     private let now: () -> TimeInterval
     /// Schedules background local notifications for pending sub reminders.
-    private let notifier = GameDayNotifier()
+    /// Built in `init` rather than as a property default: a default expression is
+    /// a nonisolated context in the Swift 5 language mode, and `GameDayNotifier`
+    /// is `@MainActor`.
+    private let notifier: GameDayNotifier
 
     // Game state.
     @Published var starterIDs: Set<UUID> = []
@@ -83,10 +86,12 @@ final class GameDayViewModel: ObservableObject {
     /// source.
     init(now: @escaping () -> TimeInterval = GameDayViewModel.monotonicNow,
          date: @escaping () -> Date = Date.init,
-         sessionStore: GameDaySessionStore? = nil) {
+         sessionStore: GameDaySessionStore? = nil,
+         notifier: GameDayNotifier? = nil) {
         self.now = now
         self.date = date
         self.sessionStore = sessionStore
+        self.notifier = notifier ?? GameDayNotifier()
     }
 
     // MARK: - Surviving a relaunch
