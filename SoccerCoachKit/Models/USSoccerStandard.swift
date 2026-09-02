@@ -130,6 +130,49 @@ extension AgeGroup {
         }
     }
 
+    /// The band to apply to a stored age group this build does not recognise.
+    ///
+    /// A newer build can write an age group an older one has never heard of — the odd
+    /// years were added that way, and U4, U20 or a league's own label could be next. The
+    /// value round-trips untouched (see `Team.ageGroupLabel`); this is only about which
+    /// rulebook to show beside it.
+    ///
+    /// The rule is to round *down* to the nearest band we do know, and to clamp to the
+    /// ends of the range. Rounding up would read better for format — U9 belongs with U10
+    /// in 7v7, not with U8 in 4v4 — but it gets heading wrong, and heading is the one
+    /// standard here that exists to protect a child's head: rounding U11 up to U12 would
+    /// display heading as permitted in matches for a team that must not head at all.
+    /// Showing a smaller-sided format than the team really plays is a mistake a coach
+    /// spots in a second. Showing a permission they do not have is one they might not.
+    ///
+    /// A value with no `U<number>` in it at all — a birth-year label, say — falls to the
+    /// youngest band, by the same reasoning.
+    static func nearestKnown(to rawValue: String) -> AgeGroup {
+        if let exact = AgeGroup(rawValue: rawValue) { return exact }
+
+        let known = AgeGroup.allCases.sorted { $0.underAge < $1.underAge }
+        guard let youngest = known.first, let oldest = known.last else { return .u10 }
+        guard let age = Self.underAge(inRawValue: rawValue) else { return youngest }
+
+        if age <= youngest.underAge { return youngest }
+        if age >= oldest.underAge { return oldest }
+        return known.last { $0.underAge <= age } ?? youngest
+    }
+
+    /// The number in a "U10"-shaped label, however it is cased or spaced.
+    private static func underAge(inRawValue rawValue: String) -> Int? {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespaces)
+        guard trimmed.lowercased().hasPrefix("u") else { return nil }
+        let digits = trimmed.dropFirst().prefix { $0.isNumber }
+        return digits.isEmpty ? nil : Int(digits)
+    }
+
+    /// The age this band is "under": 10 for U10. Every case is `U<number>`, so this is
+    /// total, and it is what orders the bands rather than the declaration order.
+    var underAge: Int {
+        Self.underAge(inRawValue: rawValue) ?? 0
+    }
+
     private static func fullSidedPeriodMinutes(_ ageGroup: AgeGroup) -> Int {
         switch ageGroup {
         case .u13, .u14: return 35

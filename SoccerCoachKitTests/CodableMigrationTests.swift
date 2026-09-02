@@ -23,6 +23,54 @@ final class CodableMigrationTests: XCTestCase {
         XCTAssertEqual(decoded.trainingDefaults, .standard)
     }
 
+    /// Data written by a *newer* build, which is the direction this file did not cover.
+    /// A team's age group is the one field whose value set can grow — the odd years were
+    /// added that way, and U4, U20 or a league's own label could be next — so an
+    /// unrecognised one must not take the whole team down with it.
+    func testTeamSurvivesAnUnknownAgeGroup() throws {
+        let team = TestData.team(ageGroup: .u10)
+        var dict = try JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(team)) as! [String: Any]
+        dict["ageGroup"] = "U21"
+        let data = try JSONSerialization.data(withJSONObject: dict)
+
+        let decoded = try JSONDecoder().decode(Team.self, from: data)
+        XCTAssertEqual(decoded.id, team.id)
+        XCTAssertEqual(decoded.name, team.name, "the rest of the team still decodes")
+        XCTAssertEqual(decoded.ageGroupLabel, "U21", "the stored label is what the coach chose")
+        XCTAssertEqual(decoded.ageGroup, .u19, "and the rulebook falls to the nearest band")
+    }
+
+    /// The half that matters more than surviving the decode. Sync is last-write-wins, so
+    /// if an older build re-encodes a team it could not fully understand, whatever it
+    /// writes becomes the value on every device. It has to hand back what it was given.
+    func testUnknownAgeGroupRoundTripsUnchanged() throws {
+        let team = TestData.team(ageGroup: .u10)
+        var dict = try JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(team)) as! [String: Any]
+        dict["ageGroup"] = "U21"
+        let data = try JSONSerialization.data(withJSONObject: dict)
+
+        var decoded = try JSONDecoder().decode(Team.self, from: data)
+        decoded.name = "Renamed by an older build"
+        let reencoded = try JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(decoded)) as! [String: Any]
+
+        XCTAssertEqual(reencoded["ageGroup"] as? String, "U21",
+                       "an older build must not rewrite a team's age group to one it happens to know")
+    }
+
+    /// Setting the age group deliberately still stores exactly that, so the fallback
+    /// cannot leak into a value a coach picked.
+    func testChosenAgeGroupIsStoredVerbatim() throws {
+        var team = TestData.team(ageGroup: .u10)
+        team.ageGroup = .u13
+        let dict = try JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(team)) as! [String: Any]
+        XCTAssertEqual(dict["ageGroup"] as? String, "U13")
+        XCTAssertEqual(team.ageGroupLabel, "U13")
+    }
+
     func testPlayerLegacyOverrideIsNil() throws {
         let player = TestData.player(teamID: UUID(), number: 7, minOverride: 20)
         let decoded = try decodeLegacy(player, removing: ["minMinutesOverride"])

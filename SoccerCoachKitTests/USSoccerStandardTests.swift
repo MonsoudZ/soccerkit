@@ -164,3 +164,44 @@ final class USSoccerStandardTests: XCTestCase {
         XCTAssertEqual(ages, ages.sorted())
     }
 }
+
+// MARK: - Age groups this build does not know
+
+extension USSoccerStandardTests {
+
+    func testKnownAgeGroupIsItsOwnBand() {
+        for ageGroup in AgeGroup.allCases {
+            XCTAssertEqual(AgeGroup.nearestKnown(to: ageGroup.rawValue), ageGroup)
+        }
+    }
+
+    /// Rounding is downward on purpose. Heading is the standard that exists to protect a
+    /// child's head, and it is the one that would be wrong in the other direction: U11
+    /// rounded up to U12 would show heading as permitted in matches for a team that must
+    /// not head at all.
+    func testUnknownBandRoundsDownSoNoPermissionIsInvented() {
+        // A hypothetical band between two we know.
+        XCTAssertEqual(AgeGroup.nearestKnown(to: "U11.5"), .u11)
+        XCTAssertEqual(AgeGroup.nearestKnown(to: "U11").standard.heading, .notPermitted)
+        XCTAssertEqual(AgeGroup.nearestKnown(to: "U11.5").standard.heading, .notPermitted,
+                       "a band we cannot place must not grant heading")
+    }
+
+    func testUnknownBandsClampToTheEndsOfTheRange() {
+        XCTAssertEqual(AgeGroup.nearestKnown(to: "U4"), .u6, "younger than anything we know")
+        XCTAssertEqual(AgeGroup.nearestKnown(to: "U20"), .u19, "older than anything we know")
+        XCTAssertEqual(AgeGroup.nearestKnown(to: "U23"), .u19)
+    }
+
+    func testLabelsThatAreNotBandsFallToTheYoungest() {
+        for label in ["2015B", "High School", "", "U", "Recreational"] {
+            XCTAssertEqual(AgeGroup.nearestKnown(to: label), .u6,
+                           "\(label): nothing to place, so nothing is granted")
+        }
+    }
+
+    func testBandParsingToleratesCaseAndSpacing() {
+        XCTAssertEqual(AgeGroup.nearestKnown(to: "u12"), .u12)
+        XCTAssertEqual(AgeGroup.nearestKnown(to: " U12 "), .u12)
+    }
+}
