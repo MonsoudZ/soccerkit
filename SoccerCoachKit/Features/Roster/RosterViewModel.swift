@@ -3,7 +3,10 @@ import Foundation
 @MainActor
 final class RosterViewModel: ObservableObject {
     @Published var showingAddPlayer = false
-    @Published var exportFile: RosterExportFile?
+    @Published var exportFile: ExportedFile?
+    /// Why the last export didn't produce a file. Tapping Export and getting
+    /// nothing back used to be the whole of the failure report.
+    @Published var exportError: String?
     @Published var searchText = ""
     @Published var positionFilter: PlayerPosition?
 
@@ -58,7 +61,10 @@ final class RosterViewModel: ObservableObject {
             try? FileManager.default.removeItem(at: previous)
         }
         let name = RosterExporter.fileName(for: team, extension: fileExtension)
-        guard let url = RosterExporter.write(data, fileName: name) else { return }
-        exportFile = RosterExportFile(url: url)
+        do {
+            exportFile = ExportedFile(url: try FileExport.write(data, named: name))
+        } catch {
+            exportError = "Couldn't create the file to share."
+        }
     }
 }

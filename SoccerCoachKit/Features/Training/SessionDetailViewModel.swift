@@ -4,7 +4,9 @@ import Foundation
 final class SessionDetailViewModel: ObservableObject {
     let sessionID: UUID
     @Published var showingEditSession = false
-    @Published var exportFile: SessionExportFile?
+    @Published var exportFile: ExportedFile?
+    /// Why the last export didn't produce a file.
+    @Published var exportError: String?
 
     init(sessionID: UUID) {
         self.sessionID = sessionID
@@ -25,8 +27,11 @@ final class SessionDetailViewModel: ObservableObject {
         }
         let data = SessionExporter.pdfData(for: session, in: store)
         let name = SessionExporter.fileName(for: session)
-        guard let url = SessionExporter.write(data, fileName: name) else { return }
-        exportFile = SessionExportFile(url: url)
+        do {
+            exportFile = ExportedFile(url: try FileExport.write(data, named: name))
+        } catch {
+            exportError = "Couldn't create the file to share."
+        }
     }
 
     /// Removes the temp export file once the share sheet is dismissed.

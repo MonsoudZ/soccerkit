@@ -93,7 +93,15 @@ struct RosterView: View {
             }
         }
         .sheet(item: $viewModel.exportFile, onDismiss: { viewModel.cleanupExport() }) { file in
-            RosterShareSheet(url: file.url)
+            ShareSheet(url: file.url)
+        }
+        .alert("Export Failed", isPresented: Binding(
+            get: { viewModel.exportError != nil },
+            set: { if !$0 { viewModel.exportError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.exportError ?? "")
         }
     }
 }

@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
-    @Published var exportFile: SettingsExportFile?
+    @Published var exportFile: ExportedFile?
     @Published var showingImporter = false
     @Published var showingResetConfirm = false
     @Published var showingDiscardConfirm = false
@@ -43,7 +43,10 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func exportCorruptBackup(from store: AppStore) {
-        guard let data = store.corruptBackupData() else { return }
+        guard let data = store.corruptBackupData() else {
+            alertText = "There's no set-aside data to export."
+            return
+        }
         share(data, name: "SoccerCoachKit-unreadable-data.json")
     }
 
@@ -70,18 +73,10 @@ final class SettingsViewModel: ObservableObject {
 
     private func share(_ data: Data, name: String) {
         if let previous = exportFile?.url { try? FileManager.default.removeItem(at: previous) }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         do {
-            try data.write(to: url)
-            exportFile = SettingsExportFile(url: url)
+            exportFile = ExportedFile(url: try FileExport.write(data, named: name))
         } catch {
             alertText = "Couldn't write the backup file."
         }
     }
-}
-
-/// Identifiable wrapper so a prepared export URL can drive a `.sheet(item:)`.
-struct SettingsExportFile: Identifiable {
-    let id = UUID()
-    let url: URL
 }

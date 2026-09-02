@@ -138,22 +138,8 @@ enum SessionExporter {
 
     // MARK: - File
 
-    static func write(_ data: Data, fileName: String) -> URL? {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-        do {
-            try data.write(to: url)
-            return url
-        } catch {
-            return nil
-        }
-    }
-
     static func fileName(for session: TrainingSession) -> String {
-        let base = session.title
-            .replacingOccurrences(of: " ", with: "-")
-            .components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-")).inverted)
-            .joined()
-        return "\(base.isEmpty ? "session" : base)-plan.pdf"
+        "\(FileExport.slug(session.title, fallback: "session"))-plan.pdf"
     }
 }
 
@@ -164,19 +150,3 @@ private extension UIFont {
     }
 }
 
-/// Identifiable wrapper so a prepared export URL can drive a `.sheet(item:)`.
-struct SessionExportFile: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
-/// Presents the system share sheet for an exported session plan.
-struct SessionShareSheet: UIViewControllerRepresentable {
-    let url: URL
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-}

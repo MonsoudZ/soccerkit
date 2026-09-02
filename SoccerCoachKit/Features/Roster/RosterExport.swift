@@ -177,38 +177,7 @@ enum RosterExporter {
 
     // MARK: - File
 
-    static func write(_ data: Data, fileName: String) -> URL? {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-        do {
-            try data.write(to: url)
-            return url
-        } catch {
-            return nil
-        }
-    }
-
     static func fileName(for team: Team, extension fileExtension: String) -> String {
-        let base = team.name
-            .replacingOccurrences(of: " ", with: "-")
-            .components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-")).inverted)
-            .joined()
-        return "\(base.isEmpty ? "roster" : base)-roster.\(fileExtension)"
+        "\(FileExport.slug(team.name, fallback: "roster"))-roster.\(fileExtension)"
     }
-}
-
-/// Identifiable wrapper so a prepared export URL can drive a `.sheet(item:)`.
-struct RosterExportFile: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
-/// Presents the system share sheet for an exported roster file.
-struct RosterShareSheet: UIViewControllerRepresentable {
-    let url: URL
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

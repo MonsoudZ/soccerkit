@@ -27,7 +27,7 @@ struct SettingsView: View {
             viewModel.importBackup(result, into: store)
         }
         .sheet(item: $viewModel.exportFile, onDismiss: { viewModel.cleanupExport() }) { file in
-            SettingsShareSheet(url: file.url)
+            ShareSheet(url: file.url)
         }
         .confirmationDialog("Reset to sample data?", isPresented: $viewModel.showingResetConfirm, titleVisibility: .visible) {
             Button("Reset", role: .destructive) { store.resetToSampleData() }
