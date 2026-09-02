@@ -31,6 +31,17 @@ enum SaveStatus: Equatable {
         }
     }
 
+    /// The same warning at banner length. `detail` explains the mechanism to a
+    /// coach who went to Settings looking for it; this catches one who wasn't
+    /// looking at all, so it leads with the consequence and the one action that
+    /// fixes it.
+    var bannerMessage: String {
+        switch self {
+        case .saved: return ""
+        case .unsaved: return "Recent changes are only in memory. Unlocking this device usually fixes it."
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .saved: return "checkmark.circle"
