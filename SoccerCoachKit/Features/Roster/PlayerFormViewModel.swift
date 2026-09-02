@@ -55,33 +55,51 @@ final class PlayerFormViewModel: ObservableObject {
         isValid && !hasDuplicateNumber(in: store)
     }
 
+    /// Writes the form's fields onto a player. Editing starts from the stored
+    /// player rather than building a fresh one, so everything this form doesn't
+    /// ask about survives the save.
+    ///
+    /// Rebuilding from the form alone dropped two fields that aren't in its
+    /// argument list: `developmentLog` defaulted to empty, so fixing a guardian's
+    /// phone number erased a season of dated notes and skill ratings — and the
+    /// deletion synced — and `personID` was re-derived from the player's id,
+    /// which is harmless only while the two are equal. Both paths now go through
+    /// `apply(to:)`, so a field added to this form can't be written on create and
+    /// forgotten on edit.
     func save(into store: AppStore) {
-        let updated = Player(
-            id: player?.id ?? UUID(),
-            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-            number: number,
-            position: position,
-            guardian: guardian.trimmingCharacters(in: .whitespacesAndNewlines),
-            notes: notes,
-            guardianPhone: trimmed(guardianPhone),
-            guardianEmail: trimmed(guardianEmail),
-            secondaryContactName: trimmed(secondaryContactName),
-            secondaryContactPhone: trimmed(secondaryContactPhone),
-            emergencyContactName: trimmed(emergencyContactName),
-            emergencyContactPhone: trimmed(emergencyContactPhone),
-            emergencyContactRelation: trimmed(emergencyContactRelation),
-            allergies: trimmed(allergies),
-            medicalNotes: medicalNotes.trimmingCharacters(in: .whitespacesAndNewlines),
-            minMinutesOverride: overrideMinMinutes ? max(0, minMinutes) : nil
-        )
-
-        if player == nil {
+        if let player {
+            var updated = player
+            apply(to: &updated)
+            store.updatePlayer(updated)
+        } else {
+            // A blank slate to write onto: a new player has no development log,
+            // and `Player.init` derives their `personID` from their own id.
+            var created = Player(id: UUID(), name: "", number: number,
+                                 position: position, guardian: "", notes: "")
+            apply(to: &created)
             // A new player joins the currently selected team; edits leave the
             // existing membership untouched.
-            store.addPlayer(updated, toTeam: store.selectedTeamID)
-        } else {
-            store.updatePlayer(updated)
+            store.addPlayer(created, toTeam: store.selectedTeamID)
         }
+    }
+
+    /// Every field this form owns, and nothing else.
+    private func apply(to player: inout Player) {
+        player.name = trimmed(name)
+        player.number = number
+        player.position = position
+        player.guardian = trimmed(guardian)
+        player.notes = notes
+        player.guardianPhone = trimmed(guardianPhone)
+        player.guardianEmail = trimmed(guardianEmail)
+        player.secondaryContactName = trimmed(secondaryContactName)
+        player.secondaryContactPhone = trimmed(secondaryContactPhone)
+        player.emergencyContactName = trimmed(emergencyContactName)
+        player.emergencyContactPhone = trimmed(emergencyContactPhone)
+        player.emergencyContactRelation = trimmed(emergencyContactRelation)
+        player.allergies = trimmed(allergies)
+        player.medicalNotes = trimmed(medicalNotes)
+        player.minMinutesOverride = overrideMinMinutes ? max(0, minMinutes) : nil
     }
 
     private func trimmed(_ value: String) -> String {

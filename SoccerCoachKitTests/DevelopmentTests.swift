@@ -51,4 +51,50 @@ final class DevelopmentTests: XCTestCase {
         store.deleteDevelopmentEntry(entry, for: player)
         XCTAssertTrue(store.players.first { $0.id == player.id }?.developmentLog.isEmpty ?? false)
     }
+
+    /// The development log is only reachable through the player, and the edit
+    /// form doesn't ask about it — so the form must not rebuild the player from
+    /// its own fields. It used to, and a coach who corrected a phone number lost
+    /// every entry they had recorded (and the deletion synced).
+    func testEditingAPlayerKeepsFieldsTheFormDoesNotOwn() {
+        let store = TestData.store()
+        let player = store.roster[0]
+        let personID = player.personID
+
+        store.saveDevelopmentEntry(
+            DevelopmentEntry(date: Date(), notes: "Great week", ratings: ["Passing": 4]),
+            for: player
+        )
+
+        // The coach opens Edit Player and changes only the guardian's phone.
+        let stored = store.players.first { $0.id == player.id }!
+        let form = PlayerFormViewModel(player: stored)
+        form.guardianPhone = "555-0100"
+        form.save(into: store)
+
+        let saved = store.players.first { $0.id == player.id }
+        XCTAssertEqual(saved?.guardianPhone, "555-0100", "the edit itself applied")
+        XCTAssertEqual(saved?.developmentLog.count, 1, "the development log survived the edit")
+        XCTAssertEqual(saved?.developmentLog.first?.notes, "Great week")
+        XCTAssertEqual(saved?.personID, personID, "the Person link is unchanged")
+        XCTAssertEqual(store.person(id: personID)?.guardianPhone, "555-0100",
+                       "and the backing Person picked the edit up")
+    }
+
+    /// The other half of the same refactor: a brand-new player still starts with
+    /// an empty log and a Person link derived from their own id.
+    func testAddingAPlayerStartsWithACleanRecord() {
+        let store = TestData.store()
+        let form = PlayerFormViewModel(player: nil)
+        form.name = "  Maya Chen  "
+        form.number = 21
+        form.allergies = " peanuts "
+        form.save(into: store)
+
+        let added = store.roster.first { $0.number == 21 }
+        XCTAssertEqual(added?.name, "Maya Chen", "identity fields are trimmed")
+        XCTAssertEqual(added?.allergies, "peanuts")
+        XCTAssertTrue(added?.developmentLog.isEmpty ?? false)
+        XCTAssertEqual(added?.personID, added?.id)
+    }
 }
