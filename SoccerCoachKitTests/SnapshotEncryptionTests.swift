@@ -212,3 +212,152 @@ final class SnapshotEncryptionTests: XCTestCase {
                         "signing out must not destroy the key to the roster")
     }
 }
+
+/// The roster is not the only place the squad's names are written. A live match
+/// carries its own copy — the sub log records who came off for whom, by name, and
+/// the per-player statuses record who is injured — and it was being written to
+/// `UserDefaults` as plain JSON while the roster beside it was sealed.
+@MainActor
+final class GameDaySessionEncryptionTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var keyStore: InMemoryTokenStorage!
+    private let storageKey = "gameDaySession.default"
+
+    override func setUp() {
+        super.setUp()
+        defaults = UserDefaults(suiteName: "gameday-encryption-\(UUID().uuidString)")!
+        keyStore = InMemoryTokenStorage()
+    }
+
+    /// A store sharing this test's key store, so a second one stands in for the
+    /// same app on a later launch.
+    private func makeStore() -> UserDefaultsGameDaySessionStore {
+        UserDefaultsGameDaySessionStore(
+            namespace: nil,
+            defaults: defaults,
+            cipher: KeychainSnapshotCipher(storage: keyStore)
+        )
+    }
+
+    /// A match carrying exactly the fields worth protecting.
+    private func matchWithNames() -> GameDaySession {
+        let comingOff = UUID(), goingOn = UUID(), hurt = UUID()
+        return GameDaySession(
+            teamID: UUID(),
+            savedAt: Date(),
+            runningSince: nil,
+            accumulatedElapsed: 1_200,
+            elapsedAtPeriodStart: 0,
+            accumulatedPlaying: [comingOff: 1_200],
+            accumulatedPlayingAtPeriodStart: [:],
+            starterIDs: [goingOn],
+            playerStatuses: [hurt: .injured, goingOn: .available],
+            currentPeriod: 2,
+            formation: .balanced,
+            reminders: [],
+            subLog: [SubLogEntry(id: UUID(), time: 1_180, outPlayerID: comingOff,
+                                 inPlayerID: goingOn, outName: "Rosa Delgado",
+                                 inName: "Maya Chen", note: "Reminder")],
+            subAlertLeadMinutes: 1,
+            teamScore: 2,
+            opponentScore: 1,
+            opponentName: "Riverside Rovers",
+            linkedGameID: nil
+        )
+    }
+
+    private let secrets = ["Rosa Delgado", "Maya Chen", "injured", "outName", "subLog"]
+
+    private func assertNoSecrets(in data: Data, _ message: String,
+                                 file: StaticString = #filePath, line: UInt = #line) {
+        let text = String(decoding: data, as: UTF8.self)
+        for secret in secrets {
+            XCTAssertFalse(text.contains(secret), "\(message) — found \"\(secret)\"",
+                           file: file, line: line)
+        }
+    }
+
+    func testASavedMatchIsNotReadable() {
+        makeStore().save(matchWithNames())
+
+        let stored = defaults.data(forKey: storageKey)
+        XCTAssertNotNil(stored, "something must have been written")
+        assertNoSecrets(in: stored!, "the match is readable in UserDefaults")
+    }
+
+    func testTheAppCanStillReadBackItsOwnMatch() {
+        let original = matchWithNames()
+        makeStore().save(original)
+
+        // A later launch: same key store, new store.
+        let loaded = makeStore().load()
+        XCTAssertEqual(loaded, original, "the match must survive the round trip intact")
+        XCTAssertEqual(loaded?.subLog.first?.outName, "Rosa Delgado")
+        XCTAssertEqual(loaded?.teamScore, 2)
+    }
+
+    /// A coach can be mid-match across the upgrade, so a plaintext match already
+    /// on disk has to load — and must not be left sitting there afterwards.
+    func testAPlaintextMatchIsReadAndThenSealed() throws {
+        let original = matchWithNames()
+        let plaintext = try JSONEncoder().encode(original)
+        XCTAssertTrue(String(decoding: plaintext, as: UTF8.self).contains("Rosa Delgado"),
+                      "the fixture really is readable before migration")
+        defaults.set(plaintext, forKey: storageKey)
+
+        XCTAssertEqual(makeStore().load(), original, "a match in progress must not be lost")
+        assertNoSecrets(in: defaults.data(forKey: storageKey)!,
+                        "the old plaintext was left on disk after migrating")
+    }
+
+    /// A key the Keychain refuses to hand over must fail the write rather than
+    /// fall back to plaintext, and must not destroy the match already stored:
+    /// losing the last few seconds beats losing the match.
+    func testAMatchThatCannotBeSealedIsNotWrittenInTheClear() {
+        let good = matchWithNames()
+        makeStore().save(good)
+        let sealed = defaults.data(forKey: storageKey)
+
+        var later = good
+        later.teamScore = 3
+        UserDefaultsGameDaySessionStore(
+            namespace: nil,
+            defaults: defaults,
+            cipher: KeychainSnapshotCipher(storage: FailingTokenStorage())
+        ).save(later)
+
+        XCTAssertEqual(defaults.data(forKey: storageKey), sealed,
+                       "the sealed match stays; nothing is written in the clear")
+        assertNoSecrets(in: defaults.data(forKey: storageKey)!, "a match was written unsealed")
+    }
+
+    /// Restored to a device whose Keychain didn't come with it. Unreadable is the
+    /// honest answer — the match is a few hours old at most, so unlike the roster
+    /// there is nothing to preserve for recovery.
+    func testAMatchSealedWithAKeyWeDoNotHoldReadsAsAbsent() {
+        makeStore().save(matchWithNames())
+
+        let stranger = UserDefaultsGameDaySessionStore(
+            namespace: nil,
+            defaults: defaults,
+            cipher: KeychainSnapshotCipher(storage: InMemoryTokenStorage())
+        )
+        XCTAssertNil(stranger.load(), "ciphertext with no key must not read as a match")
+    }
+
+    /// The match and the roster are sealed with the same key, so there is one key
+    /// to hold — and signing out, which clears the session tokens, takes neither.
+    func testTheMatchSharesTheRosterKey() {
+        let shared = InMemoryTokenStorage()
+        UserDefaultsGameDaySessionStore(
+            namespace: nil, defaults: defaults,
+            cipher: KeychainSnapshotCipher(storage: shared)
+        ).save(matchWithNames())
+
+        XCTAssertNotNil(shared.string(forKey: "snapshotEncryptionKey"),
+                        "the match seals with the roster's key, not one of its own")
+        TokenStore(storage: shared).clear()
+        XCTAssertNotNil(shared.string(forKey: "snapshotEncryptionKey"),
+                        "signing out must not destroy the key to the match")
+    }
+}

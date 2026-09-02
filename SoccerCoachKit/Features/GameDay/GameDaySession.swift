@@ -54,23 +54,62 @@ protocol GameDaySessionStore: AnyObject {
     func clear()
 }
 
+/// The saved match, sealed at rest.
+///
+/// Namespacing the key separates two coaches inside a working app; it is not
+/// confidentiality, and this blob needs some. `SubLogEntry` carries `outName`
+/// and `inName` — children's names, as displayed — and `playerStatuses` records
+/// which of them is `injured`. Written as plain JSON, which is how this started,
+/// a squad list and who was hurt sat in readable text inside any unencrypted
+/// device backup: the same exposure `SnapshotCipher` exists to close for the
+/// roster, through a store that had been overlooked.
+///
+/// It shares the roster's key deliberately — same app, same device, same threat
+/// — so there is one key to hold and one to lose.
 final class UserDefaultsGameDaySessionStore: GameDaySessionStore {
     private let defaults: UserDefaults
     private let key: String
+    private let cipher: SnapshotCipher
 
-    init(namespace: String?, defaults: UserDefaults = .standard) {
+    init(namespace: String?,
+         defaults: UserDefaults = .standard,
+         cipher: SnapshotCipher = KeychainSnapshotCipher()) {
         self.defaults = defaults
         self.key = "gameDaySession.\(namespace ?? "default")"
+        self.cipher = cipher
     }
 
     func load() -> GameDaySession? {
         guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(GameDaySession.self, from: data)
+
+        if let plaintext = try? cipher.open(data) {
+            return try? JSONDecoder().decode(GameDaySession.self, from: plaintext)
+        }
+
+        // Not sealed, or not sealed with a key we hold. A match saved before
+        // encryption is the first case: read it, then write it back sealed
+        // rather than leave the squad's names lying in the clear. A coach can
+        // be mid-match across the upgrade, so losing it here isn't an option.
+        guard let session = try? JSONDecoder().decode(GameDaySession.self, from: data) else {
+            return nil
+        }
+        save(session)
+        return session
     }
 
+    /// Writes the match, sealed. A save that can't be sealed is dropped rather
+    /// than written in the clear — the same call the roster makes, for the same
+    /// reason.
+    ///
+    /// There is no retry queue behind this because a live match doesn't need
+    /// one: every sub, goal, period change, and clock start/pause saves, so the
+    /// next mutation is the retry, and what it writes is newer anyway. Any
+    /// previously sealed match is left in place rather than cleared, so a failed
+    /// save costs the most recent moments and not the whole match.
     func save(_ session: GameDaySession) {
-        guard let data = try? JSONEncoder().encode(session) else { return }
-        defaults.set(data, forKey: key)
+        guard let encoded = try? JSONEncoder().encode(session),
+              let sealed = try? cipher.seal(encoded) else { return }
+        defaults.set(sealed, forKey: key)
     }
 
     func clear() { defaults.removeObject(forKey: key) }
