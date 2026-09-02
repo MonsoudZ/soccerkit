@@ -138,7 +138,10 @@ final class AppStore: ObservableObject {
         remoteSync?.refresh()
     }
 
-    private let scheduleNotifier = ScheduleNotifier()
+    /// Built in `init` rather than as a property default: `ScheduleNotifier` is
+    /// `@MainActor`, and a property default expression is a nonisolated context
+    /// in the Swift 5 language mode.
+    private let scheduleNotifier: ScheduleNotifier
 
     /// Whether the coach opted into reminders for upcoming games/practices.
     @Published var eventRemindersEnabled: Bool {
@@ -228,6 +231,7 @@ final class AppStore: ObservableObject {
         // A live match is saved per coach, so it can't be read by another
         // account on the device. Skipped under test unless a store is injected,
         // so a test's view model doesn't write into the real defaults.
+        self.scheduleNotifier = ScheduleNotifier()
         self.gameDay = GameDayViewModel(sessionStore: gameDaySessions
             ?? (AppEnvironment.isTestingOrUITesting ? nil : UserDefaultsGameDaySessionStore(namespace: namespace)))
         publishWidgetData()
