@@ -23,7 +23,12 @@ protocol RemoteSyncService: AnyObject {
     /// Fetches whatever the remote has gained since the last cursor, without
     /// restarting sync. `start()` pulls once and then never again on its own, so
     /// without this a second device's changes only showed up at relaunch.
-    func refresh()
+    ///
+    /// `completion` fires once the attempt has settled, win or lose, so a
+    /// pull-to-refresh spinner can track the real fetch. Implementations must
+    /// call it on every path, including the ones that decline to do any work --
+    /// a spinner waiting on a completion that never comes never stops.
+    func refresh(completion: @escaping () -> Void)
     func stop()
     /// Pushes local changes to the remote. `completion(true)` means the batch was
     /// durably accepted (CloudKit) or acknowledged by the server (API); the caller
@@ -35,6 +40,11 @@ protocol RemoteSyncService: AnyObject {
     /// server account via `DELETE /me`). `completion(true)` only when the remote
     /// confirms; on `false` the caller must not claim the account was deleted.
     func purge(completion: @escaping (Bool) -> Void)
+}
+
+extension RemoteSyncService {
+    /// Fire-and-forget refresh, for callers with no spinner to hold.
+    func refresh() { refresh(completion: {}) }
 }
 
 /// Syncs the store against the Go backend's `/v1/sync` delta endpoint. Pushes
@@ -56,6 +66,9 @@ final class APISyncService: RemoteSyncService {
     /// The single in-flight refresh, so two calls that 401 at once share one
     /// rotation instead of racing (a rotating endpoint would reject the loser).
     private var refreshInFlight: Task<Bool, Never>?
+    /// The single in-flight pull, so concurrent refreshes share one fetch
+    /// instead of racing over the cursor. See `coalescedPull`.
+    private var pullInFlight: Task<Void, Never>?
     private var cursorKey: String { "apiSyncCursor.\(namespace)" }
     /// Whether this namespace's existing data has been uploaded at least once.
     /// Durable, so the whole season isn't re-pushed on every launch.
@@ -73,17 +86,47 @@ final class APISyncService: RemoteSyncService {
         isRunning = true
         onStatusChange?(.syncing)
         Task {
-            await pull()
+            // Through the same gate as `refresh`: launch and the first
+            // foreground refresh arrive within moments of each other, which is
+            // exactly the collision `coalescedPull` exists to prevent.
+            await coalescedPull()
             await bootstrapIfNeeded()
         }
     }
 
-    /// Pulls again on demand — the app calls this when it returns to the
-    /// foreground, which is when a coach expects to see what their other device
-    /// did. No-op while stopped: there is no session to pull with.
-    func refresh() {
-        guard isRunning else { return }
-        Task { await pull() }
+    /// Pulls again on demand — on returning to the foreground, or when the coach
+    /// pulls a list down. No-op while stopped: there is no session to pull with,
+    /// but the completion still fires so a caller waiting on it isn't stranded.
+    func refresh(completion: @escaping () -> Void) {
+        guard isRunning else { completion(); return }
+        Task {
+            await coalescedPull()
+            completion()
+        }
+    }
+
+    /// Joins the pull already running rather than starting a second one.
+    ///
+    /// Two pulls race over a single cursor in `UserDefaults`: both read the same
+    /// `since`, both fetch the same page, and the "cursor stood still" guard
+    /// that ends the drain reads one pull's write as the other's answer and
+    /// stops early. Foreground-refresh-on-launch could already collide with the
+    /// `start()` pull; a pull-to-refresh gesture makes the collision something a
+    /// coach can cause on purpose, twice a second.
+    ///
+    /// Joining is also the right answer for the spinner: a coach who pulls while
+    /// a fetch is already in flight watches that fetch finish, rather than a
+    /// second request for the same page.
+    private func coalescedPull() async {
+        if let pullInFlight { await pullInFlight.value; return }
+        let task = Task { [weak self] in
+            await self?.pull()
+            // Cleared here rather than after the await below so the next
+            // refresh can't join a pull that has already returned.
+            self?.pullInFlight = nil
+        }
+        pullInFlight = task
+        await task.value
     }
 
     func stop() {

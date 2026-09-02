@@ -54,6 +54,7 @@ struct SeasonStatsView: View {
             }
         }
         .themedList()
+        .remoteRefreshable()
     }
 
     private func signed(_ value: Int) -> String {

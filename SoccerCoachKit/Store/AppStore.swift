@@ -135,12 +135,39 @@ final class AppStore: ObservableObject {
         remoteSync?.start()
     }
 
-    /// Fetches remote changes now. Called when the app returns to the foreground,
-    /// so the other device's edits are there when the coach looks — sync used to
-    /// pull once at launch and then wait for the next one.
-    func refreshFromRemote() {
-        guard cloudSyncEnabled else { return }
-        remoteSync?.refresh()
+    /// How long a pull-to-refresh spinner is allowed to run before it gives up
+    /// waiting. The fetch itself carries on; this only caps how long the coach
+    /// is asked to watch a request that may never answer.
+    private static let refreshSpinnerCap: Duration = .seconds(20)
+
+    /// Fetches remote changes and waits for the attempt to settle.
+    ///
+    /// Called when the app returns to the foreground, so the other device's
+    /// edits are there when the coach looks — sync used to pull once at launch
+    /// and then wait for the next one — and by pull-to-refresh.
+    ///
+    /// Awaitable because `.refreshable` holds its spinner exactly as long as
+    /// this call: returning early would drop the spinner the instant the gesture
+    /// ended, which reads as "refreshed, nothing new" no matter what the network
+    /// was actually doing.
+    ///
+    /// A refresh with sync off, or on a build with no remote configured, returns
+    /// without reaching for anything. There is nothing to fetch, and a coach who
+    /// turned sync off shouldn't have a gesture quietly turn it back on.
+    func refreshFromRemote() async {
+        guard cloudSyncEnabled, let remoteSync else { return }
+        await withCheckedContinuation { continuation in
+            let gate = RefreshGate(continuation)
+            // Armed before the call: `refresh` may run its completion
+            // synchronously (a stopped service does), and the gate has to be
+            // able to cancel a cap that is already in place.
+            gate.cap = Task {
+                try? await Task.sleep(for: Self.refreshSpinnerCap)
+                guard !Task.isCancelled else { return }
+                gate.finish()
+            }
+            remoteSync.refresh { gate.finish() }
+        }
     }
 
     /// Built in `init` rather than as a property default: `ScheduleNotifier` is

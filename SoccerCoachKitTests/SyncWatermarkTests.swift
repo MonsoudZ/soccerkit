@@ -26,9 +26,23 @@ final class MockRemoteSync: RemoteSyncService {
 
     /// How many times the app asked for a fresh pull.
     private(set) var refreshCount = 0
+    /// Withholds the refresh completion, so a test can observe a caller that is
+    /// still waiting on the fetch. Call `finishRefresh()` to release it.
+    var holdsRefreshCompletion = false
+    private var heldRefresh: (() -> Void)?
 
     func start() {}
-    func refresh() { refreshCount += 1 }
+    func refresh(completion: @escaping () -> Void) {
+        refreshCount += 1
+        if holdsRefreshCompletion { heldRefresh = completion } else { completion() }
+    }
+
+    /// Releases a completion held back by `holdsRefreshCompletion`.
+    func finishRefresh() {
+        let held = heldRefresh
+        heldRefresh = nil
+        held?()
+    }
     func stop() {}
     func setNamespace(_ namespace: String?) { self.namespace = namespace }
     func push(upserts: [SyncRecord], deletes: [SyncRecordKey], completion: @escaping (Bool) -> Void) {

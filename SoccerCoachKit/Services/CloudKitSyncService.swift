@@ -96,9 +96,16 @@ final class CloudKitSyncService: CKSyncEngineDelegate, RemoteSyncService {
     /// Asks the engine to fetch now. It normally learns of remote changes from
     /// silent pushes; this covers the case where one didn't arrive (no push
     /// entitlement in development, or the app was killed when it was sent).
-    func refresh() {
-        guard let engine else { return }
-        Task { try? await engine.fetchChanges() }
+    ///
+    /// No coalescing here, unlike the API service: `CKSyncEngine` owns the
+    /// serialization of its own fetches. The completion still fires on the
+    /// no-engine path, so a caller holding a spinner isn't stranded.
+    func refresh(completion: @escaping () -> Void) {
+        guard let engine else { completion(); return }
+        Task {
+            try? await engine.fetchChanges()
+            completion()
+        }
     }
 
     func stop() { engine = nil }

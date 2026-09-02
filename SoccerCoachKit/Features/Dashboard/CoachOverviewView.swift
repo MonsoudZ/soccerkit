@@ -49,6 +49,7 @@ struct CoachOverviewView: View {
             .padding()
         }
         .screenBackground()
+        .remoteRefreshable()
         .toolbar {
             Button {
                 showingNewTeam = true

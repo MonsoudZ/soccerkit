@@ -37,6 +37,7 @@ struct TrainingPlannerView: View {
                 .themedList()
             }
         }
+        .remoteRefreshable()
         .toolbar {
             Button {
                 viewModel.showingNewSession = true

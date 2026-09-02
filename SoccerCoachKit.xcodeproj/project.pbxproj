@@ -219,6 +219,7 @@
 		F309698F21EC791BD24C9F82 /* EvaluationReadModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CC25DFC8C8FEA2B730B5B8 /* EvaluationReadModel.swift */; };
 		F3BC950940AE72C7361DA3A2 /* PlayerFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B20BFCE54634FF5F874FAB3 /* PlayerFormViewModel.swift */; };
 		F546DBB26635235F2E329179 /* TacticsDiagram.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75EF94E3C6E64476A90AB827 /* TacticsDiagram.swift */; };
+		F6242EDB266F04B23E463A9F /* RemoteRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD69A66E8AFE8A581DC23BD6 /* RemoteRefresh.swift */; };
 		F68C62E1F6DBF2B79F570405 /* GameEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46C14BB458AD7E7A697EF6F /* GameEvent.swift */; };
 		F735367F8DAC63270106A806 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1356A7E479BCF8B1BE17C844 /* Palette.swift */; };
 		F7885D4F4700E1D7C3611AF7 /* AppStore+Organizations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7431D96AFA7020AA4ACC748D /* AppStore+Organizations.swift */; };
@@ -417,6 +418,7 @@
 		A86F01C02A51DFDA36F9BDC8 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		A93BC45242599A06D694145D /* CalendarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewModel.swift; sourceTree = "<group>"; };
 		A94148A864AC082C8EB16E3E /* AppStore+Forms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStore+Forms.swift"; sourceTree = "<group>"; };
+		AD69A66E8AFE8A581DC23BD6 /* RemoteRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteRefresh.swift; sourceTree = "<group>"; };
 		B21287E3BF89F50C84260DC2 /* GameDayViewModel+Suggestions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameDayViewModel+Suggestions.swift"; sourceTree = "<group>"; };
 		B2DF2534C0FA5C3FFBCBBC60 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B4067E61C60836C2E4A13927 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
@@ -826,6 +828,7 @@
 				7855D145C62248350959871A /* Cards.swift */,
 				9BFFFFE7D915EF6FFFDA3C98 /* DictionaryBinding.swift */,
 				0E5490EAFB76F5859D53045B /* PlayerViews.swift */,
+				AD69A66E8AFE8A581DC23BD6 /* RemoteRefresh.swift */,
 				3130B2033447EE2987662A49 /* RosterRows.swift */,
 				6074F1AD6AB71F6939C334D1 /* SharedViews.swift */,
 				BE3A581396EE4701E33E3587 /* TeamAccent.swift */,
@@ -1261,6 +1264,7 @@
 				F3BC950940AE72C7361DA3A2 /* PlayerFormViewModel.swift in Sources */,
 				44B7D0BD3AE09137FD87D63D /* PlayerReadinessSection.swift in Sources */,
 				85B117359077EA9DB026DC83 /* PlayerViews.swift in Sources */,
+				F6242EDB266F04B23E463A9F /* RemoteRefresh.swift in Sources */,
 				0349B5617CA143859E4D521C /* RosterExport.swift in Sources */,
 				3648522B1025A0B704B8B19E /* RosterMembership.swift in Sources */,
 				3EF18F3C87F6E97FC48772FB /* RosterRows.swift in Sources */,

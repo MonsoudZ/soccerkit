@@ -17,6 +17,7 @@ struct CalendarView: View {
             .padding()
         }
         .screenBackground()
+        .remoteRefreshable()
         .toolbar {
             ToolbarItem {
                 Button {

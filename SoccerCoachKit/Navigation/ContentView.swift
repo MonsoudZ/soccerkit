@@ -14,7 +14,7 @@ struct ContentView: View {
             .onChange(of: scenePhase) {
                 if scenePhase == .active {
                     store.refreshEventReminders()
-                    store.refreshFromRemote()
+                    Task { await store.refreshFromRemote() }
                 } else {
                     store.flushPendingWrites()
                 }

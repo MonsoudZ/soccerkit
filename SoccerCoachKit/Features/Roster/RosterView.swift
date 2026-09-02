@@ -45,6 +45,7 @@ struct RosterView: View {
         }
         .listStyle(.insetGrouped)
         .themedList()
+        .remoteRefreshable()
         .searchable(text: $viewModel.searchText, prompt: "Search name, number, or position")
         .toolbar {
             Menu {

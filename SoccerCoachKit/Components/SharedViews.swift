@@ -17,6 +17,13 @@ struct SectionHeader: View {
 
 /// Full-screen placeholder for an empty or missing screen, with an optional
 /// supporting message and a primary call-to-action button.
+///
+/// Scrollable despite having nothing to scroll: a screen that shows this is one
+/// where the coach most wants to pull down and check whether the fixture their
+/// co-coach added has arrived yet, and `.refreshable` needs a scroll view to
+/// attach the gesture to. `containerRelativeFrame` keeps the content centred,
+/// which a plain `maxHeight: .infinity` no longer does once it's inside a
+/// scroll view that sizes to its content.
 struct EmptyStateView: View {
     let title: String
     let systemImage: String
@@ -25,6 +32,14 @@ struct EmptyStateView: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
+        ScrollView {
+            content
+                .containerRelativeFrame(.vertical, alignment: .center)
+        }
+        .screenBackground()
+    }
+
+    private var content: some View {
         VStack(spacing: Spacing.lg) {
             Image(systemName: systemImage)
                 .font(.system(size: 40, weight: .semibold))
@@ -49,9 +64,8 @@ struct EmptyStateView: View {
                     .padding(.top, Spacing.sm)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
         .padding(32)
-        .screenBackground()
     }
 }
 

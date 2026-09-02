@@ -37,6 +37,7 @@ struct GamesView: View {
                 .themedList()
             }
         }
+        .remoteRefreshable()
         .toolbar {
             Button {
                 viewModel.showingNewGame = true

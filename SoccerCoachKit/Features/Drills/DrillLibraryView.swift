@@ -68,6 +68,7 @@ struct DrillLibraryView: View {
         }
         .listStyle(.insetGrouped)
         .themedList()
+        .remoteRefreshable()
         .navigationTitle("Drills")
         .toolbar {
             Button {
