@@ -14,6 +14,13 @@ final class DrillLibraryViewModel: ObservableObject {
     @Published var scope: DrillLibraryScope = .team
     @Published var selectedTag: String?
     @Published var showingNewDrill = false
+    @Published var searchText = ""
+
+    /// Whether anything is narrowing the library, so an empty result can say
+    /// which — "nothing matched" and "there are no drills" are different.
+    var isFiltering: Bool {
+        SearchQuery.isActive(searchText) || category != nil || selectedTag != nil
+    }
 
     func visibleDrills(in store: AppStore) -> [Drill] {
         switch scope {
@@ -38,6 +45,9 @@ final class DrillLibraryViewModel: ObservableObject {
             .filter { drill in
                 guard let selectedTag else { return true }
                 return drill.tags.contains(selectedTag)
+            }
+            .filter { drill in
+                SearchQuery.matches(searchText, in: [drill.title, drill.category.rawValue] + drill.tags)
             }
     }
 

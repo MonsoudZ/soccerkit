@@ -16,8 +16,16 @@ struct TrainingPlannerView: View {
                     viewModel.showingNewSession = true
                 }
             } else {
+                let sessions = viewModel.filteredSessions(in: store)
                 List {
-                    ForEach(store.teamSessions) { session in
+                    if sessions.isEmpty {
+                        InlineEmptyView(
+                            title: "No Matches",
+                            systemImage: "magnifyingglass",
+                            message: "No sessions match your search."
+                        )
+                    }
+                    ForEach(sessions) { session in
                         NavigationLink {
                             SessionDetailView(sessionID: session.id)
                         } label: {
@@ -38,6 +46,7 @@ struct TrainingPlannerView: View {
             }
         }
         .remoteRefreshable()
+        .searchable(text: $viewModel.searchText, prompt: "Search title, objective, or drill focus")
         .toolbar {
             Button {
                 viewModel.showingNewSession = true

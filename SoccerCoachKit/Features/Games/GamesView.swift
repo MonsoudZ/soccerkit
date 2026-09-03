@@ -16,8 +16,16 @@ struct GamesView: View {
                     viewModel.showingNewGame = true
                 }
             } else {
+                let games = viewModel.filteredGames(in: store)
                 List {
-                    ForEach(store.teamGames) { game in
+                    if games.isEmpty {
+                        InlineEmptyView(
+                            title: "No Matches",
+                            systemImage: "magnifyingglass",
+                            message: "No fixtures match your search."
+                        )
+                    }
+                    ForEach(games) { game in
                         NavigationLink {
                             GameDetailView(gameID: game.id)
                         } label: {
@@ -38,6 +46,7 @@ struct GamesView: View {
             }
         }
         .remoteRefreshable()
+        .searchable(text: $viewModel.searchText, prompt: "Search opponent, venue, or notes")
         .toolbar {
             Button {
                 viewModel.showingNewGame = true

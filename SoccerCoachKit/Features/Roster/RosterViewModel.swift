@@ -11,20 +11,16 @@ final class RosterViewModel: ObservableObject {
     @Published var positionFilter: PlayerPosition?
 
     var isFiltering: Bool {
-        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || positionFilter != nil
+        SearchQuery.isActive(searchText) || positionFilter != nil
     }
 
     /// The selected team's roster narrowed by the search text and position filter.
     func filteredRoster(in store: AppStore) -> [Player] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return store.roster.filter { player in
+        store.roster.filter { player in
             let matchesPosition = positionFilter == nil || player.position == positionFilter
-            let matchesQuery = query.isEmpty
-                || player.name.lowercased().contains(query)
-                || player.guardian.lowercased().contains(query)
-                || player.position.rawValue.lowercased().contains(query)
-                || "\(player.number)".contains(query)
-            return matchesPosition && matchesQuery
+            return matchesPosition && SearchQuery.matches(searchText, in: [
+                player.name, player.guardian, player.position.rawValue, "\(player.number)"
+            ])
         }
     }
 

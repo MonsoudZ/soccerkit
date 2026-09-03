@@ -39,9 +39,11 @@ struct DrillLibraryView: View {
 
             if filteredDrills.isEmpty {
                 InlineEmptyView(
-                    title: "No Drills Found",
-                    systemImage: "sportscourt",
-                    message: "No drills match the current library, category, or tag filters."
+                    title: viewModel.isFiltering ? "No Matches" : "No Drills Yet",
+                    systemImage: viewModel.isFiltering ? "magnifyingglass" : "sportscourt",
+                    message: viewModel.isFiltering
+                        ? "No drills match your search or the current library, category, and tag filters."
+                        : "This library has no drills yet. Add one to start building it out."
                 )
             } else {
                 ForEach(filteredDrills) { drill in
@@ -69,6 +71,7 @@ struct DrillLibraryView: View {
         .listStyle(.insetGrouped)
         .themedList()
         .remoteRefreshable()
+        .searchable(text: $viewModel.searchText, prompt: "Search drills by name or tag")
         .navigationTitle("Drills")
         .toolbar {
             Button {
