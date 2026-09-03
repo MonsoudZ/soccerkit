@@ -85,6 +85,11 @@ struct PlayerReadinessSection: View {
                 .monospacedDigit()
                 .frame(width: 28, alignment: .trailing)
         }
+        // The capsule is a picture of the number beside it, so read the pair
+        // as one value rather than a label, a blank, and a bare figure.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue("\(fmt(value)) out of 5")
     }
 
     private func color(for readiness: Double) -> Color {

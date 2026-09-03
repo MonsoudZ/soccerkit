@@ -40,6 +40,49 @@ final class AccessibilityTests: XCTestCase {
         XCTAssertFalse(label.contains("effort"))        // zero effort omitted
     }
 
+    // MARK: - The calendar's month grid
+
+    /// The dots under a date are the only visual sign that anything is on, and
+    /// a dot reads as nothing at all. Without this a coach using VoiceOver
+    /// could hear every date in the month and learn nothing about any of them.
+    ///
+    /// Asserted against the plain-date reading rather than against a literal:
+    /// the date is formatted for the reader's locale, so spelling one out here
+    /// would pin the test to English rather than to the behaviour.
+    func testCalendarDayLabelNamesWhatIsScheduled() {
+        let day = Self.march14
+        let plain = CalendarDayAccessibility.label(for: day, kinds: [], isToday: false)
+
+        let label = CalendarDayAccessibility.label(for: day, kinds: [.game, .practice], isToday: false)
+
+        XCTAssertTrue(label.hasPrefix(plain), "the date still leads")
+        XCTAssertTrue(label.contains("Game"))
+        XCTAssertTrue(label.contains("Practice"))
+        XCTAssertFalse(label.contains("Today"))
+    }
+
+    /// A month has forty-odd blank days. Saying "nothing scheduled" at each one
+    /// is noise; their silence means what the blank space means.
+    func testAnEmptyCalendarDayReadsAsJustItsDate() {
+        let label = CalendarDayAccessibility.label(for: Self.march14, kinds: [], isToday: false)
+
+        XCTAssertTrue(label.contains("14"), "the date itself is all it says")
+        XCTAssertFalse(label.lowercased().contains("nothing"))
+        XCTAssertFalse(label.contains("Game"))
+    }
+
+    func testTodayIsCalledOut() {
+        let plain = CalendarDayAccessibility.label(for: Self.march14, kinds: [], isToday: false)
+
+        let label = CalendarDayAccessibility.label(for: Self.march14, kinds: [.game], isToday: true)
+
+        XCTAssertTrue(label.hasPrefix(plain))
+        XCTAssertTrue(label.contains("Today"))
+        XCTAssertTrue(label.contains("Game"))
+    }
+
+    private static let march14 = DateComponents(calendar: .current, year: 2026, month: 3, day: 14).date!
+
     func testDevelopmentEntryLabel() {
         let entry = DevelopmentEntry(date: Date(), notes: "Great scanning",
                                      ratings: ["Passing": 4, "Technical": 3])

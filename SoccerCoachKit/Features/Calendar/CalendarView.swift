@@ -117,6 +117,11 @@ struct CalendarView: View {
                 .onTapGesture {
                     viewModel.select(day)
                 }
+                // The tap gesture is out here rather than inside the cell, so
+                // spell the action out instead of relying on VoiceOver finding it.
+                .accessibilityAction {
+                    viewModel.select(day)
+                }
             }
         }
     }
@@ -249,6 +254,9 @@ private struct DayCell: View {
         .padding(.vertical, Spacing.xs)
         .contentShape(Rectangle())
         .opacity(isInDisplayedMonth ? 1 : 0.3)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(CalendarDayAccessibility.label(for: day, kinds: kinds, isToday: isToday))
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     private var numberColor: Color {

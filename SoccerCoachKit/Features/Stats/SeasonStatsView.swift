@@ -39,9 +39,11 @@ struct SeasonStatsView: View {
 
             Section {
                 if stats.isEmpty {
-                    Text("No players on the roster yet.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    InlineEmptyView(
+                        title: "No Players Yet",
+                        systemImage: "person.3",
+                        message: "Add players to this team to see their season numbers."
+                    )
                 } else {
                     ForEach(stats) { stat in
                         PlayerStatRow(stat: stat)

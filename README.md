@@ -25,7 +25,17 @@ The first build focuses on the coach's weekly loop:
 - Attach diagrams to training sessions or keep them as game plans.
 - Duplicate diagrams and export/share them as PNG or PDF.
 - Browse a drill library by category.
+- Sign in with Apple, and sync teams, rosters, and plans across devices through iCloud or the Go backend.
+- Pull any list down to fetch remote changes without waiting for the next launch.
+- Run pre- and post-match questionnaires, and build reusable evaluation forms for tryouts, development reviews, and coach reviews.
+- Read a season summary: record, goals and assists per player, squad availability, and per-player development trends.
+- Follow the live match on the Lock Screen and Dynamic Island, and see the next fixture in a Home Screen widget.
 - Use adaptive `NavigationSplitView` behavior that feels natural on iPad while still working on iPhone.
+
+The roster holds children's names, medical notes and guardian contacts, so
+the saved snapshot is encrypted at rest under a key held in the Keychain. A
+write that can't be sealed is dropped rather than written in the clear, and
+the app says so rather than losing the change quietly.
 
 ## Open It
 
@@ -42,6 +52,9 @@ The app follows an MVVM + services layout, grouped by feature:
 - `Features/<Feature>/` — each screen paired with its `ObservableObject` view model (`Dashboard`, `Calendar`, `Roster`, `Games`, `Training`, `GameDay`, `Field`, `Drills`, `Teams`). Views observe the store for reactive data and own a view model for local state and intents.
 - `Components/` — reusable views shared across features (rows, cards, badges).
 - `Navigation/` — `ContentView` and the `AppSection` sidebar model.
+- `Networking/` — the backend API client, the sync service, and Keychain-backed token storage.
+- `Forms/` — the evaluation engine: form templates, the runner, and answer migration.
+- `DesignSystem/` — spacing, radii, elevation, type, and the themeable palette.
 - `Extensions/` — small shared helpers.
 - `SoccerCoachKitTests/` — XCTest unit tests (timekeeping, persistence, Codable migration, store intents).
 
@@ -68,14 +81,26 @@ xcodegen generate
 Run the tests from the command line:
 
 ```sh
-xcodebuild test -scheme SoccerCoachKit -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -scheme SoccerCoachKit -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
+
+Simulator names drift with each Xcode release, so a pinned one goes stale
+rather than failing usefully — `xcrun simctl list devices available` says what
+this machine actually has. CI doesn't pin at all; it picks a device by UDID.
 
 Every push and pull request builds the app and runs the test suite via GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Good Next Features
 
-- SwiftData or CloudKit migration for richer sync and sharing.
-- Push/local reminders for upcoming games and RSVP deadlines.
-- Exportable full session plans for assistant coaches.
-- Player development notes and skill ratings.
+The four that used to be listed here — CloudKit sync, local reminders,
+exportable session plans, and player development ratings — have all shipped.
+
+- Role-based sharing, so a director sees their coaches' teams and a parent
+  sees only their own child. This is the one the backend exists for; the
+  client models it already (`Permissions.swift`, `ShareGrant`) and the server
+  is the authority. See `docs/backend-architecture.md`.
+- Reading the evaluation forms back as trends across a squad, not just per
+  player: "poor sleep, poor game" is the question the normalized answer rows
+  were shaped to answer.
+- Offline queueing for pushes, so edits made on a touchline with no signal
+  leave the device as soon as there is one.

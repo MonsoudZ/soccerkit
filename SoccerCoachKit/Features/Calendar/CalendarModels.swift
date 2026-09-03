@@ -49,6 +49,23 @@ enum CalendarEventKind: Hashable, CaseIterable {
     // `color` is defined in the design system (DomainColors.swift).
 }
 
+/// How a day in the month grid reads to VoiceOver.
+///
+/// The coloured dots under a date are the whole of the "something is on" signal,
+/// and a dot has no reading — so a coach using VoiceOver could swipe through
+/// every date in the month without learning which ones had a game.
+enum CalendarDayAccessibility {
+    /// Empty days say only their date. Appending "nothing scheduled" to the
+    /// forty-odd blank days in a month is noise, and their silence carries the
+    /// same meaning the blank space does.
+    static func label(for day: Date, kinds: [CalendarEventKind], isToday: Bool) -> String {
+        var parts = [day.formatted(.dateTime.weekday(.wide).day().month(.wide))]
+        if isToday { parts.append("Today") }
+        if !kinds.isEmpty { parts.append(kinds.map(\.label).joined(separator: ", ")) }
+        return parts.joined(separator: ", ")
+    }
+}
+
 /// A read-only projection of a session/game/event used purely for rendering the
 /// calendar. The `reference` lets the agenda navigate to the real detail screen.
 struct CalendarItem: Identifiable {
