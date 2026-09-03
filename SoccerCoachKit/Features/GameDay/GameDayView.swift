@@ -54,6 +54,7 @@ struct GameDayView: View {
             .padding()
         }
         .screenBackground()
+        .matchFeedback(viewModel.lastEvent)
         .onAppear {
             viewModel.prepareIfNeeded(with: store)
             if !AppEnvironment.isUITesting {

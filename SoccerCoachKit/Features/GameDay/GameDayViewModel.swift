@@ -61,6 +61,17 @@ final class GameDayViewModel: ObservableObject {
     /// The scheduled game this live match writes its score into, if any.
     @Published var linkedGameID: UUID?
 
+    /// The last thing the coach did, for the UI to react to. Never set by a
+    /// restore, by the Live Activity, or by linking a game — see `MatchEvent`.
+    @Published private(set) var lastEvent: MatchEvent?
+
+    /// Records a coach action. `lastEvent` is `private(set)`, which is
+    /// file-scoped, so the view model's extensions in other files go through
+    /// here rather than the property being opened up to the whole target.
+    func noteEvent(_ kind: MatchEvent.Kind) {
+        lastEvent = MatchEvent(kind)
+    }
+
     /// Where the match is saved between launches. `nil` disables persistence,
     /// which is the default so a view model built in a test doesn't reach into
     /// the real defaults; `AppStore` injects the signed-in coach's store.
@@ -461,6 +472,7 @@ final class GameDayViewModel: ObservableObject {
             reminders[index].triggered = true
             activeReminder = reminders[index]
             showReminder = true
+            noteEvent(.reminderDue)
             persistSession()
             return
         }
@@ -474,6 +486,7 @@ final class GameDayViewModel: ObservableObject {
             reminders[index].preAlertTriggered = true
             activePreAlert = reminders[index]
             showPreAlert = true
+            noteEvent(.reminderDue)
             persistSession()
         }
     }
@@ -570,6 +583,7 @@ final class GameDayViewModel: ObservableObject {
         guard !isRunning else { return }
         runAnchor = now()
         isRunning = true
+        noteEvent(.clockStarted)
         rescheduleNotifications()
         // Begin (or resume) the Live Activity when the clock starts running.
         activity.start(teamName: teamName, opponentName: opponentName, accentHex: accentHex,
@@ -583,6 +597,7 @@ final class GameDayViewModel: ObservableObject {
         settle()
         runAnchor = nil
         isRunning = false
+        noteEvent(.clockPaused)
         rescheduleNotifications()
         refreshActivity()
         persistSession()
@@ -593,17 +608,28 @@ final class GameDayViewModel: ObservableObject {
     var isLinkedToGame: Bool { linkedGameID != nil }
 
     func scoreTeam(_ delta: Int, in store: AppStore) {
+        let previous = teamScore
         teamScore = max(0, teamScore + delta)
+        noteScoreChange(from: previous, to: teamScore, .goalFor)
         persistScore(in: store)
         refreshActivity()
         persistSession()
     }
 
     func scoreOpponent(_ delta: Int, in store: AppStore) {
+        let previous = opponentScore
         opponentScore = max(0, opponentScore + delta)
+        noteScoreChange(from: previous, to: opponentScore, .goalAgainst)
         persistScore(in: store)
         refreshActivity()
         persistSession()
+    }
+
+    /// A score that didn't move emits nothing: tapping minus at nil-nil is
+    /// clamped away, and nothing happening deserves no feedback.
+    private func noteScoreChange(from previous: Int, to current: Int, _ scored: MatchEvent.Kind) {
+        guard current != previous else { return }
+        noteEvent(current > previous ? scored : .scoreCorrected)
     }
 
     /// Links (or unlinks) the live match to a scheduled game so the score is
@@ -706,6 +732,7 @@ final class GameDayViewModel: ObservableObject {
         runAnchor = nil
         isRunning = false
         currentPeriod += 1
+        noteEvent(.periodAdvanced)
         elapsedAtPeriodStart = accumulatedElapsed
         accumulatedPlayingAtPeriodStart = accumulatedPlaying
         rescheduleNotifications()

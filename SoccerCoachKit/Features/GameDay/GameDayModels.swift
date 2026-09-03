@@ -1,6 +1,41 @@
 import CoreGraphics
 import SwiftUI
 
+/// Something the coach just did in a live match, as distinct from the state
+/// that resulted from it.
+///
+/// State makes a poor trigger for feedback here: `subLog`, `teamScore` and
+/// `currentPeriod` are all set by restoring a saved match, by the Live
+/// Activity's buttons while the app was away, and by linking a scheduled game.
+/// A view watching those would buzz at a match it merely reopened. Only the
+/// deliberate actions emit an event, so anything driven from here fires when —
+/// and only when — the coach did something.
+struct MatchEvent: Equatable {
+    enum Kind {
+        case clockStarted
+        case clockPaused
+        case periodAdvanced
+        case subRecorded
+        case subUndone
+        case goalFor
+        case goalAgainst
+        /// A score tapped down, correcting a mis-tap rather than marking a goal.
+        case scoreCorrected
+        /// A substitution reminder came due.
+        case reminderDue
+    }
+
+    let kind: Kind
+    /// Distinguishes two consecutive identical events, so the second one still
+    /// registers as a change.
+    let id: UUID
+
+    init(_ kind: Kind) {
+        self.kind = kind
+        self.id = UUID()
+    }
+}
+
 struct SubReminder: Identifiable, Hashable, Codable {
     let id: UUID
     var minute: Int

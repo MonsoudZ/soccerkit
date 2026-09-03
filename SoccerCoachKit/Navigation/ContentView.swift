@@ -11,6 +11,7 @@ struct ContentView: View {
     var body: some View {
         root
             .appBanner()
+            .keepScreenAwake(during: store.gameDay)
             .onChange(of: scenePhase) {
                 if scenePhase == .active {
                     store.refreshEventReminders()

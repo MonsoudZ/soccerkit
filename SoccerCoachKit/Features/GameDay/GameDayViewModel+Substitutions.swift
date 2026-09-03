@@ -30,6 +30,7 @@ extension GameDayViewModel {
         starterIDs.remove(last.inPlayerID)
         starterIDs.insert(last.outPlayerID)
         subLog.removeFirst()
+        noteEvent(.subUndone)
         normalizeSelections()
         persistSession()
     }
@@ -51,6 +52,7 @@ extension GameDayViewModel {
             SubLogEntry(id: UUID(), time: elapsedSeconds, outPlayerID: outID, inPlayerID: inID, outName: playerName(outID), inName: playerName(inID), note: note),
             at: 0
         )
+        noteEvent(.subRecorded)
         normalizeSelections()
         persistSession()
         return true
