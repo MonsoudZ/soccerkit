@@ -6,6 +6,18 @@ import XCTest
 /// window the real bug lived in, which the system centre can't be driven into.
 @MainActor
 final class FakeNotificationCenter: NotificationCenterScheduling {
+    /// What the system reports back. Tests set this to stand in for a coach who
+    /// denied the prompt or switched banners off later.
+    var authorization: NotificationAuthorization = .authorized
+    private(set) var authorizationRequests = 0
+
+    func requestAuthorization() async -> NotificationAuthorization {
+        authorizationRequests += 1
+        return authorization
+    }
+
+    func authorizationStatus() async -> NotificationAuthorization { authorization }
+
     private(set) var scheduled: Set<String> = []
     /// How long a pending-list read takes. Reads are where the overlap happened:
     /// both operations read the same list before either wrote.
@@ -15,8 +27,6 @@ final class FakeNotificationCenter: NotificationCenterScheduling {
     /// operation finished last won, regardless of which was called last — and
     /// equal delays hide it, because then the calls finish in the order made.
     var readDelays: [Duration] = []
-    private(set) var authorizationRequests = 0
-
     func pendingIdentifiers() async -> [String] {
         let delay = readDelays.isEmpty ? readDelay : readDelays.removeFirst()
         if delay > .zero { try? await Task.sleep(for: delay) }
@@ -39,8 +49,6 @@ final class FakeNotificationCenter: NotificationCenterScheduling {
     }
 
     private(set) var delays: [String: TimeInterval] = [:]
-
-    func requestAuthorization() { authorizationRequests += 1 }
 }
 
 /// Reminder scheduling is read-modify-write across an async boundary. Nothing

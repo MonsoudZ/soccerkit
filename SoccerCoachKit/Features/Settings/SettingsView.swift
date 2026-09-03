@@ -99,6 +99,7 @@ struct SettingsView: View {
                 } label: {
                     SettingsLabel(title: "Remind me", systemImage: "clock", tint: .info)
                 }
+                NotificationWarningView(status: store.notificationStatus)
             }
         } header: {
             Text("Reminders")

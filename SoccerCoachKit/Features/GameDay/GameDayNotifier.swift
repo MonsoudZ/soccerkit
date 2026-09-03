@@ -40,10 +40,16 @@ final class GameDayNotifier {
     }
 
     /// Prompts for permission once; the system only shows the dialog the first
-    /// time. A denial degrades gracefully — nothing is delivered, in-app alerts
-    /// still work.
-    func requestAuthorization() {
-        center.requestAuthorization()
+    /// time. Reports where things stand, because a denial does *not* degrade
+    /// gracefully here: in-app alerts only reach a coach who is looking at this
+    /// screen, and the background notification is the whole point of a reminder
+    /// set for the 60th minute.
+    func requestAuthorization() async -> NotificationAuthorization {
+        await center.requestAuthorization()
+    }
+
+    func authorizationStatus() async -> NotificationAuthorization {
+        await center.authorizationStatus()
     }
 
     /// Replaces all currently-scheduled sub-reminder notifications with `items`.

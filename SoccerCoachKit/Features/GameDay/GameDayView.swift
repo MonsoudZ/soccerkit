@@ -58,7 +58,7 @@ struct GameDayView: View {
         .onAppear {
             viewModel.prepareIfNeeded(with: store)
             if !AppEnvironment.isUITesting {
-                viewModel.requestNotificationAuthorization()
+                store.requestNotificationPermission()
             }
         }
         .onChange(of: store.selectedTeamID) {
@@ -439,6 +439,10 @@ struct GameDayView: View {
     private var reminderSection: some View {
         VStack(alignment: .leading, spacing: Spacing.lg) {
             SectionHeader("Sub Reminders")
+
+            if !viewModel.reminders.isEmpty {
+                NotificationWarningView(status: store.notificationStatus)
+            }
 
             VStack(alignment: .leading, spacing: Spacing.lg) {
                 Stepper("Minute \(viewModel.newReminderMinute)", value: $viewModel.newReminderMinute, in: 1...max(viewModel.defaultGameMinutes, 1))

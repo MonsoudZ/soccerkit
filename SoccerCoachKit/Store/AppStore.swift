@@ -180,7 +180,7 @@ final class AppStore: ObservableObject {
         didSet {
             UserDefaults.standard.set(eventRemindersEnabled, forKey: "eventRemindersEnabled")
             if eventRemindersEnabled {
-                scheduleNotifier.requestAuthorization()
+                requestNotificationPermission()
                 refreshEventReminders()
             } else {
                 scheduleNotifier.cancelAll()
@@ -194,6 +194,29 @@ final class AppStore: ObservableObject {
             UserDefaults.standard.set(reminderLeadMinutes, forKey: "reminderLeadMinutes")
             refreshEventReminders()
         }
+    }
+
+    /// Whether reminders will actually reach the coach.
+    ///
+    /// Re-read rather than remembered from the moment permission was granted:
+    /// notifications can be switched off in iOS Settings long after the coach
+    /// said yes here, and the app is not told when that happens.
+    @Published private(set) var notificationStatus: NotificationAuthorization = .notDetermined
+
+    /// Re-reads the notification permission. Called on every foreground, since
+    /// that is the return trip from the iOS Settings screen where it changes.
+    func refreshNotificationStatus() {
+        Task { notificationStatus = await scheduleNotifier.authorizationStatus() }
+    }
+
+    /// Prompts for notification permission and records the answer.
+    ///
+    /// Lives here rather than on whichever feature asked. Permission is granted
+    /// to the app, not to a feature, so game day and event reminders were never
+    /// asking about different things — and one published answer is what lets
+    /// both screens say the same thing about it.
+    func requestNotificationPermission() {
+        Task { notificationStatus = await scheduleNotifier.requestAuthorization() }
     }
 
     /// Reschedules local notifications for upcoming games, practices, and events.
@@ -229,7 +252,8 @@ final class AppStore: ObservableObject {
          persistence: PersistenceService = UserDefaultsPersistenceService(),
          remoteSync: RemoteSyncService? = nil,
          namespace: String? = nil,
-         gameDaySessions: GameDaySessionStore? = nil) {
+         gameDaySessions: GameDaySessionStore? = nil,
+         scheduleNotifier: ScheduleNotifier? = nil) {
         let resolvedTeams = Self.atLeastOneTeam(snapshot.teams)
         self.teams = resolvedTeams
         self.players = snapshot.players
@@ -263,7 +287,7 @@ final class AppStore: ObservableObject {
         // A live match is saved per coach, so it can't be read by another
         // account on the device. Skipped under test unless a store is injected,
         // so a test's view model doesn't write into the real defaults.
-        self.scheduleNotifier = ScheduleNotifier()
+        self.scheduleNotifier = scheduleNotifier ?? ScheduleNotifier()
         self.gameDay = GameDayViewModel(sessionStore: gameDaySessions
             ?? (AppEnvironment.isTestingOrUITesting ? nil : UserDefaultsGameDaySessionStore(namespace: namespace)))
         // After every stored property: this captures self. Writes happen on a

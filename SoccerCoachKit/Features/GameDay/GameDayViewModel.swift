@@ -529,12 +529,6 @@ final class GameDayViewModel: ObservableObject {
 
     // MARK: - Background notifications
 
-    /// Prompts for notification permission (once) so reminders can alert the
-    /// coach while the app is backgrounded or the phone is locked.
-    func requestNotificationAuthorization() {
-        notifier.requestAuthorization()
-    }
-
     /// Rebuilds the scheduled background notifications from the pending reminders
     /// and the current clock. Called whenever the clock state or reminders
     /// change. When the clock isn't running there's no wall-clock mapping, so

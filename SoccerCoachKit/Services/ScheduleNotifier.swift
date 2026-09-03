@@ -87,7 +87,11 @@ protocol NotificationCenterScheduling {
     func removePendingRequests(withIdentifiers identifiers: [String])
     func add(identifier: String, title: String, body: String, fireDate: Date)
     func add(identifier: String, title: String, body: String, secondsFromNow: TimeInterval)
-    func requestAuthorization()
+    /// Prompts for permission if it hasn't been asked for yet, and reports
+    /// where things stand once the coach has answered. The answer was
+    /// previously discarded, which is how a denial became invisible.
+    func requestAuthorization() async -> NotificationAuthorization
+    func authorizationStatus() async -> NotificationAuthorization
 }
 
 @MainActor
@@ -118,8 +122,15 @@ final class SystemNotificationCenter: NotificationCenterScheduling {
         add(identifier: identifier, content: content(title: title, body: body), trigger: trigger)
     }
 
-    func requestAuthorization() {
-        center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    func requestAuthorization() async -> NotificationAuthorization {
+        // The grant flag alone isn't enough: it says the coach tapped Allow,
+        // not that banners are switched on. Read the settings back either way.
+        _ = try? await center.requestAuthorization(options: [.alert, .sound])
+        return await authorizationStatus()
+    }
+
+    func authorizationStatus() async -> NotificationAuthorization {
+        NotificationAuthorization(await center.notificationSettings())
     }
 
     private func content(title: String, body: String) -> UNMutableNotificationContent {
@@ -170,9 +181,14 @@ final class ScheduleNotifier {
         self.center = center ?? SystemNotificationCenter()
     }
 
-    /// Prompts for permission once; a denial degrades gracefully (nothing fires).
-    func requestAuthorization() {
-        center.requestAuthorization()
+    /// Prompts for permission once, and reports where things stand so the
+    /// caller can say something when the answer is no.
+    func requestAuthorization() async -> NotificationAuthorization {
+        await center.requestAuthorization()
+    }
+
+    func authorizationStatus() async -> NotificationAuthorization {
+        await center.authorizationStatus()
     }
 
     /// Replaces the previously-scheduled schedule reminders with `reminders`.
