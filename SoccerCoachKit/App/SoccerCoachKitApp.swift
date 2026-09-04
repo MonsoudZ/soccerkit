@@ -6,6 +6,8 @@ struct SoccerCoachKitApp: App {
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var auth = AuthController()
     @StateObject private var tabPreferences = TabPreferences()
+    /// Adopted for one callback SwiftUI does not surface: the APNs device token.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
         if AppEnvironment.isUITesting {
@@ -29,7 +31,19 @@ struct SoccerCoachKitApp: App {
             .environmentObject(tabPreferences)
             .environment(\.theme, themeManager.current)
             .tint(themeManager.current.brand)
-            .task { auth.refreshCredentialState() }
+            .task {
+                auth.refreshCredentialState()
+                // Both halves of push registration, joined here because this is the one
+                // place that holds the delegate, the store and the auth controller.
+                store.onBackendSession = { [push = appDelegate.push] in push.registerIfPossible() }
+                auth.willSignOut = { [push = appDelegate.push] in push.unregisterCurrentDevice() }
+                if auth.isSignedIn {
+                    // A returning coach already has a session; asking iOS for the token
+                    // is what completes the pair. Silent — it does not prompt.
+                    appDelegate.push.start()
+                    appDelegate.push.registerIfPossible()
+                }
+            }
             .onChange(of: auth.userID) {
                 // Load the newly-signed-in coach's data (and stash the previous
                 // coach's), so accounts never see each other's data.
@@ -45,6 +59,10 @@ struct SoccerCoachKitApp: App {
                         authorizationCode: auth.authorizationCode,
                         fullName: auth.displayName
                     )
+                    // Ask iOS for a device token now; the session it will be registered
+                    // against is being fetched on the line above, and whichever lands
+                    // second completes the pair.
+                    appDelegate.push.start()
                 }
             }
         }

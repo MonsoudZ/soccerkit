@@ -78,6 +78,31 @@ xcodegen generate
 
 `Config/Local.xcconfig` sets `BACKEND_BASE_URL` per SDK — simulator → `http://127.0.0.1:3000/api`, device → the Mac's bonjour name / LAN IP. Because it's gitignored, it never ships and never collides between machines or sessions.
 
+### Push notifications
+
+When a backend is configured, the app registers this device for remote notifications and
+hands the APNs token to `POST /v1/me/devices`; sign-out calls `DELETE /v1/me/devices/{token}`
+so the server stops pushing to a phone that is no longer this coach's. The backend uses it
+today for one thing: telling someone they have been invited to a club, which is the one
+event they cannot discover from their own device.
+
+A device token and a backend session arrive from different places and in either order, so
+neither registers on its own — `PushRegistrar` keeps whichever it has and completes the
+pair when the other lands. The token is remembered across launches, because iOS often
+issues it long before a returning coach's session is confirmed.
+
+Two things to know:
+
+- **Registering does not prompt.** `registerForRemoteNotifications()` is silent. Whether a
+  push is *displayed* depends on the notification authorization the app already asks for
+  when reminders are switched on — so a coach who has never enabled reminders will be
+  registered and still see nothing. Prompting at sign-in instead is a product decision,
+  not a technical one.
+- **The simulator cannot receive real pushes.** It has no APNs token, so `didRegister…`
+  never fires there and nothing is registered. Test on a device, with the backend's
+  `APNS_*` values set and `APNS_PRODUCTION` matching how the app was built — a sandbox
+  build's token is rejected by production and vice versa.
+
 Run the tests from the command line:
 
 ```sh

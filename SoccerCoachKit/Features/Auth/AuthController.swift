@@ -19,6 +19,15 @@ final class AuthController: ObservableObject {
     /// A user-facing message when a sign-in attempt fails (nil = none / cancelled).
     @Published var authError: String?
 
+    /// Called immediately before the session is torn down, while the backend token is
+    /// still valid.
+    ///
+    /// Sign-out owes the server one thing — stop pushing to this device — and that call
+    /// is authenticated by the very token `signOut` is about to delete. It therefore
+    /// cannot be done by observing `userID` going nil afterwards: by then there is no
+    /// credential left to make it with.
+    var willSignOut: (() -> Void)?
+
     var isSignedIn: Bool { userID != nil }
 
     private let defaults: UserDefaults
@@ -120,6 +129,7 @@ final class AuthController: ObservableObject {
     /// device, syncing as the previous one until (or unless) the new handshake
     /// succeeds.
     func signOut() {
+        willSignOut?()
         userID = nil
         displayName = nil
         identityToken = nil

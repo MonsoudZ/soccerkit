@@ -492,6 +492,13 @@ final class AppStore: ObservableObject {
             ? nil : UserDefaultsGameDaySessionStore(namespace: userID))
     }
 
+    /// Called once a backend session has been established and saved.
+    ///
+    /// Push registration needs a device token *and* a session, and they arrive in either
+    /// order from different places. This is the second half announcing itself; the first
+    /// is `PushRegistrar.deviceTokenReceived`.
+    var onBackendSession: (() -> Void)?
+
     /// Completes the Sign in with Apple → backend handshake: exchanges the fresh
     /// Apple identity token for a backend session token (persisted in
     /// `TokenStore`), then (re)starts sync so the first pull carries it.
@@ -532,6 +539,10 @@ final class AppStore: ObservableObject {
                     }
                     // Authenticated now — (re)start sync so its pull carries the token.
                     if cloudSyncEnabled { remoteSync?.start() }
+                    // And this device can now be registered for push: the token half
+                    // may have arrived long ago, but there was no session to attach it
+                    // to until this line.
+                    onBackendSession?()
                     return
                 } catch let error as APIError {
                     if case .transport = error, attempt < maxAttempts {

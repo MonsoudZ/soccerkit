@@ -110,6 +110,17 @@ enum APIError: Error {
 
 // MARK: - Auth DTOs
 
+/// `POST /v1/me/devices` — tells the backend where to reach this coach.
+///
+/// The token is APNs' handle for this install of the app, 64 hex characters. The
+/// backend keys on it rather than on the person precisely because it moves: sign
+/// out, hand the phone over, sign in as someone else, and Apple issues the same
+/// token, so registering re-points it at whoever is signed in now.
+struct RegisterDeviceRequest: Codable {
+    var token: String
+    var platform: String
+}
+
 /// `POST /v1/auth/apple` — the client hands the Apple identity token to the
 /// backend, which verifies it, upserts the user account, and returns a session.
 struct AppleAuthRequest: Codable {
@@ -199,6 +210,19 @@ struct APIClient {
         try await sendNoContent(path: "/v1/me", method: "DELETE")
     }
 
+    /// Registers this device for push notifications. Idempotent: the app registers
+    /// on every launch and Apple reissues the same token for the same install.
+    func registerDevice(token: String) async throws {
+        try await sendNoContent(path: "/v1/me/devices", method: "POST",
+                                body: RegisterDeviceRequest(token: token, platform: "ios"))
+    }
+
+    /// Stops pushes to this device — what sign-out owes the server. Authenticated by
+    /// the session being torn down, so it has to happen before the token is cleared.
+    func unregisterDevice(token: String) async throws {
+        try await sendNoContent(path: "/v1/me/devices/" + token, method: "DELETE")
+    }
+
     // MARK: - Core
 
     private func send<Body: Encodable, Response: Decodable>(
@@ -242,6 +266,14 @@ struct APIClient {
     /// A request with no response body to decode (e.g. a `204` from a delete).
     /// Authenticated by default; throws on any non-2xx.
     private func sendNoContent(path: String, method: String, authenticated: Bool = true) async throws {
+        try await sendNoContent(path: path, method: method,
+                                body: Optional<Int>.none, authenticated: authenticated)
+    }
+
+    /// The same, carrying a JSON body — a POST whose answer is only its status.
+    private func sendNoContent<Body: Encodable>(
+        path: String, method: String, body: Body?, authenticated: Bool = true
+    ) async throws {
         guard let url = URL(string: baseURL.absoluteString.trimmingTrailingSlash() + path) else {
             throw APIError.notConfigured
         }
@@ -250,6 +282,10 @@ struct APIClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if authenticated, let token = tokenProvider() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try jsonEncoder.encode(body)
         }
 
         let data: Data
