@@ -93,11 +93,13 @@ issues it long before a returning coach's session is confirmed.
 
 Two things to know:
 
-- **Registering does not prompt.** `registerForRemoteNotifications()` is silent. Whether a
-  push is *displayed* depends on the notification authorization the app already asks for
-  when reminders are switched on — so a coach who has never enabled reminders will be
-  registered and still see nothing. Prompting at sign-in instead is a product decision,
-  not a technical one.
+- **Two separate things.** `registerForRemoteNotifications()` is silent and decides
+  whether a push can be *sent*; notification authorization decides whether it is *shown*.
+  The permission prompt is asked at sign-in, because the alternatives — the reminders
+  toggle and game day — are reached only by a coach who already wanted something else,
+  and an invitation is exactly what a coach who wanted neither cannot otherwise find out
+  about. Those two call sites remain, and now re-read the answer rather than asking
+  again.
 - **The simulator cannot receive real pushes.** It has no APNs token, so `didRegister…`
   never fires there and nothing is registered. Test on a device, with the backend's
   `APNS_*` values set and `APNS_PRODUCTION` matching how the app was built — a sandbox

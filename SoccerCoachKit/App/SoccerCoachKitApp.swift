@@ -16,6 +16,21 @@ struct SoccerCoachKitApp: App {
         }
     }
 
+    /// What a signed-in coach needs set up, at launch and at sign-in alike.
+    ///
+    /// Notification permission is asked for here — see `AppStore.coachDidSignIn` for why
+    /// it moved off the reminders toggle. Then iOS is asked for a device token, which is
+    /// silent and separate: permission decides whether a push is *shown*, the token
+    /// decides whether one can be *sent*. A returning coach already has a session, so
+    /// registering may complete immediately; a fresh sign-in is still fetching one, and
+    /// whichever of the two lands second completes the pair.
+    @MainActor
+    private func prepareSignedInCoach() {
+        store.coachDidSignIn()
+        appDelegate.push.start()
+        appDelegate.push.registerIfPossible()
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -37,12 +52,7 @@ struct SoccerCoachKitApp: App {
                 // place that holds the delegate, the store and the auth controller.
                 store.onBackendSession = { [push = appDelegate.push] in push.registerIfPossible() }
                 auth.willSignOut = { [push = appDelegate.push] in push.unregisterCurrentDevice() }
-                if auth.isSignedIn {
-                    // A returning coach already has a session; asking iOS for the token
-                    // is what completes the pair. Silent — it does not prompt.
-                    appDelegate.push.start()
-                    appDelegate.push.registerIfPossible()
-                }
+                if auth.isSignedIn { prepareSignedInCoach() }
             }
             .onChange(of: auth.userID) {
                 // Load the newly-signed-in coach's data (and stash the previous
@@ -59,10 +69,7 @@ struct SoccerCoachKitApp: App {
                         authorizationCode: auth.authorizationCode,
                         fullName: auth.displayName
                     )
-                    // Ask iOS for a device token now; the session it will be registered
-                    // against is being fetched on the line above, and whichever lands
-                    // second completes the pair.
-                    appDelegate.push.start()
+                    prepareSignedInCoach()
                 }
             }
         }

@@ -215,8 +215,42 @@ final class AppStore: ObservableObject {
     /// to the app, not to a feature, so game day and event reminders were never
     /// asking about different things — and one published answer is what lets
     /// both screens say the same thing about it.
+    ///
+    /// Asks only while the answer is unknown; otherwise it re-reads. iOS shows its
+    /// dialog once and returns the stored decision forever after, so re-requesting is
+    /// harmless — but leaning on that makes "the app asked" and "a dialog appeared" two
+    /// different things, and only one of them is observable from here. Branching keeps
+    /// them the same question, which is what lets a test hold the app to asking once.
+    ///
+    /// `notificationStatus` is in-memory and starts `.notDetermined`, so on a cold launch
+    /// this takes the asking branch even for a coach who answered months ago. That is
+    /// still correct: iOS returns their decision without showing anything.
     func requestNotificationPermission() {
-        Task { notificationStatus = await scheduleNotifier.requestAuthorization() }
+        Task {
+            notificationStatus = notificationStatus == .notDetermined
+                ? await scheduleNotifier.requestAuthorization()
+                : await scheduleNotifier.authorizationStatus()
+        }
+    }
+
+    /// Called once a coach is signed in.
+    ///
+    /// Notification permission is asked for here now, rather than only when reminders
+    /// are switched on. Reminders used to be the only thing that needed it, and asking
+    /// the moment the coach opted into them was exactly right — a contextual prompt for
+    /// a feature they had just chosen. Invitations broke that: one arrives from someone
+    /// else's device, is the one thing a coach cannot discover by opening the app, and
+    /// needs permission that neither of the existing prompts would ever have asked for.
+    /// The reminders toggle and game day are both reached only by a coach who already
+    /// wanted something else, so a coach who wanted neither was unreachable.
+    ///
+    /// The two existing call sites stay where they are, and stop being prompts: with the
+    /// answer already recorded, `requestNotificationPermission` re-reads instead of
+    /// asking, which is what keeps the reminders and game-day screens honest about a
+    /// denial without putting a second dialog in front of anyone. What they no longer are
+    /// is the first time the coach is asked.
+    func coachDidSignIn() {
+        requestNotificationPermission()
     }
 
     /// Reschedules local notifications for upcoming games, practices, and events.

@@ -95,6 +95,43 @@ final class NotificationPermissionTests: XCTestCase {
         XCTAssertEqual(store.notificationStatus, .quiet)
     }
 
+    /// The prompt moved to sign-in. Reminders and game day are both reached only by a
+    /// coach who already wanted something else, so a coach who wanted neither was never
+    /// asked — and an invitation, which arrives from another device, is exactly the thing
+    /// such a coach cannot find out about any other way.
+    func testSigningInAsksForPermission() async {
+        let center = FakeNotificationCenter()
+        center.authorization = .authorized
+        let store = makeStore(center)
+
+        store.coachDidSignIn()
+        await settle()
+
+        XCTAssertEqual(center.authorizationRequests, 1, "signing in is where the coach is asked")
+        XCTAssertEqual(store.notificationStatus, .authorized)
+    }
+
+    /// iOS prompts once, so the older call sites must not ask again — they now find the
+    /// answer determined and republish it. A second dialog would be a bug the simulator
+    /// hides, since it only ever shows the first.
+    func testTheOlderPromptsDoNotAskASecondTime() async {
+        let center = FakeNotificationCenter()
+        center.authorization = .denied
+        let store = makeStore(center)
+
+        store.coachDidSignIn()
+        await settle()
+        store.eventRemindersEnabled = true      // the Settings toggle
+        await settle()
+        store.requestNotificationPermission()   // game day
+        await settle()
+
+        XCTAssertEqual(center.authorizationRequests, 1,
+                       "the coach is asked once, at sign-in")
+        XCTAssertEqual(store.notificationStatus, .denied,
+                       "and the answer still reaches the screens that warn about it")
+    }
+
     /// Lets the store's detached permission Task run to completion.
     private func settle() async {
         for _ in 0..<50 { await Task.yield() }
