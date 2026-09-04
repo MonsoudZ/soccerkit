@@ -88,7 +88,7 @@ enum SessionExporter {
             ))
 
             if let drill {
-                lines.append(detail("Drill", "\(drill.title) (\(drill.category.rawValue))"))
+                lines.append(detail("Drill", "\(drill.title) (\(drill.categoryLabel))"))
             }
             if !block.pitchArea.isEmpty { lines.append(detail("Area", block.pitchArea)) }
             if !block.positions.isEmpty {

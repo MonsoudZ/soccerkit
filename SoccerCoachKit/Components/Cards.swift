@@ -179,7 +179,7 @@ struct DrillCard: View {
                     Text(drill.title)
                         .font(.headline)
                     HStack(spacing: Spacing.md) {
-                        Text(drill.category.rawValue)
+                        Text(drill.categoryLabel)
                         Text(store.teamName(for: drill.teamID))
                     }
                     .font(.caption.weight(.semibold))

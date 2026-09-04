@@ -47,7 +47,7 @@ final class DrillLibraryViewModel: ObservableObject {
                 return drill.tags.contains(selectedTag)
             }
             .filter { drill in
-                SearchQuery.matches(searchText, in: [drill.title, drill.category.rawValue] + drill.tags)
+                SearchQuery.matches(searchText, in: [drill.title, drill.categoryLabel] + drill.tags)
             }
     }
 

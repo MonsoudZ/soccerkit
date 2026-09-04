@@ -11,7 +11,7 @@ struct SessionBlockEditorRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(block.topic.isEmpty ? drill?.title ?? "Deleted Drill" : block.topic)
                         .font(.headline)
-                    Text(drill?.category.rawValue ?? "Unavailable")
+                    Text(drill?.categoryLabel ?? "Unavailable")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

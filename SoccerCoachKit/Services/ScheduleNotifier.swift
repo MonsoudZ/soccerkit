@@ -20,7 +20,10 @@ enum ScheduleReminderPlanner {
         games: [GameEvent],
         sessions: [TrainingSession],
         events: [TeamEvent],
-        teamName: (UUID) -> String,
+        // Optional, because a training session need not belong to a team — see
+        // TrainingSession.teamID. AppStore.teamName(for:) has always taken an optional
+        // and answers with a placeholder; this is the parameter catching up with it.
+        teamName: (UUID?) -> String,
         leadMinutes: Int,
         now: Date,
         limit: Int = 30

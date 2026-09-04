@@ -42,7 +42,7 @@ struct SessionDetailView: View {
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                             Spacer()
-                                            Text(drill.category.rawValue)
+                                            Text(drill.categoryLabel)
                                                 .font(.caption)
                                                 .padding(.horizontal, Spacing.md)
                                                 .padding(.vertical, Spacing.xs)

@@ -2,7 +2,11 @@ import Foundation
 
 struct TrainingBlock: Identifiable, Hashable, Codable {
     let id: UUID
-    var drillID: UUID
+    /// The drill this block runs, when it runs one. Optional because a block need not be
+    /// a drill — a warm-up, a water break, a team talk — and because the REST API has
+    /// always allowed a block without one. `Drill.teamID` is optional for the same kind
+    /// of reason.
+    var drillID: UUID?
     var minutes: Int
     var focus: String
     var diagramID: UUID?
@@ -12,7 +16,7 @@ struct TrainingBlock: Identifiable, Hashable, Codable {
     var details: String
     var intensity: Int
 
-    init(id: UUID, drillID: UUID, minutes: Int, focus: String, diagramID: UUID? = nil, topic: String = "", positions: [PlayerPosition] = [], pitchArea: String = "", details: String = "", intensity: Int = 3) {
+    init(id: UUID, drillID: UUID?, minutes: Int, focus: String, diagramID: UUID? = nil, topic: String = "", positions: [PlayerPosition] = [], pitchArea: String = "", details: String = "", intensity: Int = 3) {
         self.id = id
         self.drillID = drillID
         self.minutes = minutes
@@ -41,7 +45,7 @@ struct TrainingBlock: Identifiable, Hashable, Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
-        drillID = try container.decode(UUID.self, forKey: .drillID)
+        drillID = try container.decodeIfPresent(UUID.self, forKey: .drillID)
         minutes = try container.decode(Int.self, forKey: .minutes)
         focus = try container.decode(String.self, forKey: .focus)
         diagramID = try container.decodeIfPresent(UUID.self, forKey: .diagramID)
@@ -55,7 +59,10 @@ struct TrainingBlock: Identifiable, Hashable, Codable {
 
 struct TrainingSession: Identifiable, Hashable, Codable {
     let id: UUID
-    var teamID: UUID
+    /// The team this session is for, when it belongs to one. Optional because the REST
+    /// API has always allowed a session without a team, and requiring one here meant such
+    /// a session could not be decoded — so it never reached the phone at all.
+    var teamID: UUID?
     var title: String
     var date: Date
     var objective: String
@@ -64,7 +71,7 @@ struct TrainingSession: Identifiable, Hashable, Codable {
     var attendance: [UUID: AttendanceStatus]
     var rsvps: [UUID: RSVPStatus]
 
-    init(id: UUID, teamID: UUID, title: String, date: Date, objective: String, weather: String = "Clear", blocks: [TrainingBlock], attendance: [UUID: AttendanceStatus], rsvps: [UUID: RSVPStatus] = [:]) {
+    init(id: UUID, teamID: UUID?, title: String, date: Date, objective: String, weather: String = "Clear", blocks: [TrainingBlock], attendance: [UUID: AttendanceStatus], rsvps: [UUID: RSVPStatus] = [:]) {
         self.id = id
         self.teamID = teamID
         self.title = title
@@ -91,7 +98,7 @@ struct TrainingSession: Identifiable, Hashable, Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
-        teamID = try container.decode(UUID.self, forKey: .teamID)
+        teamID = try container.decodeIfPresent(UUID.self, forKey: .teamID)
         title = try container.decode(String.self, forKey: .title)
         date = try container.decode(Date.self, forKey: .date)
         objective = try container.decode(String.self, forKey: .objective)

@@ -15,7 +15,7 @@ struct DrillDetailView: View {
                 Form {
                     Section("Drill") {
                         LabeledContent("Library", value: store.teamName(for: drill.teamID))
-                        LabeledContent("Category", value: drill.category.rawValue)
+                        LabeledContent("Category", value: drill.categoryLabel)
                         LabeledContent("Duration", value: "\(drill.durationMinutes) min")
                         if !drill.fieldSize.isEmpty {
                             LabeledContent("Field Size", value: drill.fieldSize)

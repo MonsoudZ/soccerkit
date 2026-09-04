@@ -4,7 +4,8 @@ import XCTest
 @MainActor
 final class ScheduleReminderTests: XCTestCase {
     private let teamID = UUID()
-    private func name(_: UUID) -> String { "Falcons" }
+    /// Optional, matching the planner: a training session need not belong to a team.
+    private func name(_: UUID?) -> String { "Falcons" }
 
     private func game(daysFromNow days: Double, opponent: String = "Rivals", now: Date) -> GameEvent {
         GameEvent(id: UUID(), teamID: teamID, opponent: opponent,

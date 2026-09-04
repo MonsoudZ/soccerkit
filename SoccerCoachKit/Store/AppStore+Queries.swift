@@ -66,8 +66,12 @@ extension AppStore {
         Array(Set(teamDrills.flatMap(\.tags))).sorted()
     }
 
-    func drill(for id: UUID) -> Drill? {
-        drills.first { $0.id == id }
+    /// Optional id, matching `diagram(for:)` below: a training block need not run a
+    /// drill, and callers that hold a `block.drillID` should not each have to unwrap it
+    /// before asking.
+    func drill(for id: UUID?) -> Drill? {
+        guard let id else { return nil }
+        return drills.first { $0.id == id }
     }
 
     func diagram(for id: UUID?) -> TacticsDiagram? {
@@ -89,7 +93,11 @@ extension AppStore {
     // these take a `teamID` rather than reading the selection.
 
     func attendanceSummary(for session: TrainingSession) -> (present: Int, total: Int) {
-        attendanceSummary(session.attendance, inTeam: session.teamID)
+        // A session with no team has no squad to take attendance for, so the honest
+        // answer is none of nobody. Only the session side is optional — a fixture is
+        // always somebody's.
+        guard let teamID = session.teamID else { return (0, 0) }
+        return attendanceSummary(session.attendance, inTeam: teamID)
     }
 
     func attendanceSummary(for game: GameEvent) -> (present: Int, total: Int) {
@@ -108,7 +116,8 @@ extension AppStore {
     }
 
     func rsvpSummary(for session: TrainingSession) -> (going: Int, maybe: Int, notGoing: Int, total: Int) {
-        rsvpSummary(session.rsvps, inTeam: session.teamID)
+        guard let teamID = session.teamID else { return (0, 0, 0, 0) }
+        return rsvpSummary(session.rsvps, inTeam: teamID)
     }
 
     func rsvpSummary(for game: GameEvent) -> (going: Int, maybe: Int, notGoing: Int, total: Int) {
